@@ -20,9 +20,14 @@ import {
   type BoardCard as BoardCardType,
   type BoardData,
 } from "@/hooks/use-board-data";
+import { useRealtimeBoard } from "@/hooks/use-realtime-board";
 import { reorderCards } from "@/lib/actions/cards";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BoardColumn } from "./board-column";
 import { BoardCard } from "./board-card";
+import { BoardCardDetail } from "./board-card-detail";
+import { BoardListView } from "./board-list-view";
+import { BoardTimelineView } from "./board-timeline-view";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface BoardViewProps {
@@ -32,8 +37,10 @@ interface BoardViewProps {
 
 export function BoardView({ boardId, sectorId }: BoardViewProps) {
   const { data: board, isLoading, error } = useBoardData(boardId);
+  useRealtimeBoard(boardId);
   const queryClient = useQueryClient();
   const [activeCard, setActiveCard] = useState<BoardCardType | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -202,32 +209,67 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
         )}
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {board.columns.map((column) => (
-            <BoardColumn
-              key={column.id}
-              column={column}
-              boardId={boardId}
-              sectorId={sectorId}
-              onCardCreated={() =>
-                queryClient.invalidateQueries({
-                  queryKey: ["board", boardId],
-                })
-              }
-            />
-          ))}
-        </div>
+      <Tabs defaultValue={0}>
+        <TabsList className="mb-4">
+          <TabsTrigger value={0}>Kanban</TabsTrigger>
+          <TabsTrigger value={1}>Lista</TabsTrigger>
+          <TabsTrigger value={2}>Timeline</TabsTrigger>
+        </TabsList>
 
-        <DragOverlay>
-          {activeCard ? <BoardCard card={activeCard} /> : null}
-        </DragOverlay>
-      </DndContext>
+        <TabsContent value={0}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {board.columns.map((column) => (
+                <BoardColumn
+                  key={column.id}
+                  column={column}
+                  boardId={boardId}
+                  sectorId={sectorId}
+                  onCardClick={(cardId) => setSelectedCardId(cardId)}
+                  onCardCreated={() =>
+                    queryClient.invalidateQueries({
+                      queryKey: ["board", boardId],
+                    })
+                  }
+                />
+              ))}
+            </div>
+
+            <DragOverlay>
+              {activeCard ? <BoardCard card={activeCard} /> : null}
+            </DragOverlay>
+          </DndContext>
+        </TabsContent>
+
+        <TabsContent value={1}>
+          <BoardListView
+            board={board}
+            onCardClick={(cardId) => setSelectedCardId(cardId)}
+          />
+        </TabsContent>
+
+        <TabsContent value={2}>
+          <BoardTimelineView
+            board={board}
+            onCardClick={(cardId) => setSelectedCardId(cardId)}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <BoardCardDetail
+        cardId={selectedCardId}
+        open={!!selectedCardId}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCardId(null);
+        }}
+        boardId={boardId}
+        sectorId={sectorId}
+      />
     </div>
   );
 }

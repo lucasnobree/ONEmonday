@@ -22,6 +22,8 @@ const actionLabels: Record<string, string> = {
   checklist_created: "criou uma checklist",
   card_moved: "moveu o card",
   escalation_created: "escalou o card",
+  card_escalated: "escalou o card para outro setor",
+  card_received_escalation: "recebeu escalacao de outro setor",
 };
 
 interface ActivityFeedProps {

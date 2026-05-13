@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Activity,
   Plus,
+  ArrowRightLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -33,8 +34,22 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserAvatarGroup } from "@/components/shared/user-avatar-group";
 import { ActivityFeed } from "@/components/shared/activity-feed";
 import { FileUpload } from "@/components/shared/file-upload";
+import { EscalateDialog } from "./escalate-dialog";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const refTypeLabels: Record<string, string> = {
+  escalation: "Escalacao",
+  related: "Relacionado",
+  blocks: "Bloqueia",
+  blocked_by: "Bloqueado por",
+};
+
+const refStatusLabels: Record<string, string> = {
+  open: "Aberto",
+  resolved: "Resolvido",
+  dismissed: "Descartado",
+};
 
 const priorityLabels = {
   critical: "Critico",
@@ -54,6 +69,7 @@ interface BoardCardDetailProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   boardId: string;
+  sectorId: string;
 }
 
 export function BoardCardDetail({
@@ -61,6 +77,7 @@ export function BoardCardDetail({
   open,
   onOpenChange,
   boardId,
+  sectorId,
 }: BoardCardDetailProps) {
   const { data: card, isLoading } = useCardDetail(cardId);
   const queryClient = useQueryClient();
@@ -68,6 +85,7 @@ export function BoardCardDetail({
   const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [addingChecklist, setAddingChecklist] = useState(false);
   const [newItemTexts, setNewItemTexts] = useState<Record<string, string>>({});
+  const [escalateOpen, setEscalateOpen] = useState(false);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["card-detail", cardId] });
@@ -139,7 +157,17 @@ export function BoardCardDetail({
           <div className="p-6 space-y-6">
             {/* Header */}
             <div>
-              <h2 className="text-xl font-bold">{card.title}</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">{card.title}</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEscalateOpen(true)}
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-1" />
+                  Escalar
+                </Button>
+              </div>
               <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
                 <span
                   className={cn(
@@ -211,6 +239,43 @@ export function BoardCardDetail({
                     >
                       {t.tags?.name}
                     </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cross-references */}
+            {(card as any).card_cross_references?.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <ArrowRightLeft className="h-4 w-4" /> Referencias cruzadas
+                </h3>
+                <div className="space-y-2">
+                  {(card as any).card_cross_references.map((ref: any) => (
+                    <div
+                      key={ref.id}
+                      className="flex items-center justify-between rounded-md border p-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">
+                          {ref.cards?.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {refTypeLabels[ref.reference_type] ?? ref.reference_type}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {ref.cards?.sectors?.name}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge
+                        variant={ref.status === "open" ? "default" : "secondary"}
+                        className="text-[10px] shrink-0 ml-2"
+                      >
+                        {refStatusLabels[ref.status] ?? ref.status}
+                      </Badge>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -458,6 +523,16 @@ export function BoardCardDetail({
           </div>
         )}
       </SheetContent>
+
+      {cardId && card && (
+        <EscalateDialog
+          cardId={cardId}
+          cardTitle={card.title}
+          currentSectorId={sectorId}
+          open={escalateOpen}
+          onOpenChange={setEscalateOpen}
+        />
+      )}
     </Sheet>
   );
 }

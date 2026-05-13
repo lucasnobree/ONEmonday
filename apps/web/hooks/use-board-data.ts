@@ -29,6 +29,7 @@ export interface BoardCard {
     avatar_url: string | null;
   }[];
   tags: { id: string; name: string; color: string }[];
+  cross_ref_count: number;
 }
 
 export interface BoardData {
@@ -68,7 +69,8 @@ export function useBoardData(boardId: string | undefined) {
           `
           id, title, description, position, priority, due_date, column_id, sector_id, created_by, created_at,
           card_assignees ( user_id, users ( full_name, avatar_url ) ),
-          card_tags ( tags ( id, name, color ) )
+          card_tags ( tags ( id, name, color ) ),
+          card_cross_references!card_cross_references_source_card_id_fkey ( id )
         `
         )
         .eq("board_id", boardId)
@@ -94,6 +96,7 @@ export function useBoardData(boardId: string | undefined) {
               name: t.tags?.name ?? "",
               color: t.tags?.color ?? "",
             })),
+            cross_ref_count: ((card as any).card_cross_references || []).length,
           })),
       }));
 

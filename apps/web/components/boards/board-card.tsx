@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar, AlertCircle } from "lucide-react";
+import { Calendar, AlertCircle, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -75,6 +75,12 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
 
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
+          {card.cross_ref_count > 0 && (
+            <span className="flex items-center gap-1 text-xs text-violet-500">
+              <ArrowRightLeft className="h-3 w-3" />
+              {card.cross_ref_count}
+            </span>
+          )}
           {card.due_date && (
             <span
               className={cn(
