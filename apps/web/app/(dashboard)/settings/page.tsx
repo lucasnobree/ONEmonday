@@ -1,0 +1,221 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useCurrentSector } from "@/hooks/use-current-sector";
+import { PermissionGate } from "@/components/shared/permission-gate";
+import { updateNotificationPreferences } from "@/lib/actions/settings";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+
+interface UserProfile {
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+}
+
+interface NotificationPref {
+  type: string;
+  in_app: boolean;
+  email: boolean;
+}
+
+const NOTIFICATION_TYPES = [
+  { type: "card_assigned", label: "Card atribuido" },
+  { type: "card_comment", label: "Comentario em card" },
+  { type: "card_escalated", label: "Card escalado" },
+  { type: "card_due_soon", label: "Card vencendo" },
+  { type: "card_overdue", label: "Card atrasado" },
+] as const;
+
+const DEFAULT_PREFS: NotificationPref[] = NOTIFICATION_TYPES.map((nt) => ({
+  type: nt.type,
+  in_app: true,
+  email: false,
+}));
+
+export default function SettingsPage() {
+  const { currentSector } = useCurrentSector();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPref[]>(DEFAULT_PREFS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name, email, avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      if (userData) setProfile(userData);
+
+      const { data: prefData } = await supabase
+        .from("notification_preferences")
+        .select("type, in_app, email")
+        .eq("user_id", user.id);
+
+      if (prefData && prefData.length > 0) {
+        const merged = DEFAULT_PREFS.map((dp) => {
+          const saved = prefData.find((p) => p.type === dp.type);
+          return saved ?? dp;
+        });
+        setPrefs(merged);
+      }
+
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const handleToggle = useCallback(
+    async (type: string, field: "in_app" | "email", value: boolean) => {
+      setPrefs((prev) =>
+        prev.map((p) => (p.type === type ? { ...p, [field]: value } : p))
+      );
+
+      const pref = prefs.find((p) => p.type === type);
+      if (!pref) return;
+
+      const inApp = field === "in_app" ? value : pref.in_app;
+      const email = field === "email" ? value : pref.email;
+
+      const result = await updateNotificationPreferences(type, inApp, email);
+      if (result.error) {
+        toast.error("Erro ao salvar preferencia");
+        setPrefs((prev) =>
+          prev.map((p) => (p.type === type ? { ...p, [field]: !value } : p))
+        );
+      }
+    },
+    [prefs]
+  );
+
+  if (!currentSector) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Configuracoes</h1>
+        <p className="text-muted-foreground">
+          Selecione um setor para acessar as configuracoes.
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Configuracoes</h1>
+        <div className="animate-pulse space-y-4">
+          <div className="h-32 rounded-xl bg-muted" />
+          <div className="h-64 rounded-xl bg-muted" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PermissionGate
+      sectorId={currentSector.id}
+      resource="settings"
+      action="read"
+      fallback={
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold">Configuracoes</h1>
+          <p className="text-muted-foreground">
+            Voce nao tem permissao para acessar as configuracoes deste setor.
+          </p>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Configuracoes</h1>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Perfil</CardTitle>
+            <CardDescription>
+              Informacoes da sua conta
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-1">
+              <Label className="text-muted-foreground text-xs">Nome</Label>
+              <p className="text-sm font-medium">
+                {profile?.full_name || "—"}
+              </p>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-muted-foreground text-xs">Email</Label>
+              <p className="text-sm font-medium">{profile?.email || "—"}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Preferencias de Notificacao</CardTitle>
+            <CardDescription>
+              Escolha como deseja ser notificado para cada tipo de evento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr_80px_80px] items-center gap-2 pb-2 text-xs font-medium text-muted-foreground">
+                <span>Evento</span>
+                <span className="text-center">In-app</span>
+                <span className="text-center">Email</span>
+              </div>
+              <Separator />
+              {NOTIFICATION_TYPES.map((nt) => {
+                const pref = prefs.find((p) => p.type === nt.type);
+                return (
+                  <div
+                    key={nt.type}
+                    className="grid grid-cols-[1fr_80px_80px] items-center gap-2 py-3"
+                  >
+                    <Label className="text-sm font-normal">{nt.label}</Label>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={pref?.in_app ?? true}
+                        onChange={(e) =>
+                          handleToggle(nt.type, "in_app", e.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={pref?.email ?? false}
+                        onChange={(e) =>
+                          handleToggle(nt.type, "email", e.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </PermissionGate>
+  );
+}
