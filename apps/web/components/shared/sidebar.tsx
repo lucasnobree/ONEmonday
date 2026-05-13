@@ -13,6 +13,7 @@ import {
   Headphones,
   Terminal,
   UserCog,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -25,6 +26,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SectorSwitcher } from "./sector-switcher";
 import { SidebarNav } from "./sidebar-nav";
+import { NotificationBell } from "./notification-bell";
 import { UserNav } from "./user-nav";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 
@@ -39,11 +41,11 @@ interface SidebarProps {
 }
 
 const comingSoonModules = [
-  { name: "Analytics", icon: BarChart3 },
-  { name: "CRM", icon: Users },
-  { name: "Support Desk", icon: Headphones },
-  { name: "Dev Tools", icon: Terminal },
-  { name: "RH Portal", icon: UserCog },
+  { name: "Analytics", icon: BarChart3, href: "/analytics" },
+  { name: "CRM", icon: Users, href: "/crm" },
+  { name: "Support Desk", icon: Headphones, href: "/support" },
+  { name: "Dev Tools", icon: Terminal, href: "/dev-tools" },
+  { name: "RH Portal", icon: UserCog, href: "/hr" },
 ];
 
 function SidebarContent({ user }: SidebarProps) {
@@ -55,6 +57,7 @@ function SidebarContent({ user }: SidebarProps) {
     { title: "Dashboard", href: "/", icon: LayoutDashboard },
     { title: "Boards", href: `${basePath}/boards`, icon: Kanban },
     { title: "Projetos", href: `${basePath}/projects`, icon: FolderKanban },
+    { title: "Configuracoes", href: "/settings", icon: Settings },
   ];
 
   return (
@@ -84,7 +87,7 @@ function SidebarContent({ user }: SidebarProps) {
             {comingSoonModules.map((mod) => (
               <Tooltip key={mod.name}>
                 <TooltipTrigger
-                  render={<div className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/50 cursor-not-allowed" />}
+                  render={<Link href={mod.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/50 hover:text-muted-foreground hover:bg-accent/50 transition-colors" />}
                 >
                   <mod.icon className="h-4 w-4" />
                   <span className="flex-1">{mod.name}</span>
@@ -99,7 +102,8 @@ function SidebarContent({ user }: SidebarProps) {
 
       <Separator />
 
-      <div className="p-3">
+      <div className="p-3 space-y-1">
+        <NotificationBell />
         <UserNav user={user} />
       </div>
     </div>
