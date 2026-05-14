@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   CheckCircle2,
 } from "lucide-react";
+import { SlaAlertBanner } from "@/components/support/sla-alert-banner";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -86,6 +87,8 @@ export default function SupportDashboardPage() {
       }
     >
       <div className="space-y-6">
+        <SlaAlertBanner />
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {statCards.map((stat) => (
             <Card key={stat.title}>

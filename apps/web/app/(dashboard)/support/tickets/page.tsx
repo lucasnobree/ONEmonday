@@ -24,10 +24,12 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { CheckCircle2, Download, Ticket } from "lucide-react";
+import { CheckCircle2, Download, Ticket, Clock } from "lucide-react";
 import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TicketDetailSheet } from "@/components/support/ticket-detail-sheet";
+import { useSlaStatus } from "@/hooks/support/use-sla-status";
+import type { SlaStatusEntry } from "@/hooks/support/use-sla-status";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -43,14 +45,53 @@ const priorityLabels: Record<string, string> = {
   low: "Baixa",
 };
 
+function getSlaIndicator(
+  ticketId: string,
+  slaMap: Map<string, SlaStatusEntry>
+): { color: string; label: string } | null {
+  const entry = slaMap.get(ticketId);
+  if (!entry) return null;
+  const pct = entry.remaining_pct;
+  if (pct <= 0)
+    return {
+      color: "bg-gray-200 text-gray-600 line-through dark:bg-gray-800 dark:text-gray-400",
+      label: "SLA Violado",
+    };
+  if (pct < 25)
+    return {
+      color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      label: "SLA Critico",
+    };
+  if (pct <= 50)
+    return {
+      color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      label: "SLA Alerta",
+    };
+  return {
+    color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    label: "SLA OK",
+  };
+}
+
 export default function TicketsPage() {
   const { currentSector } = useCurrentSector();
   const { data: tickets, isLoading } = useTickets(currentSector?.id);
+  const { data: slaEntries } = useSlaStatus();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+  const slaMap = useMemo(() => {
+    const map = new Map<string, SlaStatusEntry>();
+    if (slaEntries) {
+      for (const entry of slaEntries) {
+        map.set(entry.ticket_id, entry);
+      }
+    }
+    return map;
+  }, [slaEntries]);
 
   const categories = useMemo(() => {
     if (!tickets) return [];
@@ -234,6 +275,7 @@ export default function TicketsPage() {
                       <th className="pb-2 font-medium">Status</th>
                       <th className="pb-2 font-medium">Categoria</th>
                       <th className="pb-2 font-medium">Canal</th>
+                      <th className="pb-2 font-medium">SLA</th>
                       <th className="pb-2 font-medium">Criado em</th>
                       <th className="pb-2 font-medium">Acoes</th>
                     </tr>
@@ -286,6 +328,18 @@ export default function TicketsPage() {
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground capitalize">
                           {ticket.channel || "—"}
+                        </td>
+                        <td className="py-3 pr-4">
+                          {(() => {
+                            const sla = getSlaIndicator(ticket.id, slaMap);
+                            if (!sla) return <span className="text-muted-foreground">—</span>;
+                            return (
+                              <Badge variant="secondary" className={sla.color}>
+                                <Clock className="size-3 mr-1" />
+                                {sla.label}
+                              </Badge>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground">
                           {new Date(ticket.created_at).toLocaleDateString(
