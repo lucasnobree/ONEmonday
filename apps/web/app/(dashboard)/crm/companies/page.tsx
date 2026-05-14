@@ -14,7 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Globe, Users, MapPin, Building2 } from "lucide-react";
+import { Plus, Search, Globe, Users, MapPin, Building2, Download } from "lucide-react";
+import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
 
 const sizeLabels: Record<string, string> = {
@@ -77,10 +78,39 @@ export default function CompaniesPage() {
             className="pl-8"
           />
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Nova Empresa
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportToCSV(
+                filtered.map((c) => ({
+                  nome: c.name,
+                  dominio: c.domain ?? "",
+                  industria: c.industry ?? "",
+                  cidade: c.city ?? "",
+                  telefone: c.phone ?? "",
+                })),
+                `empresas-${new Date().toISOString().split("T")[0]}`,
+                [
+                  { key: "nome", label: "Nome" },
+                  { key: "dominio", label: "Dominio" },
+                  { key: "industria", label: "Industria" },
+                  { key: "cidade", label: "Cidade" },
+                  { key: "telefone", label: "Telefone" },
+                ]
+              )
+            }
+            disabled={!filtered.length}
+          >
+            <Download className="size-4 mr-1" />
+            Exportar
+          </Button>
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Nova Empresa
+          </Button>
+        </div>
       </div>
 
       {!companies?.length && !search ? (

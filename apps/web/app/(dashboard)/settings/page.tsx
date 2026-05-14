@@ -184,6 +184,17 @@ export default function SettingsPage() {
               Geral
             </Link>
             <Link
+              href="/settings/profile"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
+                pathname === "/settings/profile"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              )}
+            >
+              Perfil
+            </Link>
+            <Link
               href="/settings/admin"
               className={cn(
                 "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",

@@ -15,6 +15,9 @@ import {
   CreditCard,
   User,
   Clock,
+  DollarSign,
+  Building2,
+  UserCircle,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -32,11 +35,16 @@ import { useCurrentSector } from "@/hooks/use-current-sector";
 const RECENT_SEARCHES_KEY = "onemonday-recent-searches";
 const MAX_RECENT = 5;
 
+const currencyFmt = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 interface SearchResult {
   id: string;
   label: string;
   href: string;
-  type: "board" | "card" | "user";
+  type: "board" | "card" | "user" | "ticket" | "deal" | "contact" | "company" | "employee";
 }
 
 function getRecentSearches(): string[] {
@@ -65,6 +73,11 @@ export function CommandPalette() {
   const [boards, setBoards] = useState<SearchResult[]>([]);
   const [cards, setCards] = useState<SearchResult[]>([]);
   const [users, setUsers] = useState<SearchResult[]>([]);
+  const [tickets, setTickets] = useState<SearchResult[]>([]);
+  const [deals, setDeals] = useState<SearchResult[]>([]);
+  const [contacts, setContacts] = useState<SearchResult[]>([]);
+  const [companies, setCompanies] = useState<SearchResult[]>([]);
+  const [employees, setEmployees] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,22 +105,29 @@ export function CommandPalette() {
     };
   }, []);
 
+  function clearResults() {
+    setBoards([]);
+    setCards([]);
+    setUsers([]);
+    setTickets([]);
+    setDeals([]);
+    setContacts([]);
+    setCompanies([]);
+    setEmployees([]);
+  }
+
   useEffect(() => {
     if (open) {
       setRecentSearches(getRecentSearches());
       setQuery("");
-      setBoards([]);
-      setCards([]);
-      setUsers([]);
+      clearResults();
     }
   }, [open]);
 
   const searchSupabase = useCallback(
     async (searchQuery: string) => {
       if (!searchQuery.trim()) {
-        setBoards([]);
-        setCards([]);
-        setUsers([]);
+        clearResults();
         return;
       }
 
@@ -148,10 +168,54 @@ export function CommandPalette() {
           .eq("is_active", true)
           .limit(5);
 
-        const [boardsRes, cardsRes, usersRes] = await Promise.all([
+        const ticketsQuery = supabase
+          .from("support_tickets")
+          .select("id, title, priority, status")
+          .ilike("title", term)
+          .limit(5);
+
+        const dealsQuery = supabase
+          .from("crm_deals")
+          .select("id, name, value, stage")
+          .ilike("name", term)
+          .limit(5);
+
+        const contactsQuery = supabase
+          .from("crm_contacts")
+          .select("id, full_name, email")
+          .or(`full_name.ilike.${term},email.ilike.${term}`)
+          .limit(5);
+
+        const companiesQuery = supabase
+          .from("crm_companies")
+          .select("id, name, industry")
+          .ilike("name", term)
+          .limit(5);
+
+        const employeesQuery = supabase
+          .from("hr_employees")
+          .select("id, full_name, position")
+          .or(`full_name.ilike.${term},position.ilike.${term}`)
+          .limit(5);
+
+        const [
+          boardsRes,
+          cardsRes,
+          usersRes,
+          ticketsRes,
+          dealsRes,
+          contactsRes,
+          companiesRes,
+          employeesRes,
+        ] = await Promise.all([
           boardsQuery,
           cardsQuery,
           usersQuery,
+          ticketsQuery,
+          dealsQuery,
+          contactsQuery,
+          companiesQuery,
+          employeesQuery,
         ]);
 
         if (boardsRes.data) {
@@ -192,6 +256,65 @@ export function CommandPalette() {
             }))
           );
         }
+
+        if (ticketsRes.data) {
+          setTickets(
+            (ticketsRes.data as any[]).map((t) => ({
+              id: t.id,
+              label: `#${t.id.slice(0, 8)} ${t.title}`,
+              href: `/support/tickets`,
+              type: "ticket" as const,
+            }))
+          );
+        }
+
+        if (dealsRes.data) {
+          setDeals(
+            (dealsRes.data as any[]).map((d) => ({
+              id: d.id,
+              label: d.value
+                ? `${d.name} \u00B7 ${currencyFmt.format(d.value)}`
+                : d.name,
+              href: `/crm/deals`,
+              type: "deal" as const,
+            }))
+          );
+        }
+
+        if (contactsRes.data) {
+          setContacts(
+            (contactsRes.data as any[]).map((c) => ({
+              id: c.id,
+              label: c.email ? `${c.full_name} (${c.email})` : c.full_name,
+              href: `/crm/contacts`,
+              type: "contact" as const,
+            }))
+          );
+        }
+
+        if (companiesRes.data) {
+          setCompanies(
+            (companiesRes.data as any[]).map((c) => ({
+              id: c.id,
+              label: c.industry ? `${c.name} \u00B7 ${c.industry}` : c.name,
+              href: `/crm/companies`,
+              type: "company" as const,
+            }))
+          );
+        }
+
+        if (employeesRes.data) {
+          setEmployees(
+            (employeesRes.data as any[]).map((e) => ({
+              id: e.id,
+              label: e.position
+                ? `${e.full_name} \u00B7 ${e.position}`
+                : e.full_name,
+              href: `/hr/employees`,
+              type: "employee" as const,
+            }))
+          );
+        }
       } catch {
         // silently fail
       } finally {
@@ -204,9 +327,7 @@ export function CommandPalette() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query.trim()) {
-      setBoards([]);
-      setCards([]);
-      setUsers([]);
+      clearResults();
       return;
     }
     debounceRef.current = setTimeout(() => {
@@ -247,7 +368,14 @@ export function CommandPalette() {
 
   const hasQuery = query.trim().length > 0;
   const hasDynamicResults =
-    boards.length > 0 || cards.length > 0 || users.length > 0;
+    boards.length > 0 ||
+    cards.length > 0 ||
+    users.length > 0 ||
+    tickets.length > 0 ||
+    deals.length > 0 ||
+    contacts.length > 0 ||
+    companies.length > 0 ||
+    employees.length > 0;
 
   return (
     <CommandDialog
@@ -341,6 +469,96 @@ export function CommandPalette() {
                   >
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                     <span>{card.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+          {hasQuery && tickets.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Tickets">
+                {tickets.map((ticket) => (
+                  <CommandItem
+                    key={ticket.id}
+                    value={`ticket-${ticket.label}`}
+                    onSelect={() => navigate(ticket.href)}
+                  >
+                    <Headphones className="h-4 w-4 text-muted-foreground" />
+                    <span>{ticket.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+          {hasQuery && deals.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Deals">
+                {deals.map((deal) => (
+                  <CommandItem
+                    key={deal.id}
+                    value={`deal-${deal.label}`}
+                    onSelect={() => navigate(deal.href)}
+                  >
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span>{deal.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+          {hasQuery && contacts.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Contatos">
+                {contacts.map((contact) => (
+                  <CommandItem
+                    key={contact.id}
+                    value={`contact-${contact.label}`}
+                    onSelect={() => navigate(contact.href)}
+                  >
+                    <UserCircle className="h-4 w-4 text-muted-foreground" />
+                    <span>{contact.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+          {hasQuery && companies.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Empresas">
+                {companies.map((company) => (
+                  <CommandItem
+                    key={company.id}
+                    value={`company-${company.label}`}
+                    onSelect={() => navigate(company.href)}
+                  >
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span>{company.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+          {hasQuery && employees.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Colaboradores">
+                {employees.map((emp) => (
+                  <CommandItem
+                    key={emp.id}
+                    value={`employee-${emp.label}`}
+                    onSelect={() => navigate(emp.href)}
+                  >
+                    <UserCog className="h-4 w-4 text-muted-foreground" />
+                    <span>{emp.label}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>

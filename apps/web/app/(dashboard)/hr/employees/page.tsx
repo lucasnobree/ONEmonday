@@ -19,8 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users } from "lucide-react";
+import { Users, Download } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
+import { exportToCSV } from "@/lib/utils/export-csv";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
@@ -98,7 +100,38 @@ export default function EmployeesPage() {
             </SelectContent>
           </Select>
         </div>
-        <EmployeeFormDialog />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportToCSV(
+                filtered.map((e: Employee) => ({
+                  nome: e.full_name,
+                  email: e.email ?? "",
+                  cargo: e.position,
+                  departamento: e.department ?? "",
+                  status: STATUS_MAP[e.status]?.label ?? e.status,
+                  tipo: EMPLOYMENT_TYPE_MAP[e.employment_type] ?? e.employment_type,
+                })),
+                `colaboradores-${new Date().toISOString().split("T")[0]}`,
+                [
+                  { key: "nome", label: "Nome" },
+                  { key: "email", label: "Email" },
+                  { key: "cargo", label: "Cargo" },
+                  { key: "departamento", label: "Departamento" },
+                  { key: "status", label: "Status" },
+                  { key: "tipo", label: "Tipo" },
+                ]
+              )
+            }
+            disabled={!filtered.length}
+          >
+            <Download className="size-4 mr-1" />
+            Exportar
+          </Button>
+          <EmployeeFormDialog />
+        </div>
       </div>
 
       <Card>

@@ -14,7 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Mail, Phone, Building2, UserRound } from "lucide-react";
+import { Plus, Search, Mail, Phone, Building2, UserRound, Download } from "lucide-react";
+import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
 
 export default function ContactsPage() {
@@ -70,10 +71,39 @@ export default function ContactsPage() {
             className="pl-8"
           />
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Novo Contato
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportToCSV(
+                filtered.map((c) => ({
+                  nome: c.full_name,
+                  email: c.email ?? "",
+                  telefone: c.phone ?? "",
+                  cargo: c.position ?? "",
+                  empresa: c.company?.name ?? "",
+                })),
+                `contatos-${new Date().toISOString().split("T")[0]}`,
+                [
+                  { key: "nome", label: "Nome" },
+                  { key: "email", label: "Email" },
+                  { key: "telefone", label: "Telefone" },
+                  { key: "cargo", label: "Cargo" },
+                  { key: "empresa", label: "Empresa" },
+                ]
+              )
+            }
+            disabled={!filtered.length}
+          >
+            <Download className="size-4 mr-1" />
+            Exportar
+          </Button>
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Novo Contato
+          </Button>
+        </div>
       </div>
 
       {!contacts?.length && !search ? (

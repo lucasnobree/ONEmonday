@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { CheckCircle2, Ticket } from "lucide-react";
+import { CheckCircle2, Download, Ticket } from "lucide-react";
+import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TicketDetailSheet } from "@/components/support/ticket-detail-sheet";
 
@@ -146,7 +147,36 @@ export default function TicketsPage() {
             </SelectContent>
           </Select>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                exportToCSV(
+                  filtered.map((t: any) => ({
+                    titulo: t.card?.title ?? "",
+                    prioridade: priorityLabels[t.card?.priority] ?? t.card?.priority ?? "",
+                    status: t.resolved_at ? "Resolvido" : "Aberto",
+                    categoria: t.category ?? "",
+                    canal: t.channel ?? "",
+                    criado_em: new Date(t.created_at).toLocaleDateString("pt-BR"),
+                  })),
+                  `tickets-${new Date().toISOString().split("T")[0]}`,
+                  [
+                    { key: "titulo", label: "Titulo" },
+                    { key: "prioridade", label: "Prioridade" },
+                    { key: "status", label: "Status" },
+                    { key: "categoria", label: "Categoria" },
+                    { key: "canal", label: "Canal" },
+                    { key: "criado_em", label: "Criado em" },
+                  ]
+                )
+              }
+              disabled={!filtered.length}
+            >
+              <Download className="size-4 mr-1" />
+              Exportar
+            </Button>
             <TicketCreateDialog
               sectorId={currentSector.id}
               boardId=""
