@@ -25,12 +25,7 @@ async function fetchPermissions(): Promise<UserPermissions> {
       sector_id,
       sectors!inner(slug, name),
       role_id,
-      roles!inner(slug, level),
-      roles(
-        role_permissions(
-          permissions(resource, action)
-        )
-      )
+      roles!inner(slug, level, role_permissions(permissions(resource, action)))
     `
     )
     .eq("user_id", user.id);

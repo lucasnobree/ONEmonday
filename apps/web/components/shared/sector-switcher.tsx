@@ -24,8 +24,10 @@ export function SectorSwitcher() {
 
   return (
     <Select
-      value={currentSector?.id ?? ""}
+      value={currentSector?.id ?? null}
+      items={sectors.map((s) => ({ value: s.id, label: s.name }))}
       onValueChange={(value) => {
+        if (!value) return;
         const sector = sectors.find((s) => s.id === value);
         if (sector) setSector(sector);
       }}
@@ -33,7 +35,7 @@ export function SectorSwitcher() {
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Selecione um setor" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent alignItemWithTrigger={false}>
         {sectors.map((sector) => (
           <SelectItem key={sector.id} value={sector.id}>
             {sector.name}

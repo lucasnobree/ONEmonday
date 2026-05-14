@@ -22,10 +22,25 @@ interface UserProfile {
   avatar_url: string | null;
 }
 
+type Channel = "in_app" | "email" | "both" | "none";
+
 interface NotificationPref {
   type: string;
-  in_app: boolean;
-  email: boolean;
+  channel: Channel;
+}
+
+function channelToFlags(ch: Channel) {
+  return {
+    in_app: ch === "in_app" || ch === "both",
+    email: ch === "email" || ch === "both",
+  };
+}
+
+function flagsToChannel(inApp: boolean, email: boolean): Channel {
+  if (inApp && email) return "both";
+  if (inApp) return "in_app";
+  if (email) return "email";
+  return "none";
 }
 
 const NOTIFICATION_TYPES = [
@@ -38,8 +53,7 @@ const NOTIFICATION_TYPES = [
 
 const DEFAULT_PREFS: NotificationPref[] = NOTIFICATION_TYPES.map((nt) => ({
   type: nt.type,
-  in_app: true,
-  email: false,
+  channel: "in_app" as Channel,
 }));
 
 export default function SettingsPage() {
@@ -66,13 +80,13 @@ export default function SettingsPage() {
 
       const { data: prefData } = await supabase
         .from("notification_preferences")
-        .select("type, in_app, email")
+        .select("type, channel")
         .eq("user_id", user.id);
 
       if (prefData && prefData.length > 0) {
         const merged = DEFAULT_PREFS.map((dp) => {
           const saved = prefData.find((p) => p.type === dp.type);
-          return saved ?? dp;
+          return saved ? { type: saved.type, channel: saved.channel as Channel } : dp;
         });
         setPrefs(merged);
       }
@@ -84,21 +98,22 @@ export default function SettingsPage() {
 
   const handleToggle = useCallback(
     async (type: string, field: "in_app" | "email", value: boolean) => {
-      setPrefs((prev) =>
-        prev.map((p) => (p.type === type ? { ...p, [field]: value } : p))
-      );
-
       const pref = prefs.find((p) => p.type === type);
       if (!pref) return;
 
-      const inApp = field === "in_app" ? value : pref.in_app;
-      const email = field === "email" ? value : pref.email;
+      const flags = channelToFlags(pref.channel);
+      const newFlags = { ...flags, [field]: value };
+      const newChannel = flagsToChannel(newFlags.in_app, newFlags.email);
 
-      const result = await updateNotificationPreferences(type, inApp, email);
+      setPrefs((prev) =>
+        prev.map((p) => (p.type === type ? { ...p, channel: newChannel } : p))
+      );
+
+      const result = await updateNotificationPreferences(type, newChannel);
       if (result.error) {
         toast.error("Erro ao salvar preferencia");
         setPrefs((prev) =>
-          prev.map((p) => (p.type === type ? { ...p, [field]: !value } : p))
+          prev.map((p) => (p.type === type ? { ...p, channel: pref.channel } : p))
         );
       }
     },
@@ -183,6 +198,7 @@ export default function SettingsPage() {
               <Separator />
               {NOTIFICATION_TYPES.map((nt) => {
                 const pref = prefs.find((p) => p.type === nt.type);
+                const flags = channelToFlags(pref?.channel ?? "in_app");
                 return (
                   <div
                     key={nt.type}
@@ -192,7 +208,7 @@ export default function SettingsPage() {
                     <div className="flex justify-center">
                       <input
                         type="checkbox"
-                        checked={pref?.in_app ?? true}
+                        checked={flags.in_app}
                         onChange={(e) =>
                           handleToggle(nt.type, "in_app", e.target.checked)
                         }
@@ -202,7 +218,7 @@ export default function SettingsPage() {
                     <div className="flex justify-center">
                       <input
                         type="checkbox"
-                        checked={pref?.email ?? false}
+                        checked={flags.email}
                         onChange={(e) =>
                           handleToggle(nt.type, "email", e.target.checked)
                         }

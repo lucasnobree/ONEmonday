@@ -3,12 +3,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export async function updateNotificationPreferences(
   type: string,
-  inApp: boolean,
-  email: boolean
+  channel: string
 ) {
+  const schema = z.object({
+    type: z.enum(["card_assigned", "card_comment", "card_escalated", "card_due_soon", "card_overdue"]),
+    channel: z.enum(["in_app", "email", "both", "none"]),
+  });
+  const parsed = schema.safeParse({ type, channel });
+  if (!parsed.success) return { error: "Dados invalidos" };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,9 +27,8 @@ export async function updateNotificationPreferences(
     .upsert(
       {
         user_id: user.id,
-        type,
-        in_app: inApp,
-        email,
+        type: parsed.data.type,
+        channel: parsed.data.channel,
       },
       { onConflict: "user_id,type" }
     );
@@ -38,6 +44,14 @@ export async function inviteUser(
   sectorId: string,
   roleId: string
 ) {
+  const schema = z.object({
+    email: z.string().email(),
+    sectorId: z.string().uuid(),
+    roleId: z.string().uuid(),
+  });
+  const parsed = schema.safeParse({ email: emailAddress, sectorId, roleId });
+  if (!parsed.success) return { error: "Dados invalidos" };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,15 +59,15 @@ export async function inviteUser(
   if (!user) return { error: "Nao autenticado" };
 
   const perms = await getUserPermissions(user.id);
-  if (!hasPermission(perms, sectorId, "settings", "manage")) {
+  if (!hasPermission(perms, parsed.data.sectorId, "settings", "manage")) {
     return { error: "Sem permissao" };
   }
 
   const { data: existing } = await supabase
     .from("invites")
     .select("id")
-    .eq("email", emailAddress)
-    .eq("sector_id", sectorId)
+    .eq("email", parsed.data.email)
+    .eq("sector_id", parsed.data.sectorId)
     .eq("status", "pending")
     .maybeSingle();
 
@@ -64,9 +78,9 @@ export async function inviteUser(
   const { data: invite, error } = await supabase
     .from("invites")
     .insert({
-      email: emailAddress,
-      sector_id: sectorId,
-      role_id: roleId,
+      email: parsed.data.email,
+      sector_id: parsed.data.sectorId,
+      role_id: parsed.data.roleId,
       invited_by: user.id,
     })
     .select()
