@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { useCardDetail } from "@/hooks/use-card-detail";
 import { createComment } from "@/lib/actions/comments";
 import {
@@ -488,12 +489,21 @@ export function BoardCardDetail({
                 <FileUpload cardId={card.id} onUploaded={invalidate} />
                 <div className="space-y-2">
                   {(card as any).card_attachments?.map((att: any) => (
-                    <a
+                    <button
                       key={att.id}
-                      href={att.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent transition-colors"
+                      type="button"
+                      onClick={async () => {
+                        const sb = createClient();
+                        const { data } = await sb.storage
+                          .from("card-attachments")
+                          .createSignedUrl(att.file_url, 3600);
+                        if (data?.signedUrl) {
+                          window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                        } else {
+                          toast.error("Erro ao abrir arquivo");
+                        }
+                      }}
+                      className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent transition-colors w-full text-left"
                     >
                       <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -504,7 +514,7 @@ export function BoardCardDetail({
                           {(att.file_size / 1024).toFixed(0)} KB
                         </p>
                       </div>
-                    </a>
+                    </button>
                   ))}
                 </div>
               </TabsContent>

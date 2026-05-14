@@ -1,8 +1,15 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
 
 export async function markNotificationRead(notificationId: string) {
+  try {
+    z.string().uuid().parse(notificationId);
+  } catch {
+    return { error: "Dados invalidos" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,7 +52,7 @@ export async function getUnreadCount() {
 
   const { count, error } = await supabase
     .from("notifications")
-    .select("*", { count: "exact", head: true })
+    .select("id, title, content, type, resource_type, resource_id, is_read, created_at", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("is_read", false);
 

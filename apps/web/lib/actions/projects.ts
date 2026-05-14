@@ -7,6 +7,7 @@ import {
   updateProjectSchema,
 } from "@/lib/validations/projects";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export async function createProject(formData: unknown) {
   const supabase = await createClient();
@@ -19,8 +20,10 @@ export async function createProject(formData: unknown) {
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
-  if (!hasPermission(perms, parsed.data.sectorIds[0], "project", "create")) {
-    return { error: "Sem permissao" };
+  for (const sectorId of parsed.data.sectorIds) {
+    if (!hasPermission(perms, sectorId, "project", "create")) {
+      return { error: "Sem permissao" };
+    }
   }
 
   const { data: project, error } = await supabase
@@ -87,6 +90,12 @@ export async function updateProject(formData: unknown) {
 }
 
 export async function deleteProject(projectId: string) {
+  try {
+    z.string().uuid().parse(projectId);
+  } catch {
+    return { error: "Dados invalidos" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

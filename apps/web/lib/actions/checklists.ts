@@ -108,11 +108,26 @@ export async function toggleChecklistItem(
   itemId: string,
   isCompleted: boolean
 ) {
+  const parsedId = z.string().uuid().safeParse(itemId);
+  if (!parsedId.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nao autenticado" };
+
+  const { data: item } = await supabase
+    .from("checklist_items")
+    .select("checklist_id, card_checklists(card_id, cards(sector_id))")
+    .eq("id", itemId)
+    .single();
+  if (!item) return { error: "Item nao encontrado" };
+
+  const sectorId = (item as any).card_checklists?.cards?.sector_id;
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, sectorId, "card_checklist", "update"))
+    return { error: "Sem permissao" };
 
   const { error } = await supabase
     .from("checklist_items")
@@ -128,11 +143,26 @@ export async function toggleChecklistItem(
 }
 
 export async function deleteChecklist(checklistId: string) {
+  const parsedId = z.string().uuid().safeParse(checklistId);
+  if (!parsedId.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nao autenticado" };
+
+  const { data: checklist } = await supabase
+    .from("card_checklists")
+    .select("card_id, cards(sector_id)")
+    .eq("id", checklistId)
+    .single();
+  if (!checklist) return { error: "Checklist nao encontrada" };
+
+  const sectorId = (checklist as any).cards?.sector_id;
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, sectorId, "card_checklist", "delete"))
+    return { error: "Sem permissao" };
 
   const { error } = await supabase
     .from("card_checklists")

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
 import { createBoardSchema, updateBoardSchema } from "@/lib/validations/boards";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export async function createBoard(formData: unknown) {
   const supabase = await createClient();
@@ -16,8 +17,10 @@ export async function createBoard(formData: unknown) {
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
-  if (!hasPermission(perms, parsed.data.sectorIds[0], "board", "create")) {
-    return { error: "Sem permissao" };
+  for (const sectorId of parsed.data.sectorIds) {
+    if (!hasPermission(perms, sectorId, "board", "create")) {
+      return { error: "Sem permissao" };
+    }
   }
 
   const { data: board, error } = await supabase
@@ -99,6 +102,12 @@ export async function updateBoard(formData: unknown) {
 }
 
 export async function deleteBoard(boardId: string) {
+  try {
+    z.string().uuid().parse(boardId);
+  } catch {
+    return { error: "Dados invalidos" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

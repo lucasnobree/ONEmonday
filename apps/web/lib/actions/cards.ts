@@ -8,6 +8,7 @@ import {
   reorderCardsSchema,
 } from "@/lib/validations/cards";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export async function createCard(formData: unknown) {
   const supabase = await createClient();
@@ -115,6 +116,9 @@ export async function updateCard(formData: unknown) {
 }
 
 export async function deleteCard(cardId: string) {
+  const parsed = z.string().uuid().safeParse(cardId);
+  if (!parsed.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -154,6 +158,17 @@ export async function reorderCards(formData: unknown) {
 
   const parsed = reorderCardsSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: boardSectors } = await supabase
+    .from("board_sectors")
+    .select("sector_id")
+    .eq("board_id", parsed.data.boardId);
+
+  const perms = await getUserPermissions(user.id);
+  const canMove = boardSectors?.some((bs) =>
+    hasPermission(perms, bs.sector_id, "card", "move")
+  );
+  if (!canMove) return { error: "Sem permissao" };
 
   const { data, error } = await supabase.rpc("reorder_cards", {
     p_board_id: parsed.data.boardId,

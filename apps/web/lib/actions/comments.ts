@@ -56,17 +56,38 @@ export async function createComment(formData: unknown) {
 }
 
 export async function deleteComment(commentId: string) {
+  const parsedId = z.string().uuid().safeParse(commentId);
+  if (!parsedId.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nao autenticado" };
 
+  const { data: comment } = await supabase
+    .from("card_comments")
+    .select("user_id, card_id, cards(sector_id)")
+    .eq("id", commentId)
+    .single();
+  if (!comment) return { error: "Comentario nao encontrado" };
+
+  const isAuthor = comment.user_id === user.id;
+  const sectorId = (comment as any).cards?.sector_id;
+  const perms = await getUserPermissions(user.id);
+  const hasDeletePerm = hasPermission(
+    perms,
+    sectorId,
+    "card_comment",
+    "delete"
+  );
+
+  if (!isAuthor && !hasDeletePerm) return { error: "Sem permissao" };
+
   const { error } = await supabase
     .from("card_comments")
     .update({ is_active: false })
-    .eq("id", commentId)
-    .eq("user_id", user.id);
+    .eq("id", commentId);
 
   if (error) return { error: error.message };
   revalidatePath("/");

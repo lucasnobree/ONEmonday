@@ -7,7 +7,7 @@ import { z } from "zod";
 
 const createAttachmentSchema = z.object({
   cardId: z.string().uuid(),
-  fileUrl: z.string().url(),
+  fileUrl: z.string().min(1),
   fileName: z.string(),
   fileSize: z.number(),
   mimeType: z.string(),
@@ -61,6 +61,9 @@ export async function createAttachment(formData: unknown) {
 }
 
 export async function deleteAttachment(attachmentId: string) {
+  const parsedId = z.string().uuid().safeParse(attachmentId);
+  if (!parsedId.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -69,15 +72,27 @@ export async function deleteAttachment(attachmentId: string) {
 
   const { data: attachment } = await supabase
     .from("card_attachments")
-    .select("file_url")
+    .select("file_url, card_id, cards(sector_id)")
     .eq("id", attachmentId)
     .single();
+  if (!attachment) return { error: "Anexo nao encontrado" };
+
+  const sectorId = (attachment as any).cards?.sector_id;
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, sectorId, "card_attachment", "delete"))
+    return { error: "Sem permissao" };
 
   const { error } = await supabase
     .from("card_attachments")
     .delete()
     .eq("id", attachmentId);
   if (error) return { error: error.message };
+
+  if (attachment.file_url) {
+    await supabase.storage
+      .from("card-attachments")
+      .remove([attachment.file_url]);
+  }
 
   revalidatePath("/");
   return { success: true };

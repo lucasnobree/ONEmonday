@@ -21,13 +21,22 @@ export function FileUpload({ cardId, onUploaded }: FileUploadProps) {
     async (files: FileList) => {
       setIsUploading(true);
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Nao autenticado");
+        setIsUploading(false);
+        return;
+      }
+
       for (const file of Array.from(files)) {
         if (file.size > 10 * 1024 * 1024) {
           toast.error(`${file.name} excede 10MB`);
           continue;
         }
 
-        const path = `${cardId}/${Date.now()}-${file.name}`;
+        const path = `${user.id}/${cardId}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("card-attachments")
           .upload(path, file);
@@ -37,13 +46,9 @@ export function FileUpload({ cardId, onUploaded }: FileUploadProps) {
           continue;
         }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("card-attachments").getPublicUrl(path);
-
         await createAttachment({
           cardId,
-          fileUrl: publicUrl,
+          fileUrl: path,
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type,
