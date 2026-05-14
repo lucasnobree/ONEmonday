@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
 export function useRealtimeNotifications(userId: string | undefined) {
   const queryClient = useQueryClient();
-  const supabase = createClient();
+  const subscribedRef = useRef(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || subscribedRef.current) return;
+
+    const supabase = createClient();
+    subscribedRef.current = true;
 
     const channel = supabase
       .channel(`notifications:${userId}`)
@@ -28,7 +31,8 @@ export function useRealtimeNotifications(userId: string | undefined) {
       .subscribe();
 
     return () => {
+      subscribedRef.current = false;
       supabase.removeChannel(channel);
     };
-  }, [userId, supabase, queryClient]);
+  }, [userId, queryClient]);
 }

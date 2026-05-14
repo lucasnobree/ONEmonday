@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
 export function useRealtimeBoard(boardId: string | undefined) {
   const queryClient = useQueryClient();
-  const supabase = createClient();
+  const subscribedRef = useRef(false);
 
   useEffect(() => {
-    if (!boardId) return;
+    if (!boardId || subscribedRef.current) return;
+
+    const supabase = createClient();
+    subscribedRef.current = true;
 
     const channel = supabase
       .channel(`board:${boardId}`)
@@ -28,7 +31,8 @@ export function useRealtimeBoard(boardId: string | undefined) {
       .subscribe();
 
     return () => {
+      subscribedRef.current = false;
       supabase.removeChannel(channel);
     };
-  }, [boardId, supabase, queryClient]);
+  }, [boardId, queryClient]);
 }
