@@ -12,6 +12,7 @@ export interface DealDetail {
   expected_close_date: string | null;
   actual_close_date: string | null;
   win_probability: number | null;
+  probability_locked: boolean;
   lost_reason: string | null;
   source: string | null;
   created_at: string;
@@ -51,7 +52,7 @@ export function useDealDetail(dealId: string | null) {
           `
           id, card_id, sector_id, value, currency,
           expected_close_date, actual_close_date,
-          win_probability, lost_reason, source, created_at,
+          win_probability, probability_locked, lost_reason, source, created_at,
           cards!inner (
             id, title, description, priority, due_date, created_at,
             board_columns (name, color),

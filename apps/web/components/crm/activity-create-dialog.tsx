@@ -54,6 +54,9 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
   const [contactId, setContactId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [durationMin, setDurationMin] = useState("");
+  const [fromEmail, setFromEmail] = useState("");
+  const [toEmail, setToEmail] = useState("");
+  const [location, setLocation] = useState("");
 
   function resetForm() {
     setType("call");
@@ -63,16 +66,36 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
     setContactId("");
     setCompanyId("");
     setDurationMin("");
+    setFromEmail("");
+    setToEmail("");
+    setLocation("");
+  }
+
+  function buildDescription() {
+    let prefix = "";
+    if (type === "email" && (fromEmail || toEmail)) {
+      const parts = [];
+      if (fromEmail) parts.push(`De: ${fromEmail}`);
+      if (toEmail) parts.push(`Para: ${toEmail}`);
+      prefix = parts.join(" | ");
+    } else if (type === "meeting" && location) {
+      prefix = `Local: ${location}`;
+    }
+    if (prefix && description) return `${prefix}\n---\n${description}`;
+    if (prefix) return prefix;
+    return description;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    const finalDescription = buildDescription();
+
     const result = await createActivity.mutateAsync({
       sectorId,
       type,
       subject,
-      description: description || undefined,
+      description: finalDescription || undefined,
       dealId: dealId || undefined,
       contactId: contactId || undefined,
       companyId: companyId || undefined,
@@ -149,6 +172,43 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
                 required
               />
             </div>
+
+            {type === "email" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="activity-from-email">De (email)</Label>
+                  <Input
+                    id="activity-from-email"
+                    type="email"
+                    value={fromEmail}
+                    onChange={(e) => setFromEmail(e.target.value)}
+                    placeholder="remetente@email.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="activity-to-email">Para (email)</Label>
+                  <Input
+                    id="activity-to-email"
+                    type="email"
+                    value={toEmail}
+                    onChange={(e) => setToEmail(e.target.value)}
+                    placeholder="destinatario@email.com"
+                  />
+                </div>
+              </div>
+            )}
+
+            {type === "meeting" && (
+              <div className="space-y-2">
+                <Label htmlFor="activity-location">Local</Label>
+                <Input
+                  id="activity-location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Sala de reuniao, Google Meet, etc."
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="activity-description">Descricao</Label>

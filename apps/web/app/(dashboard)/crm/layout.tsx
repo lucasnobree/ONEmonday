@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const crmNav = [
   { label: "Dashboard", href: "/crm" },
   { label: "Pipeline", href: "/crm/pipeline" },
+  { label: "Propostas", href: "/crm/proposals" },
   { label: "Contatos", href: "/crm/contacts" },
   { label: "Empresas", href: "/crm/companies" },
   { label: "Atividades", href: "/crm/activities" },
