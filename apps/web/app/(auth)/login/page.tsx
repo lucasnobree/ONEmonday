@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,16 @@ import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
-  CardFooter,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+const AUTH_ERRORS: Record<string, string> = {
+  "Invalid login credentials": "Email ou senha incorretos",
+  "Email not confirmed": "Email ainda não confirmado",
+  "Too many requests": "Muitas tentativas. Aguarde alguns minutos.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +48,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      toast.error("Erro ao entrar", { description: error.message });
+      toast.error(AUTH_ERRORS[error.message] || "Erro ao fazer login. Tente novamente.");
       return;
     }
 
@@ -52,7 +59,8 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Entrar</CardTitle>
+        <CardTitle className="text-xl">Entrar</CardTitle>
+        <CardDescription>Use suas credenciais para acessar o sistema</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
@@ -62,6 +70,9 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="seu@email.com"
+              autoComplete="email"
+              aria-invalid={!!errors.email}
+              className="h-10"
               {...register("email")}
             />
             {errors.email && (
@@ -73,6 +84,10 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              aria-invalid={!!errors.password}
+              className="h-10"
               {...register("password")}
             />
             {errors.password && (
@@ -81,18 +96,19 @@ export default function LoginPage() {
               </p>
             )}
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full h-10" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading ? "Entrando..." : "Entrar"}
           </Button>
-          <Link
-            href="/recovery"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            Esqueceu a senha?
-          </Link>
-        </CardFooter>
+          <div className="text-center">
+            <Link
+              href="/recovery"
+              className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+            >
+              Esqueceu a senha?
+            </Link>
+          </div>
+        </CardContent>
       </form>
     </Card>
   );

@@ -4,12 +4,12 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4">
-      <div className="w-full max-w-md">
+    <div className="dark min-h-screen flex items-center justify-center bg-zinc-950 p-4">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white">ONEmonday</h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Gestao de projetos e tarefas
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">ONEmonday</h1>
+          <p className="text-muted-foreground text-sm mt-2">
+            Gestão de projetos e tarefas
           </p>
         </div>
         {children}

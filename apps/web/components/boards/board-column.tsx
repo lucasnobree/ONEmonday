@@ -70,7 +70,7 @@ export function BoardColumn({
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-lg bg-muted/50">
+    <div className="flex w-72 shrink-0 flex-col rounded-lg bg-muted/50 max-h-[calc(100vh-12rem)]">
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <div

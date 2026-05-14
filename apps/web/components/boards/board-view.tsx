@@ -240,8 +240,12 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
               ))}
             </div>
 
-            <DragOverlay>
-              {activeCard ? <BoardCard card={activeCard} /> : null}
+            <DragOverlay dropAnimation={null}>
+              {activeCard ? (
+                <div className="rotate-2 scale-105 shadow-xl opacity-90">
+                  <BoardCard card={activeCard} />
+                </div>
+              ) : null}
             </DragOverlay>
           </DndContext>
         </TabsContent>

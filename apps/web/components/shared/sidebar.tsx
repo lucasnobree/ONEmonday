@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Kanban,
@@ -57,7 +58,7 @@ function SidebarContent({ user }: SidebarProps) {
     { title: "Dashboard", href: "/", icon: LayoutDashboard },
     { title: "Boards", href: `${basePath}/boards`, icon: Kanban },
     { title: "Projetos", href: `${basePath}/projects`, icon: FolderKanban },
-    { title: "Configuracoes", href: "/settings", icon: Settings },
+    { title: "Configurações", href: "/settings", icon: Settings },
   ];
 
   return (
@@ -81,7 +82,7 @@ function SidebarContent({ user }: SidebarProps) {
 
         <div className="space-y-1">
           <span className="px-3 text-xs font-medium text-muted-foreground">
-            Modulos
+            Módulos
           </span>
           <TooltipProvider>
             {comingSoonModules.map((mod) => (
@@ -112,6 +113,11 @@ function SidebarContent({ user }: SidebarProps) {
 
 export function Sidebar({ user }: SidebarProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   return (
     <>
@@ -120,23 +126,23 @@ export function Sidebar({ user }: SidebarProps) {
         <SidebarContent user={user} />
       </aside>
 
-      {/* Mobile top bar + sheet */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center border-b bg-background px-4 md:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger render={<Button variant="ghost" size="icon" />}>
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Abrir menu</span>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
-            <SheetTitle className="sr-only">Menu de navegacao</SheetTitle>
-            <SidebarContent user={user} />
-          </SheetContent>
-        </Sheet>
-        <span className="ml-3 text-lg font-bold">ONEmonday</span>
+      {/* Mobile top bar */}
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
+        <div className="flex items-center">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger render={<Button variant="ghost" size="icon" />}>
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Abrir menu</span>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
+              <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+              <SidebarContent user={user} />
+            </SheetContent>
+          </Sheet>
+          <span className="ml-3 text-lg font-bold">ONEmonday</span>
+        </div>
+        <NotificationBell />
       </div>
-
-      {/* Spacer for mobile top bar */}
-      <div className="h-14 shrink-0 md:hidden" />
     </>
   );
 }

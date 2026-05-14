@@ -61,8 +61,8 @@ const priorityLabels: Record<string, string> = {
 const priorityColors: Record<string, string> = {
   critical: "text-red-500",
   high: "text-orange-500",
-  medium: "text-blue-500",
-  low: "text-slate-400",
+  medium: "text-yellow-500",
+  low: "text-green-500",
 };
 
 function getInitials(name: string | undefined): string {

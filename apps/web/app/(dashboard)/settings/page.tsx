@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { usePermissions } from "@/hooks/use-permissions";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { updateNotificationPreferences } from "@/lib/actions/settings";
 import {
@@ -14,6 +17,8 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 interface UserProfile {
@@ -44,8 +49,8 @@ function flagsToChannel(inApp: boolean, email: boolean): Channel {
 }
 
 const NOTIFICATION_TYPES = [
-  { type: "card_assigned", label: "Card atribuido" },
-  { type: "card_comment", label: "Comentario em card" },
+  { type: "card_assigned", label: "Card atribuído" },
+  { type: "card_comment", label: "Comentário em card" },
   { type: "card_escalated", label: "Card escalado" },
   { type: "card_due_soon", label: "Card vencendo" },
   { type: "card_overdue", label: "Card atrasado" },
@@ -58,6 +63,8 @@ const DEFAULT_PREFS: NotificationPref[] = NOTIFICATION_TYPES.map((nt) => ({
 
 export default function SettingsPage() {
   const { currentSector } = useCurrentSector();
+  const { isGlobalAdmin } = usePermissions();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [prefs, setPrefs] = useState<NotificationPref[]>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
@@ -102,6 +109,7 @@ export default function SettingsPage() {
       if (!pref) return;
 
       const flags = channelToFlags(pref.channel);
+      const oldChannel = pref.channel;
       const newFlags = { ...flags, [field]: value };
       const newChannel = flagsToChannel(newFlags.in_app, newFlags.email);
 
@@ -111,10 +119,12 @@ export default function SettingsPage() {
 
       const result = await updateNotificationPreferences(type, newChannel);
       if (result.error) {
-        toast.error("Erro ao salvar preferencia");
+        toast.error("Erro ao salvar preferência");
         setPrefs((prev) =>
-          prev.map((p) => (p.type === type ? { ...p, channel: pref.channel } : p))
+          prev.map((p) => (p.type === type ? { ...p, channel: oldChannel } : p))
         );
+      } else {
+        toast.success("Preferência salva");
       }
     },
     [prefs]
@@ -123,9 +133,9 @@ export default function SettingsPage() {
   if (!currentSector) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Configuracoes</h1>
+        <h1 className="text-2xl font-bold">Configurações</h1>
         <p className="text-muted-foreground">
-          Selecione um setor para acessar as configuracoes.
+          Selecione um setor para acessar as configurações.
         </p>
       </div>
     );
@@ -134,7 +144,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Configuracoes</h1>
+        <h1 className="text-2xl font-bold">Configurações</h1>
         <div className="animate-pulse space-y-4">
           <div className="h-32 rounded-xl bg-muted" />
           <div className="h-64 rounded-xl bg-muted" />
@@ -150,21 +160,34 @@ export default function SettingsPage() {
       action="read"
       fallback={
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold">Configuracoes</h1>
+          <h1 className="text-2xl font-bold">Configurações</h1>
           <p className="text-muted-foreground">
-            Voce nao tem permissao para acessar as configuracoes deste setor.
+            Você não tem permissão para acessar as configurações deste setor.
           </p>
         </div>
       }
     >
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Configuracoes</h1>
+        <h1 className="text-2xl font-bold">Configurações</h1>
+
+        {isGlobalAdmin && (
+          <Tabs value={pathname === "/settings/admin" ? "admin" : "general"}>
+            <TabsList>
+              <TabsTrigger value="general" render={<Link href="/settings" />}>
+                Geral
+              </TabsTrigger>
+              <TabsTrigger value="admin" render={<Link href="/settings/admin" />}>
+                Administração
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
 
         <Card>
           <CardHeader>
             <CardTitle>Perfil</CardTitle>
             <CardDescription>
-              Informacoes da sua conta
+              Informações da sua conta
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -183,7 +206,7 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Preferencias de Notificacao</CardTitle>
+            <CardTitle>Preferências de Notificação</CardTitle>
             <CardDescription>
               Escolha como deseja ser notificado para cada tipo de evento
             </CardDescription>
@@ -206,23 +229,19 @@ export default function SettingsPage() {
                   >
                     <Label className="text-sm font-normal">{nt.label}</Label>
                     <div className="flex justify-center">
-                      <input
-                        type="checkbox"
+                      <Switch
                         checked={flags.in_app}
-                        onChange={(e) =>
-                          handleToggle(nt.type, "in_app", e.target.checked)
+                        onCheckedChange={(checked) =>
+                          handleToggle(nt.type, "in_app", checked)
                         }
-                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
                       />
                     </div>
                     <div className="flex justify-center">
-                      <input
-                        type="checkbox"
+                      <Switch
                         checked={flags.email}
-                        onChange={(e) =>
-                          handleToggle(nt.type, "email", e.target.checked)
+                        onCheckedChange={(checked) =>
+                          handleToggle(nt.type, "email", checked)
                         }
-                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
                       />
                     </div>
                   </div>
