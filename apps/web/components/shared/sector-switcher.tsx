@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import {
@@ -19,6 +20,12 @@ export function SectorSwitcher() {
     slug: sr.sectorSlug,
     name: sr.sectorName,
   }));
+
+  useEffect(() => {
+    if (!currentSector && sectors.length > 0) {
+      setSector(sectors[0]);
+    }
+  }, [currentSector, sectors, setSector]);
 
   if (sectors.length === 0 && !isGlobalAdmin) return null;
 

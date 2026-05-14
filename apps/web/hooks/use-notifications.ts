@@ -15,7 +15,7 @@ export function useNotifications() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id, title, content, type, resource_type, resource_id, is_read, created_at")
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -40,6 +40,7 @@ export function useUnreadCount() {
       return count ?? 0;
     },
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 }
 

@@ -4,16 +4,10 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Calendar, AlertCircle, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PRIORITY_BORDER_COLORS, formatDateShort } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { BoardCard as BoardCardType } from "@/hooks/use-board-data";
-
-const priorityConfig = {
-  critical: { label: "Critico", className: "border-l-red-500" },
-  high: { label: "Alta", className: "border-l-orange-500" },
-  medium: { label: "Media", className: "border-l-blue-500" },
-  low: { label: "Baixa", className: "border-l-slate-400" },
-};
 
 interface BoardCardProps {
   card: BoardCardType;
@@ -49,7 +43,7 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
       onClick={onClick}
       className={cn(
         "rounded-lg border border-l-4 bg-card p-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-foreground/20 transition-colors",
-        priorityConfig[card.priority].className,
+        PRIORITY_BORDER_COLORS[card.priority],
         isDragging && "opacity-50 shadow-lg"
       )}
     >
@@ -90,10 +84,7 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
             >
               {isOverdue && <AlertCircle className="h-3 w-3" />}
               <Calendar className="h-3 w-3" />
-              {new Date(card.due_date).toLocaleDateString("pt-BR", {
-                day: "2-digit",
-                month: "short",
-              })}
+              {formatDateShort(card.due_date)}
             </span>
           )}
         </div>

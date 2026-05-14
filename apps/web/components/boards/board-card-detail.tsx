@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { useCardDetail } from "@/hooks/use-card-detail";
+import { useCardDetail, type CardDetail } from "@/hooks/use-card-detail";
 import { createComment } from "@/lib/actions/comments";
 import {
   createChecklist,
@@ -52,18 +52,282 @@ const refStatusLabels: Record<string, string> = {
   dismissed: "Descartado",
 };
 
-const priorityLabels = {
+const priorityLabels: Record<string, string> = {
   critical: "Critico",
   high: "Alta",
   medium: "Media",
   low: "Baixa",
 };
-const priorityColors = {
+const priorityColors: Record<string, string> = {
   critical: "text-red-500",
   high: "text-orange-500",
   medium: "text-blue-500",
   low: "text-slate-400",
 };
+
+function getInitials(name: string | undefined): string {
+  return (
+    name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "?"
+  );
+}
+
+/* ── Comments Section ─────────────────────────────────────── */
+
+function CommentsSection({
+  comments,
+  commentText,
+  onCommentTextChange,
+  onAddComment,
+}: {
+  comments: CardDetail["card_comments"];
+  commentText: string;
+  onCommentTextChange: (text: string) => void;
+  onAddComment: () => void;
+}) {
+  const active = comments
+    .filter((c) => c.is_active)
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Textarea
+          value={commentText}
+          onChange={(e) => onCommentTextChange(e.target.value)}
+          placeholder="Escreva um comentario..."
+          className="min-h-[80px]"
+        />
+      </div>
+      <Button
+        size="sm"
+        onClick={onAddComment}
+        disabled={!commentText.trim()}
+      >
+        Comentar
+      </Button>
+
+      <div className="space-y-4 mt-4">
+        {active.map((comment) => (
+          <div key={comment.id} className="flex gap-3">
+            <Avatar className="shrink-0">
+              <AvatarFallback>
+                {getInitials(comment.users?.full_name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {comment.users?.full_name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(comment.created_at), {
+                    addSuffix: true,
+                    locale: ptBR,
+                  })}
+                </span>
+              </div>
+              <p className="text-sm mt-1 whitespace-pre-wrap">
+                {comment.content}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Checklists Section ───────────────────────────────────── */
+
+function ChecklistsSection({
+  checklists,
+  newItemTexts,
+  onNewItemTextChange,
+  onAddItem,
+  onToggleItem,
+  addingChecklist,
+  newChecklistTitle,
+  onNewChecklistTitleChange,
+  onAddChecklist,
+  onSetAddingChecklist,
+}: {
+  checklists: CardDetail["card_checklists"];
+  newItemTexts: Record<string, string>;
+  onNewItemTextChange: (checklistId: string, text: string) => void;
+  onAddItem: (checklistId: string) => void;
+  onToggleItem: (itemId: string, isCompleted: boolean) => void;
+  addingChecklist: boolean;
+  newChecklistTitle: string;
+  onNewChecklistTitleChange: (title: string) => void;
+  onAddChecklist: () => void;
+  onSetAddingChecklist: (v: boolean) => void;
+}) {
+  const sorted = [...checklists].sort((a, b) => a.position - b.position);
+
+  return (
+    <div className="space-y-4">
+      {sorted.map((checklist) => {
+        const items = [...checklist.checklist_items].sort(
+          (a, b) => a.position - b.position
+        );
+        const completed = items.filter((i) => i.is_completed).length;
+
+        return (
+          <div key={checklist.id} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">{checklist.title}</h4>
+              <span className="text-xs text-muted-foreground">
+                {completed}/{items.length}
+              </span>
+            </div>
+            {items.length > 0 && (
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{
+                    width: `${(completed / items.length) * 100}%`,
+                  }}
+                />
+              </div>
+            )}
+            <div className="space-y-1">
+              {items.map((item) => (
+                <label
+                  key={item.id}
+                  className="flex items-center gap-2 text-sm cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.is_completed}
+                    onChange={(e) => onToggleItem(item.id, e.target.checked)}
+                    className="rounded"
+                  />
+                  <span
+                    className={cn(
+                      item.is_completed &&
+                        "line-through text-muted-foreground"
+                    )}
+                  >
+                    {item.content}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newItemTexts[checklist.id] ?? ""}
+                onChange={(e) =>
+                  onNewItemTextChange(checklist.id, e.target.value)
+                }
+                placeholder="Novo item"
+                className="h-8 text-sm"
+                onKeyDown={(e) =>
+                  e.key === "Enter" && onAddItem(checklist.id)
+                }
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onAddItem(checklist.id)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+
+      {addingChecklist ? (
+        <div className="flex gap-2">
+          <Input
+            value={newChecklistTitle}
+            onChange={(e) => onNewChecklistTitleChange(e.target.value)}
+            placeholder="Titulo da checklist"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onAddChecklist();
+              if (e.key === "Escape") onSetAddingChecklist(false);
+            }}
+          />
+          <Button size="sm" onClick={onAddChecklist}>
+            Criar
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onSetAddingChecklist(false)}
+          >
+            Cancelar
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onSetAddingChecklist(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" /> Nova Checklist
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/* ── Attachments Section ──────────────────────────────────── */
+
+function AttachmentsSection({
+  attachments,
+  cardId,
+  onUploaded,
+}: {
+  attachments: CardDetail["card_attachments"];
+  cardId: string;
+  onUploaded: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <FileUpload cardId={cardId} onUploaded={onUploaded} />
+      <div className="space-y-2">
+        {attachments.map((att) => (
+          <button
+            key={att.id}
+            type="button"
+            onClick={async () => {
+              const sb = createClient();
+              const { data } = await sb.storage
+                .from("card-attachments")
+                .createSignedUrl(att.file_url, 3600);
+              if (data?.signedUrl) {
+                window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+              } else {
+                toast.error("Erro ao abrir arquivo");
+              }
+            }}
+            className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent transition-colors w-full text-left"
+          >
+            <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{att.file_name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(att.file_size / 1024).toFixed(0)} KB
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ───────────────────────────────────────── */
 
 interface BoardCardDetailProps {
   cardId: string | null;
@@ -173,18 +437,12 @@ export function BoardCardDetail({
                 <span
                   className={cn(
                     "font-medium",
-                    priorityColors[
-                      card.priority as keyof typeof priorityColors
-                    ]
+                    priorityColors[card.priority]
                   )}
                 >
-                  {
-                    priorityLabels[
-                      card.priority as keyof typeof priorityLabels
-                    ]
-                  }
+                  {priorityLabels[card.priority]}
                 </span>
-                <span>em {(card as any).board_columns?.name}</span>
+                <span>em {card.board_columns?.name}</span>
                 {card.due_date && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -205,13 +463,13 @@ export function BoardCardDetail({
             )}
 
             {/* Assignees */}
-            {(card as any).card_assignees?.length > 0 && (
+            {card.card_assignees.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                   <Users className="h-4 w-4" /> Responsaveis
                 </h3>
                 <UserAvatarGroup
-                  users={(card as any).card_assignees.map((a: any) => ({
+                  users={card.card_assignees.map((a) => ({
                     user_id: a.user_id,
                     full_name: a.users?.full_name ?? "",
                     avatar_url: a.users?.avatar_url ?? null,
@@ -223,13 +481,13 @@ export function BoardCardDetail({
             )}
 
             {/* Tags */}
-            {(card as any).card_tags?.length > 0 && (
+            {card.card_tags.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                   <Tag className="h-4 w-4" /> Tags
                 </h3>
                 <div className="flex flex-wrap gap-1">
-                  {(card as any).card_tags.map((t: any) => (
+                  {card.card_tags.map((t) => (
                     <Badge
                       key={t.tags?.id}
                       variant="secondary"
@@ -246,13 +504,13 @@ export function BoardCardDetail({
             )}
 
             {/* Cross-references */}
-            {(card as any).card_cross_references?.length > 0 && (
+            {card.card_cross_references.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                   <ArrowRightLeft className="h-4 w-4" /> Referencias cruzadas
                 </h3>
                 <div className="space-y-2">
-                  {(card as any).card_cross_references.map((ref: any) => (
+                  {card.card_cross_references.map((ref) => (
                     <div
                       key={ref.id}
                       className="flex items-center justify-between rounded-md border p-2"
@@ -263,7 +521,8 @@ export function BoardCardDetail({
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <Badge variant="secondary" className="text-[10px]">
-                            {refTypeLabels[ref.reference_type] ?? ref.reference_type}
+                            {refTypeLabels[ref.reference_type] ??
+                              ref.reference_type}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {ref.cards?.sectors?.name}
@@ -271,7 +530,9 @@ export function BoardCardDetail({
                         </div>
                       </div>
                       <Badge
-                        variant={ref.status === "open" ? "default" : "secondary"}
+                        variant={
+                          ref.status === "open" ? "default" : "secondary"
+                        }
                         className="text-[10px] shrink-0 ml-2"
                       >
                         {refStatusLabels[ref.status] ?? ref.status}
@@ -301,229 +562,44 @@ export function BoardCardDetail({
                 </TabsTrigger>
               </TabsList>
 
-              {/* Comments tab */}
               <TabsContent value={0} className="space-y-4 mt-4">
-                <div className="flex gap-2">
-                  <Textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Escreva um comentario..."
-                    className="min-h-[80px]"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  onClick={handleAddComment}
-                  disabled={!commentText.trim()}
-                >
-                  Comentar
-                </Button>
-
-                <div className="space-y-4 mt-4">
-                  {(card as any).card_comments
-                    ?.filter((c: any) => c.is_active)
-                    .sort(
-                      (a: any, b: any) =>
-                        new Date(b.created_at).getTime() -
-                        new Date(a.created_at).getTime()
-                    )
-                    .map((comment: any) => {
-                      const initials =
-                        comment.users?.full_name
-                          ?.split(" ")
-                          .map((n: string) => n[0])
-                          .join("")
-                          .slice(0, 2)
-                          .toUpperCase() ?? "?";
-                      return (
-                        <div key={comment.id} className="flex gap-3">
-                          <Avatar className="shrink-0">
-                            <AvatarFallback>{initials}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
-                                {comment.users?.full_name}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(
-                                  new Date(comment.created_at),
-                                  { addSuffix: true, locale: ptBR }
-                                )}
-                              </span>
-                            </div>
-                            <p className="text-sm mt-1 whitespace-pre-wrap">
-                              {comment.content}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
+                <CommentsSection
+                  comments={card.card_comments}
+                  commentText={commentText}
+                  onCommentTextChange={setCommentText}
+                  onAddComment={handleAddComment}
+                />
               </TabsContent>
 
-              {/* Checklists tab */}
               <TabsContent value={1} className="space-y-4 mt-4">
-                {(card as any).card_checklists
-                  ?.sort((a: any, b: any) => a.position - b.position)
-                  .map((checklist: any) => {
-                    const items =
-                      checklist.checklist_items?.sort(
-                        (a: any, b: any) => a.position - b.position
-                      ) ?? [];
-                    const completed = items.filter(
-                      (i: any) => i.is_completed
-                    ).length;
-
-                    return (
-                      <div key={checklist.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium">
-                            {checklist.title}
-                          </h4>
-                          <span className="text-xs text-muted-foreground">
-                            {completed}/{items.length}
-                          </span>
-                        </div>
-                        {items.length > 0 && (
-                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{
-                                width: `${items.length ? (completed / items.length) * 100 : 0}%`,
-                              }}
-                            />
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          {items.map((item: any) => (
-                            <label
-                              key={item.id}
-                              className="flex items-center gap-2 text-sm cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={item.is_completed}
-                                onChange={(e) =>
-                                  handleToggleItem(item.id, e.target.checked)
-                                }
-                                className="rounded"
-                              />
-                              <span
-                                className={cn(
-                                  item.is_completed &&
-                                    "line-through text-muted-foreground"
-                                )}
-                              >
-                                {item.content}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            value={newItemTexts[checklist.id] ?? ""}
-                            onChange={(e) =>
-                              setNewItemTexts((prev) => ({
-                                ...prev,
-                                [checklist.id]: e.target.value,
-                              }))
-                            }
-                            placeholder="Novo item"
-                            className="h-8 text-sm"
-                            onKeyDown={(e) =>
-                              e.key === "Enter" &&
-                              handleAddChecklistItem(checklist.id)
-                            }
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              handleAddChecklistItem(checklist.id)
-                            }
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                {addingChecklist ? (
-                  <div className="flex gap-2">
-                    <Input
-                      value={newChecklistTitle}
-                      onChange={(e) => setNewChecklistTitle(e.target.value)}
-                      placeholder="Titulo da checklist"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleAddChecklist();
-                        if (e.key === "Escape") setAddingChecklist(false);
-                      }}
-                    />
-                    <Button size="sm" onClick={handleAddChecklist}>
-                      Criar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setAddingChecklist(false)}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAddingChecklist(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> Nova Checklist
-                  </Button>
-                )}
+                <ChecklistsSection
+                  checklists={card.card_checklists}
+                  newItemTexts={newItemTexts}
+                  onNewItemTextChange={(id, text) =>
+                    setNewItemTexts((prev) => ({ ...prev, [id]: text }))
+                  }
+                  onAddItem={handleAddChecklistItem}
+                  onToggleItem={handleToggleItem}
+                  addingChecklist={addingChecklist}
+                  newChecklistTitle={newChecklistTitle}
+                  onNewChecklistTitleChange={setNewChecklistTitle}
+                  onAddChecklist={handleAddChecklist}
+                  onSetAddingChecklist={setAddingChecklist}
+                />
               </TabsContent>
 
-              {/* Attachments tab */}
               <TabsContent value={2} className="space-y-4 mt-4">
-                <FileUpload cardId={card.id} onUploaded={invalidate} />
-                <div className="space-y-2">
-                  {(card as any).card_attachments?.map((att: any) => (
-                    <button
-                      key={att.id}
-                      type="button"
-                      onClick={async () => {
-                        const sb = createClient();
-                        const { data } = await sb.storage
-                          .from("card-attachments")
-                          .createSignedUrl(att.file_url, 3600);
-                        if (data?.signedUrl) {
-                          window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-                        } else {
-                          toast.error("Erro ao abrir arquivo");
-                        }
-                      }}
-                      className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent transition-colors w-full text-left"
-                    >
-                      <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">
-                          {att.file_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {(att.file_size / 1024).toFixed(0)} KB
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                <AttachmentsSection
+                  attachments={card.card_attachments}
+                  cardId={card.id}
+                  onUploaded={invalidate}
+                />
               </TabsContent>
 
-              {/* Activity tab */}
               <TabsContent value={3} className="mt-4">
                 <ActivityFeed
-                  activities={((card as any).card_activity_log ?? []).sort(
-                    (a: any, b: any) =>
+                  activities={[...card.card_activity_log].sort(
+                    (a, b) =>
                       new Date(b.created_at).getTime() -
                       new Date(a.created_at).getTime()
                   )}

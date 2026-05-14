@@ -3,32 +3,27 @@
 import { useState, useMemo } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PRIORITY_CONFIG, formatDateFull } from "@/lib/constants";
+import type { Priority } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { BoardData, BoardCard } from "@/hooks/use-board-data";
 
-const priorityLabels = {
-  critical: "Critico",
-  high: "Alta",
-  medium: "Media",
-  low: "Baixa",
-};
-
-const priorityColors = {
+const priorityTextColors: Record<Priority, string> = {
   critical: "text-red-500",
   high: "text-orange-500",
-  medium: "text-blue-500",
-  low: "text-slate-400",
+  medium: "text-yellow-500",
+  low: "text-green-500",
 };
 
-const priorityDotColors = {
+const priorityDotColors: Record<Priority, string> = {
   critical: "bg-red-500",
   high: "bg-orange-500",
-  medium: "bg-blue-500",
-  low: "bg-slate-400",
+  medium: "bg-yellow-500",
+  low: "bg-green-500",
 };
 
-const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+const priorityOrder: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 type SortField =
   | "title"
@@ -188,8 +183,8 @@ export function BoardListView({ board, onCardClick }: BoardListViewProps) {
                         priorityDotColors[card.priority]
                       )}
                     />
-                    <span className={cn("whitespace-nowrap", priorityColors[card.priority])}>
-                      {priorityLabels[card.priority]}
+                    <span className={cn("whitespace-nowrap", priorityTextColors[card.priority])}>
+                      {PRIORITY_CONFIG[card.priority].label}
                     </span>
                   </span>
                 </td>
@@ -197,11 +192,7 @@ export function BoardListView({ board, onCardClick }: BoardListViewProps) {
                 {/* Vencimento */}
                 <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                   {card.due_date
-                    ? new Date(card.due_date).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
+                    ? formatDateFull(card.due_date)
                     : "—"}
                 </td>
 

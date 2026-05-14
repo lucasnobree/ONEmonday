@@ -11,20 +11,15 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { PRIORITY_CONFIG } from "@/lib/constants";
+import type { Priority } from "@/lib/constants";
 import type { BoardData, BoardCard } from "@/hooks/use-board-data";
 
-const priorityColors = {
+const priorityBgColors: Record<Priority, string> = {
   critical: "bg-red-500",
   high: "bg-orange-500",
-  medium: "bg-blue-500",
-  low: "bg-slate-400",
-};
-
-const priorityLabels = {
-  critical: "Critico",
-  high: "Alta",
-  medium: "Media",
-  low: "Baixa",
+  medium: "bg-yellow-500",
+  low: "bg-green-500",
 };
 
 interface BoardTimelineViewProps {
@@ -158,14 +153,14 @@ export function BoardTimelineView({ board, onCardClick }: BoardTimelineViewProps
                       <div
                         className={cn(
                           "rounded px-2 py-1 text-[11px] font-medium text-white cursor-pointer whitespace-nowrap transition-opacity",
-                          priorityColors[card.priority],
+                          priorityBgColors[card.priority],
                           hoveredCard === card.id && "opacity-80"
                         )}
                         style={{ height: BAR_HEIGHT, lineHeight: `${BAR_HEIGHT - 8}px` }}
                         onClick={() => onCardClick(card.id)}
                         onMouseEnter={() => setHoveredCard(card.id)}
                         onMouseLeave={() => setHoveredCard(null)}
-                        title={`${card.title} — ${format(dueDate, "dd/MM/yyyy")} — ${priorityLabels[card.priority]}`}
+                        title={`${card.title} — ${format(dueDate, "dd/MM/yyyy")} — ${PRIORITY_CONFIG[card.priority].label}`}
                       >
                         {format(dueDate, "dd/MM")}
                       </div>
@@ -180,11 +175,11 @@ export function BoardTimelineView({ board, onCardClick }: BoardTimelineViewProps
 
       {/* Legend */}
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-        {(Object.entries(priorityLabels) as [BoardCard["priority"], string][]).map(
-          ([key, label]) => (
+        {(Object.entries(PRIORITY_CONFIG) as [BoardCard["priority"], (typeof PRIORITY_CONFIG)[BoardCard["priority"]]][]).map(
+          ([key, config]) => (
             <span key={key} className="inline-flex items-center gap-1.5">
-              <span className={cn("h-2.5 w-2.5 rounded-full", priorityColors[key])} />
-              {label}
+              <span className={cn("h-2.5 w-2.5 rounded-full", priorityBgColors[key])} />
+              {config.label}
             </span>
           )
         )}
