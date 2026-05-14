@@ -2,8 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useKBArticles } from "@/hooks/support/use-kb-articles";
+import {
+  useKBArticles,
+  useDeleteKBArticle,
+  useToggleKBArticlePublished,
+} from "@/hooks/support/use-kb-articles";
+import type { PublishedFilter } from "@/hooks/support/use-kb-articles";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { KBArticleSheet } from "@/components/support/kb-article-sheet";
+import { KBArticleFormSheet } from "@/components/support/kb-article-form-sheet";
 import {
   Card,
   CardContent,
@@ -11,16 +18,42 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, FileText } from "lucide-react";
-import { KBArticleSheet } from "@/components/support/kb-article-sheet";
+import { toast } from "sonner";
+import { Search, FileText, Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+
+const filterTabs: { label: string; value: PublishedFilter }[] = [
+  { label: "Todos", value: "all" },
+  { label: "Publicados", value: "published" },
+  { label: "Rascunhos", value: "draft" },
+];
 
 export default function KnowledgeBasePage() {
   const { currentSector } = useCurrentSector();
-  const { data: articles, isLoading } = useKBArticles(currentSector?.id);
+  const [publishedFilter, setPublishedFilter] =
+    useState<PublishedFilter>("all");
+  const { data: articles, isLoading } = useKBArticles(
+    currentSector?.id,
+    publishedFilter
+  );
+  const deleteMutation = useDeleteKBArticle();
+  const togglePublishMutation = useToggleKBArticlePublished();
   const [search, setSearch] = useState("");
-  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(
+    null
+  );
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<any>(undefined);
+
+  const categories = useMemo(() => {
+    if (!articles) return [];
+    const cats = new Set(
+      articles.map((a: any) => a.category).filter(Boolean)
+    );
+    return Array.from(cats) as string[];
+  }, [articles]);
 
   const filtered = useMemo(() => {
     if (!articles) return [];
@@ -42,6 +75,44 @@ export default function KnowledgeBasePage() {
     );
   }
 
+  function handleCreate() {
+    setEditingArticle(undefined);
+    setFormOpen(true);
+  }
+
+  function handleEdit(article: any) {
+    setEditingArticle(article);
+    setFormOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    const result = await deleteMutation.mutateAsync(id);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao excluir artigo"
+      );
+      return;
+    }
+    toast.success("Artigo excluido");
+  }
+
+  async function handleTogglePublish(id: string) {
+    const result = await togglePublishMutation.mutateAsync(id);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao alterar publicacao"
+      );
+      return;
+    }
+    toast.success(
+      (result as any).is_published ? "Artigo publicado" : "Artigo despublicado"
+    );
+  }
+
   return (
     <PermissionGate
       sectorId={currentSector.id}
@@ -55,14 +126,40 @@ export default function KnowledgeBasePage() {
       }
     >
       <div className="space-y-4">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar artigos..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setPublishedFilter(tab.value)}
+                className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all ${
+                  publishedFilter === tab.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar artigos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
+          <div className="ml-auto">
+            <Button size="sm" onClick={handleCreate}>
+              <Plus className="size-4 mr-1" />
+              Novo Artigo
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -83,7 +180,11 @@ export default function KnowledgeBasePage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((article: any) => (
-              <Card key={article.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedArticleId(article.id)}>
+              <Card
+                key={article.id}
+                className="hover:shadow-md transition-shadow cursor-pointer group"
+                onClick={() => setSelectedArticleId(article.id)}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base line-clamp-2">
@@ -92,14 +193,12 @@ export default function KnowledgeBasePage() {
                     <Badge
                       variant="secondary"
                       className={
-                        article.status === "published"
+                        article.is_published
                           ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                           : ""
                       }
                     >
-                      {article.status === "published"
-                        ? "Publicado"
-                        : "Rascunho"}
+                      {article.is_published ? "Publicado" : "Rascunho"}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -117,16 +216,69 @@ export default function KnowledgeBasePage() {
                       {article.content}
                     </p>
                   )}
+                  <div className="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(article);
+                      }}
+                      title="Editar"
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePublish(article.id);
+                      }}
+                      title={
+                        article.is_published ? "Despublicar" : "Publicar"
+                      }
+                    >
+                      {article.is_published ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(article.id);
+                      }}
+                      title="Excluir"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
       </div>
+
       <KBArticleSheet
         articleId={selectedArticleId}
         open={!!selectedArticleId}
         onOpenChange={(o) => !o && setSelectedArticleId(null)}
+      />
+
+      <KBArticleFormSheet
+        open={formOpen}
+        onOpenChange={(o) => {
+          setFormOpen(o);
+          if (!o) setEditingArticle(undefined);
+        }}
+        sectorId={currentSector.id}
+        article={editingArticle}
+        categories={categories}
       />
     </PermissionGate>
   );

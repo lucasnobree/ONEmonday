@@ -75,12 +75,12 @@ export function KBArticleSheet({
                 <Badge
                   variant="secondary"
                   className={
-                    article.status === "published"
+                    article.is_published
                       ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                       : ""
                   }
                 >
-                  {article.status === "published" ? "Publicado" : "Rascunho"}
+                  {article.is_published ? "Publicado" : "Rascunho"}
                 </Badge>
                 {article.category && (
                   <Badge variant="outline">{article.category}</Badge>
