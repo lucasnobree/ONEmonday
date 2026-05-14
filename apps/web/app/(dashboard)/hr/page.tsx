@@ -3,6 +3,8 @@
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useHRStats } from "@/hooks/hr/use-hr-stats";
 import { useTimeOffRequests } from "@/hooks/hr/use-time-off-requests";
+import { useOnboardingInstances } from "@/hooks/hr/use-onboarding";
+import { useEmployees } from "@/hooks/hr/use-employees";
 import {
   Card,
   CardContent,
@@ -11,11 +13,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserMinus, Clock, Briefcase } from "lucide-react";
+import {
+  Users,
+  UserMinus,
+  Clock,
+  Briefcase,
+  Cake,
+  BarChart3,
+  CalendarCheck,
+  UserCog,
+} from "lucide-react";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
-const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const STATUS_MAP: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
   pending: { label: "Pendente", variant: "outline" },
   approved: { label: "Aprovado", variant: "default" },
   rejected: { label: "Rejeitado", variant: "destructive" },
@@ -23,8 +37,16 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
 
 export default function HRDashboardPage() {
   const { currentSector } = useCurrentSector();
-  const { data: stats, isLoading: statsLoading } = useHRStats(currentSector?.id);
-  const { data: timeOffRequests, isLoading: timeOffLoading } = useTimeOffRequests(currentSector?.id);
+  const { data: stats, isLoading: statsLoading } = useHRStats(
+    currentSector?.id
+  );
+  const { data: timeOffRequests, isLoading: timeOffLoading } =
+    useTimeOffRequests(currentSector?.id);
+  const { data: onboardings, isLoading: onboardingsLoading } =
+    useOnboardingInstances(currentSector?.id);
+  const { data: employees, isLoading: employeesLoading } = useEmployees(
+    currentSector?.id
+  );
 
   if (!currentSector) {
     return (
@@ -70,12 +92,59 @@ export default function HRDashboardPage() {
     },
   ];
 
+  // Department distribution
+  const deptCounts: Record<string, number> = {};
+  const activeEmployees = (employees ?? []).filter(
+    (e) => e.status !== "terminated"
+  );
+  activeEmployees.forEach((e) => {
+    const dept = e.department || "Sem departamento";
+    deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+  });
+  const maxDeptCount = Math.max(...Object.values(deptCounts), 1);
+  const deptEntries = Object.entries(deptCounts).sort(
+    ([, a], [, b]) => b - a
+  );
+
+  // Birthdays this month
+  const currentMonth = new Date().getMonth() + 1;
+  const birthdaysThisMonth = activeEmployees.filter((e) => {
+    if (!e.birth_date) return false;
+    const month = new Date(e.birth_date).getMonth() + 1;
+    return month === currentMonth;
+  });
+
+  const hireAnniversaries = activeEmployees.filter((e) => {
+    const month = new Date(e.hire_date).getMonth() + 1;
+    return month === currentMonth;
+  });
+
+  const hasBirthdays = birthdaysThisMonth.length > 0;
+  const celebrationList = hasBirthdays ? birthdaysThisMonth : hireAnniversaries;
+  const celebrationTitle = hasBirthdays
+    ? "Aniversarios do Mes"
+    : "Aniversarios de Empresa";
+
+  // Active onboardings
+  const activeOnboardings = (onboardings ?? []).filter(
+    (o) => o.status === "in_progress"
+  );
+
+  // Upcoming time-off (next 7 days)
+  const now = new Date();
+  const weekFromNow = new Date();
+  weekFromNow.setDate(weekFromNow.getDate() + 7);
   const upcomingTimeOff = (timeOffRequests ?? [])
-    .filter((r) => r.status === "approved" && new Date(r.start_date) >= new Date())
-    .slice(0, 10);
+    .filter((r) => {
+      if (r.status !== "approved") return false;
+      const start = new Date(r.start_date);
+      return start >= now && start <= weekFromNow;
+    })
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Card key={card.title}>
@@ -94,65 +163,219 @@ export default function HRDashboardPage() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Proximas Ferias</CardTitle>
-          <CardDescription>
-            Colaboradores com ferias aprovadas nos proximos dias
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {timeOffLoading ? (
-            <div className="animate-pulse space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 rounded bg-muted" />
-              ))}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Department Distribution */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">
+                Distribuicao por Departamento
+              </CardTitle>
             </div>
-          ) : upcomingTimeOff.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma ferias programada.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Colaborador</th>
-                    <th className="pb-2 font-medium">Periodo</th>
-                    <th className="pb-2 font-medium">Dias</th>
-                    <th className="pb-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {upcomingTimeOff.map((req) => {
-                    const statusInfo = STATUS_MAP[req.status] ?? {
-                      label: req.status,
-                      variant: "secondary" as const,
-                    };
-                    return (
-                      <tr key={req.id} className="border-b last:border-0">
-                        <td className="py-2 font-medium">
-                          {req.hr_employees.full_name}
-                        </td>
-                        <td className="py-2">
-                          {dateFormat.format(new Date(req.start_date))} -{" "}
-                          {dateFormat.format(new Date(req.end_date))}
-                        </td>
-                        <td className="py-2">{req.days_count}</td>
-                        <td className="py-2">
-                          <Badge variant={statusInfo.variant}>
-                            {statusInfo.label}
-                          </Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          </CardHeader>
+          <CardContent>
+            {employeesLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-6 rounded bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : deptEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum departamento encontrado.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {deptEntries.map(([dept, count]) => (
+                  <div key={dept} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>{dept}</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{
+                          width: `${(count / maxDeptCount) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Birthdays / Hire anniversaries */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Cake className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">{celebrationTitle}</CardTitle>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {employeesLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-8 rounded bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : celebrationList.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum aniversario este mes.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {celebrationList.slice(0, 8).map((emp) => {
+                  const dateStr = hasBirthdays
+                    ? emp.birth_date!
+                    : emp.hire_date;
+                  const d = new Date(dateStr);
+                  const dayMonth = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+                  const initials = emp.full_name
+                    .split(/\s+/)
+                    .map((p) => p[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase();
+
+                  return (
+                    <div
+                      key={emp.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium shrink-0">
+                        {initials}
+                      </div>
+                      <span className="flex-1 truncate">
+                        {emp.full_name}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {dayMonth}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Active Onboardings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Onboardings Ativos</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {onboardingsLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="h-16 rounded bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : activeOnboardings.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum onboarding em andamento.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {activeOnboardings.slice(0, 5).map((ob) => {
+                  const completed = ob.items.filter(
+                    (i) => i.is_completed
+                  ).length;
+                  const total = ob.items.length;
+                  const pct =
+                    total > 0 ? Math.round((completed / total) * 100) : 0;
+                  const daysSince = Math.floor(
+                    (Date.now() - new Date(ob.start_date).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  );
+
+                  return (
+                    <div key={ob.id} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">
+                          {ob.employee.full_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {daysSince}d
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {ob.template.name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {completed}/{total}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Time-Off */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">
+                Ferias nos Proximos 7 Dias
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {timeOffLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-8 rounded bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : upcomingTimeOff.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma ferias programada nos proximos 7 dias.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingTimeOff.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-medium">
+                        {req.hr_employees.full_name}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {dateFormat.format(new Date(req.start_date))} -{" "}
+                        {dateFormat.format(new Date(req.end_date))}
+                      </span>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 text-xs">
+                      {req.days_count}d
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

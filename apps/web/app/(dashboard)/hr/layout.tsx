@@ -10,6 +10,7 @@ const hrNav = [
   { label: "Ferias e Ausencias", href: "/hr/time-off" },
   { label: "Recrutamento", href: "/hr/recruitment" },
   { label: "Onboarding", href: "/hr/onboarding" },
+  { label: "Organograma", href: "/hr/org-chart" },
 ];
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
