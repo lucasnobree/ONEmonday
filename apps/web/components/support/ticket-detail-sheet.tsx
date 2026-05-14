@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
 import { useTicketDetail } from "@/hooks/support/use-ticket-detail";
 import { resolveTicket } from "@/lib/actions/support/tickets";
 import { addTicketComment } from "@/lib/actions/support/comments";
+import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
 import {
   Sheet,
   SheetContent,
@@ -25,6 +27,7 @@ import {
   AlertTriangle,
   MessageSquare,
   Send,
+  ArrowUpRight,
 } from "lucide-react";
 
 interface TicketDetailSheetProps {
@@ -145,6 +148,59 @@ function formatRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h atras`;
   if (days < 7) return `${days}d atras`;
   return date.toLocaleDateString("pt-BR");
+}
+
+// -- Escalation History --
+function EscalationHistory({ ticketId }: { ticketId: string }) {
+  const supabase = createClient();
+  const { data: logs } = useQuery({
+    queryKey: ["escalation-log", ticketId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ticket_escalation_log")
+        .select("*, from_sector:sectors!ticket_escalation_log_from_sector_id_fkey(name), to_sector:sectors!ticket_escalation_log_to_sector_id_fkey(name), user:users!ticket_escalation_log_escalated_by_fkey(full_name)")
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!ticketId,
+  });
+
+  if (!logs?.length) return null;
+
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">
+          Historico de Escalacao
+        </h4>
+        <div className="relative">
+          <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+          <div className="space-y-3">
+            {logs.map((log: any) => (
+              <div key={log.id} className="relative pl-6">
+                <div className="absolute left-0 top-1 size-[14px] rounded-full border-2 border-background bg-orange-500" />
+                <div className="space-y-0.5">
+                  <p className="text-sm">
+                    <span className="font-medium">{(log.from_sector as any)?.name}</span>
+                    {" -> "}
+                    <span className="font-medium">{(log.to_sector as any)?.name}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{log.reason}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{(log.user as any)?.full_name || "---"}</span>
+                    <span>-</span>
+                    <span>{formatRelativeTime(log.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 // -- Details Tab --
@@ -270,6 +326,50 @@ function DetailsTab({
           </div>
         </>
       )}
+
+      {/* Escalation Info */}
+      {(ticket as any).escalated_to_sector_id && (
+        <>
+          <Separator />
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <ArrowUpRight className="size-4 text-orange-500" />
+              <h4 className="text-xs font-medium text-muted-foreground">
+                Escalacao
+              </h4>
+              <Badge
+                variant="secondary"
+                className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+              >
+                Escalado
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="text-muted-foreground text-xs">Motivo</span>
+                <p className="text-sm">{(ticket as any).escalation_reason || "---"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground text-xs">Data</span>
+                <p className="text-sm">
+                  {(ticket as any).escalated_at
+                    ? new Date((ticket as any).escalated_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "---"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Escalation History */}
+      <EscalationHistory ticketId={ticket.id} />
     </div>
   );
 }
@@ -440,6 +540,7 @@ export function TicketDetailSheet({
   const { data: ticket, isLoading } = useTicketDetail(ticketId);
   const queryClient = useQueryClient();
   const [resolving, setResolving] = useState(false);
+  const [escalateOpen, setEscalateOpen] = useState(false);
 
   async function handleResolve() {
     if (!ticket) return;
@@ -510,6 +611,14 @@ export function TicketDetailSheet({
                 ) : (
                   <Badge variant="secondary">Aberto</Badge>
                 )}
+                {(ticket as any).escalated_to_sector_id && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                  >
+                    Escalado
+                  </Badge>
+                )}
               </div>
             </SheetHeader>
 
@@ -554,17 +663,34 @@ export function TicketDetailSheet({
             {!ticket.resolved_at && (
               <>
                 <Separator />
-                <div className="p-4 pt-2">
+                <div className="p-4 pt-2 flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setEscalateOpen(true)}
+                    className="flex-1"
+                  >
+                    <ArrowUpRight className="size-4 mr-2" />
+                    Escalar
+                  </Button>
                   <Button
                     onClick={handleResolve}
                     disabled={resolving}
-                    className="w-full"
+                    className="flex-1"
                   >
                     <CheckCircle2 className="size-4 mr-2" />
                     {resolving ? "Resolvendo..." : "Resolver Ticket"}
                   </Button>
                 </div>
               </>
+            )}
+
+            {ticket && !ticket.resolved_at && (
+              <EscalateTicketDialog
+                open={escalateOpen}
+                onOpenChange={setEscalateOpen}
+                ticketId={ticket.id}
+                currentSectorId={ticket.sector_id}
+              />
             )}
           </>
         )}

@@ -260,16 +260,26 @@ export default function TicketsPage() {
                           </Badge>
                         </td>
                         <td className="py-3 pr-4">
-                          {ticket.resolved_at ? (
-                            <Badge
-                              variant="secondary"
-                              className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            >
-                              Resolvido
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Aberto</Badge>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {ticket.resolved_at ? (
+                              <Badge
+                                variant="secondary"
+                                className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                              >
+                                Resolvido
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Aberto</Badge>
+                            )}
+                            {ticket.escalated_to_sector_id && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                              >
+                                Escalado
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground">
                           {ticket.category || "—"}
