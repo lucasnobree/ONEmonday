@@ -15,6 +15,9 @@ import {
   Terminal,
   UserCog,
   Settings,
+  DollarSign,
+  Megaphone,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -28,7 +31,9 @@ import { Separator } from "@/components/ui/separator";
 import { SectorSwitcher } from "./sector-switcher";
 import { SidebarNav } from "./sidebar-nav";
 import { NotificationBell } from "./notification-bell";
+import { ThemeToggle } from "./theme-toggle";
 import { UserNav } from "./user-nav";
+import { CommandPaletteTrigger } from "./command-palette";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 
 interface SidebarProps {
@@ -41,16 +46,23 @@ interface SidebarProps {
   };
 }
 
+const activeModules = [
+  { name: "Support Desk", icon: Headphones, href: "/support" },
+  { name: "CRM", icon: Users, href: "/crm" },
+  { name: "RH Portal", icon: UserCog, href: "/hr" },
+];
+
 const comingSoonModules = [
   { name: "Analytics", icon: BarChart3, href: "/analytics" },
-  { name: "CRM", icon: Users, href: "/crm" },
-  { name: "Support Desk", icon: Headphones, href: "/support" },
   { name: "Dev Tools", icon: Terminal, href: "/dev-tools" },
-  { name: "RH Portal", icon: UserCog, href: "/hr" },
+  { name: "Financeiro", icon: DollarSign, href: "/finance" },
+  { name: "Marketing", icon: Megaphone, href: "/marketing" },
+  { name: "Jurídico", icon: Scale, href: "/legal" },
 ];
 
 function SidebarContent({ user }: SidebarProps) {
   const { currentSector } = useCurrentSector();
+  const pathname = usePathname();
 
   const basePath = currentSector ? `/${currentSector.slug}` : "";
 
@@ -73,6 +85,10 @@ function SidebarContent({ user }: SidebarProps) {
         <SectorSwitcher />
       </div>
 
+      <div className="px-3 pb-3">
+        <CommandPaletteTrigger />
+      </div>
+
       <Separator />
 
       <div className="flex-1 overflow-auto px-3 py-3">
@@ -83,6 +99,31 @@ function SidebarContent({ user }: SidebarProps) {
         <div className="space-y-1">
           <span className="px-3 text-xs font-medium text-muted-foreground">
             Módulos
+          </span>
+          {activeModules.map((mod) => {
+            const isActive = pathname.startsWith(mod.href);
+            return (
+              <Link
+                key={mod.name}
+                href={mod.href}
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                }`}
+              >
+                <mod.icon className="h-4 w-4" />
+                <span className="flex-1">{mod.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <Separator className="my-4" />
+
+        <div className="space-y-1">
+          <span className="px-3 text-xs font-medium text-muted-foreground">
+            Em breve
           </span>
           <TooltipProvider>
             {comingSoonModules.map((mod) => (
@@ -104,7 +145,10 @@ function SidebarContent({ user }: SidebarProps) {
       <Separator />
 
       <div className="p-3 space-y-1">
-        <NotificationBell />
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <ThemeToggle />
+        </div>
         <UserNav user={user} />
       </div>
     </div>

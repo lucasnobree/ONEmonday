@@ -1,0 +1,206 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useCurrentSector } from "@/hooks/use-current-sector";
+import {
+  useTimeOffRequests,
+  type TimeOffRequest,
+} from "@/hooks/hr/use-time-off-requests";
+import { TimeOffRequestDialog } from "@/components/hr/time-off-request-dialog";
+import { approveTimeOff, rejectTimeOff } from "@/lib/actions/hr/time-off";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Check, X } from "lucide-react";
+import { toast } from "sonner";
+
+const dateFormat = new Intl.DateTimeFormat("pt-BR");
+
+const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  pending: { label: "Pendente", variant: "outline" },
+  approved: { label: "Aprovado", variant: "default" },
+  rejected: { label: "Rejeitado", variant: "destructive" },
+};
+
+export default function TimeOffPage() {
+  const { currentSector } = useCurrentSector();
+  const { data: requests, isLoading } = useTimeOffRequests(currentSector?.id);
+  const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = useMemo(() => {
+    if (!requests) return [];
+    if (statusFilter === "all") return requests;
+    return requests.filter((r: TimeOffRequest) => r.status === statusFilter);
+  }, [requests, statusFilter]);
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => approveTimeOff(id),
+    onSuccess: (result) => {
+      if (result.error) {
+        toast.error(
+          typeof result.error === "string" ? result.error : "Erro ao aprovar"
+        );
+        return;
+      }
+      toast.success("Solicitacao aprovada");
+      queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => {
+      const reason = prompt("Motivo da rejeicao:");
+      if (!reason) throw new Error("cancelled");
+      return rejectTimeOff(id, reason);
+    },
+    onSuccess: (result) => {
+      if (result.error) {
+        toast.error(
+          typeof result.error === "string" ? result.error : "Erro ao rejeitar"
+        );
+        return;
+      }
+      toast.success("Solicitacao rejeitada");
+      queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
+    },
+    onError: (err) => {
+      if (err.message !== "cancelled") {
+        toast.error("Erro ao rejeitar solicitacao");
+      }
+    },
+  });
+
+  if (!currentSector) {
+    return (
+      <p className="text-muted-foreground">
+        Selecione um setor para ver as solicitacoes.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="pending">Pendentes</SelectItem>
+            <SelectItem value="approved">Aprovados</SelectItem>
+            <SelectItem value="rejected">Rejeitados</SelectItem>
+          </SelectContent>
+        </Select>
+        <TimeOffRequestDialog />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            Solicitacoes de Ferias e Ausencias
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="animate-pulse space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-10 rounded bg-muted" />
+              ))}
+            </div>
+          ) : !filtered.length ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              {statusFilter === "all"
+                ? "Nenhuma solicitacao encontrada."
+                : "Nenhuma solicitacao com o filtro selecionado."}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 font-medium">Colaborador</th>
+                    <th className="pb-2 font-medium">Periodo</th>
+                    <th className="pb-2 font-medium">Dias</th>
+                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Acoes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((req: TimeOffRequest) => {
+                    const statusInfo = STATUS_MAP[req.status] ?? {
+                      label: req.status,
+                      variant: "secondary" as const,
+                    };
+                    return (
+                      <tr key={req.id} className="border-b last:border-0">
+                        <td className="py-2">
+                          <div>
+                            <span className="font-medium">
+                              {req.hr_employees.full_name}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              {req.hr_employees.position}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2">
+                          {dateFormat.format(new Date(req.start_date))} -{" "}
+                          {dateFormat.format(new Date(req.end_date))}
+                        </td>
+                        <td className="py-2">{req.days_count}</td>
+                        <td className="py-2">
+                          <Badge variant={statusInfo.variant}>
+                            {statusInfo.label}
+                          </Badge>
+                        </td>
+                        <td className="py-2">
+                          {req.status === "pending" && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => approveMutation.mutate(req.id)}
+                                disabled={approveMutation.isPending}
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => rejectMutation.mutate(req.id)}
+                                disabled={rejectMutation.isPending}
+                              >
+                                <X className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

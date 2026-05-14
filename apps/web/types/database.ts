@@ -113,34 +113,40 @@ export type Database = {
       }
       boards: {
         Row: {
+          board_type: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           is_default: boolean | null
+          module_id: string | null
           name: string
           updated_at: string | null
           visibility: string | null
         }
         Insert: {
+          board_type?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          module_id?: string | null
           name: string
           updated_at?: string | null
           visibility?: string | null
         }
         Update: {
+          board_type?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          module_id?: string | null
           name?: string
           updated_at?: string | null
           visibility?: string | null
@@ -151,6 +157,64 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boards_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canned_responses: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          is_active: boolean | null
+          sector_id: string
+          shortcut: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          sector_id: string
+          shortcut?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          sector_id?: string
+          shortcut?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canned_responses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canned_responses_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
@@ -633,6 +697,969 @@ export type Database = {
           },
         ]
       }
+      crm_activities: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          contact_id: string | null
+          created_at: string | null
+          deal_id: string | null
+          description: string | null
+          duration_min: number | null
+          id: string
+          is_active: boolean | null
+          performed_by: string
+          scheduled_at: string | null
+          sector_id: string
+          subject: string
+          type: string
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          description?: string | null
+          duration_min?: number | null
+          id?: string
+          is_active?: boolean | null
+          performed_by: string
+          scheduled_at?: string | null
+          sector_id: string
+          subject: string
+          type: string
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          description?: string | null
+          duration_min?: number | null
+          id?: string
+          is_active?: boolean | null
+          performed_by?: string
+          scheduled_at?: string | null
+          sector_id?: string
+          subject?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "crm_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activities_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activities_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_companies: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          domain: string | null
+          email: string | null
+          id: string
+          industry: string | null
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          sector_id: string
+          size: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          domain?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          sector_id: string
+          size?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          domain?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          sector_id?: string
+          size?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_companies_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_companies_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_contacts: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          position: string | null
+          sector_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          position?: string | null
+          sector_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          position?: string | null
+          sector_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contacts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contacts_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_deals: {
+        Row: {
+          actual_close_date: string | null
+          card_id: string
+          company_id: string | null
+          contact_id: string | null
+          created_at: string | null
+          currency: string | null
+          expected_close_date: string | null
+          id: string
+          is_active: boolean | null
+          lost_reason: string | null
+          sector_id: string
+          source: string | null
+          updated_at: string | null
+          value: number | null
+          win_probability: number | null
+        }
+        Insert: {
+          actual_close_date?: string | null
+          card_id: string
+          company_id?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          expected_close_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          lost_reason?: string | null
+          sector_id: string
+          source?: string | null
+          updated_at?: string | null
+          value?: number | null
+          win_probability?: number | null
+        }
+        Update: {
+          actual_close_date?: string | null
+          card_id?: string
+          company_id?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          expected_close_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          lost_reason?: string | null
+          sector_id?: string
+          source?: string | null
+          updated_at?: string | null
+          value?: number | null
+          win_probability?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_deals_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_deals_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_proposals: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          created_by: string
+          deal_id: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          sector_id: string
+          sent_at: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          value: number | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          created_by: string
+          deal_id: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          sector_id: string
+          sent_at?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          value?: number | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string
+          deal_id?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          sector_id?: string
+          sent_at?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "crm_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_candidates: {
+        Row: {
+          card_id: string
+          created_at: string | null
+          current_company: string | null
+          current_position: string | null
+          email: string
+          expected_salary: number | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          job_opening_id: string
+          linkedin_url: string | null
+          notes: string | null
+          phone: string | null
+          rating: number | null
+          rejection_reason: string | null
+          resume_url: string | null
+          sector_id: string
+          source: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          card_id: string
+          created_at?: string | null
+          current_company?: string | null
+          current_position?: string | null
+          email: string
+          expected_salary?: number | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          job_opening_id: string
+          linkedin_url?: string | null
+          notes?: string | null
+          phone?: string | null
+          rating?: number | null
+          rejection_reason?: string | null
+          resume_url?: string | null
+          sector_id: string
+          source?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          card_id?: string
+          created_at?: string | null
+          current_company?: string | null
+          current_position?: string | null
+          email?: string
+          expected_salary?: number | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          job_opening_id?: string
+          linkedin_url?: string | null
+          notes?: string | null
+          phone?: string | null
+          rating?: number | null
+          rejection_reason?: string | null
+          resume_url?: string | null
+          sector_id?: string
+          source?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_candidates_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_candidates_job_opening_id_fkey"
+            columns: ["job_opening_id"]
+            isOneToOne: false
+            referencedRelation: "hr_job_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_candidates_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_employees: {
+        Row: {
+          birth_date: string | null
+          created_at: string | null
+          department: string | null
+          email: string
+          employment_type: string
+          full_name: string
+          hire_date: string
+          id: string
+          is_active: boolean | null
+          manager_id: string | null
+          notes: string | null
+          phone: string | null
+          position: string | null
+          sector_id: string
+          status: string
+          termination_date: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          created_at?: string | null
+          department?: string | null
+          email: string
+          employment_type?: string
+          full_name: string
+          hire_date: string
+          id?: string
+          is_active?: boolean | null
+          manager_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          sector_id: string
+          status?: string
+          termination_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string
+          employment_type?: string
+          full_name?: string
+          hire_date?: string
+          id?: string
+          is_active?: boolean | null
+          manager_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          sector_id?: string
+          status?: string
+          termination_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employees_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_job_openings: {
+        Row: {
+          board_id: string | null
+          created_at: string | null
+          department: string | null
+          description: string | null
+          employment_type: string
+          hiring_manager_id: string
+          id: string
+          is_active: boolean | null
+          location: string | null
+          max_candidates: number | null
+          requirements: string | null
+          salary_range: string | null
+          sector_id: string
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          board_id?: string | null
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          employment_type?: string
+          hiring_manager_id: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          max_candidates?: number | null
+          requirements?: string | null
+          salary_range?: string | null
+          sector_id: string
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          board_id?: string | null
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          employment_type?: string
+          hiring_manager_id?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          max_candidates?: number | null
+          requirements?: string | null
+          salary_range?: string | null
+          sector_id?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_job_openings_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_job_openings_hiring_manager_id_fkey"
+            columns: ["hiring_manager_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_job_openings_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_onboarding_instances: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          sector_id: string
+          start_date: string
+          status: string
+          template_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          sector_id: string
+          start_date?: string
+          status?: string
+          template_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          sector_id?: string
+          start_date?: string
+          status?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_onboarding_instances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_onboarding_instances_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_onboarding_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "hr_onboarding_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_onboarding_items: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          completed_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean | null
+          onboarding_id: string
+          position: number
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          onboarding_id: string
+          position: number
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          onboarding_id?: string
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_onboarding_items_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_onboarding_items_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_onboarding_items_onboarding_id_fkey"
+            columns: ["onboarding_id"]
+            isOneToOne: false
+            referencedRelation: "hr_onboarding_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_onboarding_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          items: Json | null
+          name: string
+          position: string | null
+          sector_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          items?: Json | null
+          name: string
+          position?: string | null
+          sector_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          items?: Json | null
+          name?: string
+          position?: string | null
+          sector_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_onboarding_templates_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_time_off_balances: {
+        Row: {
+          employee_id: string
+          id: string
+          pending_days: number
+          policy_id: string
+          total_days: number
+          used_days: number
+          year: number
+        }
+        Insert: {
+          employee_id: string
+          id?: string
+          pending_days?: number
+          policy_id: string
+          total_days: number
+          used_days?: number
+          year: number
+        }
+        Update: {
+          employee_id?: string
+          id?: string
+          pending_days?: number
+          policy_id?: string
+          total_days?: number
+          used_days?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_time_off_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_time_off_balances_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "hr_time_off_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_time_off_policies: {
+        Row: {
+          created_at: string | null
+          days_per_year: number
+          id: string
+          is_active: boolean | null
+          max_consecutive_days: number | null
+          name: string
+          requires_approval: boolean | null
+          sector_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          days_per_year: number
+          id?: string
+          is_active?: boolean | null
+          max_consecutive_days?: number | null
+          name: string
+          requires_approval?: boolean | null
+          sector_id: string
+        }
+        Update: {
+          created_at?: string | null
+          days_per_year?: number
+          id?: string
+          is_active?: boolean | null
+          max_consecutive_days?: number | null
+          name?: string
+          requires_approval?: boolean | null
+          sector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_time_off_policies_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_time_off_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          days_count: number
+          employee_id: string
+          end_date: string
+          id: string
+          is_active: boolean | null
+          policy_id: string
+          reason: string | null
+          rejection_reason: string | null
+          sector_id: string
+          start_date: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          days_count: number
+          employee_id: string
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          policy_id: string
+          reason?: string | null
+          rejection_reason?: string | null
+          sector_id: string
+          start_date: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          days_count?: number
+          employee_id?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          policy_id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          sector_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_time_off_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_time_off_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_time_off_requests_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "hr_time_off_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_time_off_requests_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           created_at: string | null
@@ -681,6 +1708,66 @@ export type Database = {
           },
           {
             foreignKeyName: "invites_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_articles: {
+        Row: {
+          author_id: string
+          category: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_published: boolean | null
+          sector_id: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          author_id: string
+          category?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_published?: boolean | null
+          sector_id: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          author_id?: string
+          category?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_published?: boolean | null
+          sector_id?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_articles_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kb_articles_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
             referencedRelation: "sectors"
@@ -1126,6 +2213,154 @@ export type Database = {
         }
         Relationships: []
       }
+      sla_rules: {
+        Row: {
+          business_hours_only: boolean | null
+          category: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          priority: string
+          resolve_time_hours: number
+          response_time_hours: number
+          sector_id: string
+        }
+        Insert: {
+          business_hours_only?: boolean | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          priority: string
+          resolve_time_hours: number
+          response_time_hours: number
+          sector_id: string
+        }
+        Update: {
+          business_hours_only?: boolean | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          priority?: string
+          resolve_time_hours?: number
+          response_time_hours?: number
+          sector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sla_rules_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          card_id: string
+          category: string
+          channel: string | null
+          created_at: string | null
+          csat_comment: string | null
+          csat_rating: number | null
+          csat_submitted_at: string | null
+          first_response_at: string | null
+          id: string
+          is_active: boolean | null
+          requester_email: string | null
+          requester_id: string | null
+          resolved_at: string | null
+          sector_id: string
+          sla_resolve_breached: boolean | null
+          sla_resolve_due_at: string | null
+          sla_response_breached: boolean | null
+          sla_response_due_at: string | null
+          sla_rule_id: string | null
+          subcategory: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          card_id: string
+          category: string
+          channel?: string | null
+          created_at?: string | null
+          csat_comment?: string | null
+          csat_rating?: number | null
+          csat_submitted_at?: string | null
+          first_response_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          requester_email?: string | null
+          requester_id?: string | null
+          resolved_at?: string | null
+          sector_id: string
+          sla_resolve_breached?: boolean | null
+          sla_resolve_due_at?: string | null
+          sla_response_breached?: boolean | null
+          sla_response_due_at?: string | null
+          sla_rule_id?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          card_id?: string
+          category?: string
+          channel?: string | null
+          created_at?: string | null
+          csat_comment?: string | null
+          csat_rating?: number | null
+          csat_submitted_at?: string | null
+          first_response_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          requester_email?: string | null
+          requester_id?: string | null
+          resolved_at?: string | null
+          sector_id?: string
+          sla_resolve_breached?: boolean | null
+          sla_resolve_due_at?: string | null
+          sla_response_breached?: boolean | null
+          sla_response_due_at?: string | null
+          sla_rule_id?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_sla_rule_id_fkey"
+            columns: ["sla_rule_id"]
+            isOneToOne: false
+            referencedRelation: "sla_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           color: string
@@ -1242,6 +2477,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_crm_dashboard_stats: { Args: { p_sector_id: string }; Returns: Json }
+      get_crm_pipeline_stats: { Args: { p_sector_id: string }; Returns: Json }
+      get_hr_dashboard_stats: { Args: { p_sector_id: string }; Returns: Json }
+      get_support_dashboard_stats: {
+        Args: { p_sector_id: string }
+        Returns: {
+          avg_csat: number
+          sla_compliance_pct: number
+          total_open: number
+          total_resolved_today: number
+        }[]
+      }
       is_global_admin: { Args: never; Returns: boolean }
       reorder_cards: {
         Args: {
@@ -1395,3 +2642,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

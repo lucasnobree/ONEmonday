@@ -1,21 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
+let channelCounter = 0;
+
 export function useRealtimeBoard(boardId: string | undefined) {
   const queryClient = useQueryClient();
-  const subscribedRef = useRef(false);
 
   useEffect(() => {
-    if (!boardId || subscribedRef.current) return;
+    if (!boardId) return;
 
     const supabase = createClient();
-    subscribedRef.current = true;
+    const channelName = `board:${boardId}:${++channelCounter}`;
 
     const channel = supabase
-      .channel(`board:${boardId}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
@@ -31,7 +32,6 @@ export function useRealtimeBoard(boardId: string | undefined) {
       .subscribe();
 
     return () => {
-      subscribedRef.current = false;
       supabase.removeChannel(channel);
     };
   }, [boardId, queryClient]);

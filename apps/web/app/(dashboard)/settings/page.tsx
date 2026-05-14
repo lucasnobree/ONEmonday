@@ -18,7 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface UserProfile {
@@ -171,16 +171,30 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold">Configurações</h1>
 
         {isGlobalAdmin && (
-          <Tabs value={pathname === "/settings/admin" ? "admin" : "general"}>
-            <TabsList>
-              <TabsTrigger value="general" render={<Link href="/settings" />}>
-                Geral
-              </TabsTrigger>
-              <TabsTrigger value="admin" render={<Link href="/settings/admin" />}>
-                Administração
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+            <Link
+              href="/settings"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
+                pathname === "/settings"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              )}
+            >
+              Geral
+            </Link>
+            <Link
+              href="/settings/admin"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
+                pathname === "/settings/admin"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              )}
+            >
+              Administração
+            </Link>
+          </div>
         )}
 
         <Card>

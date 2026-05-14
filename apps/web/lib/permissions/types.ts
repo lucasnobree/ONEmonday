@@ -11,7 +11,24 @@ export type Resource =
   | "settings"
   | "user"
   | "notification"
-  | "saved_view";
+  | "saved_view"
+  // Support Desk
+  | "ticket"
+  | "sla_rule"
+  | "kb_article"
+  | "canned_response"
+  // CRM
+  | "contact"
+  | "company"
+  | "deal"
+  | "crm_activity"
+  | "proposal"
+  // RH
+  | "employee"
+  | "time_off"
+  | "job_opening"
+  | "candidate"
+  | "onboarding";
 
 export type Action =
   | "create"

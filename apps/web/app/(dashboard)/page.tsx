@@ -5,6 +5,7 @@ import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { PriorityChart } from "@/components/dashboard/priority-chart";
 import { ColumnDistribution } from "@/components/dashboard/column-distribution";
+import { RecentActivity } from "@/components/dashboard/recent-activity";
 
 function DashboardSkeleton() {
   return (
@@ -73,6 +74,7 @@ export default function DashboardPage() {
             <PriorityChart data={stats.cardsByPriority} />
             <ColumnDistribution data={stats.cardsByColumn} />
           </div>
+          <RecentActivity sectorId={currentSector.id} />
         </>
       )}
     </div>
