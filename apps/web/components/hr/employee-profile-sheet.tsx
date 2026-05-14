@@ -5,6 +5,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEmployeeDetail } from "@/hooks/hr/use-employee-detail";
 import { terminateEmployee } from "@/lib/actions/hr/employees";
 import {
+  useOnboardingTemplates,
+  useStartOnboarding,
+} from "@/hooks/hr/use-onboarding";
+import { useTimeOffBalance } from "@/hooks/hr/use-time-off-balance";
+import { useEmployeeDocuments, useUploadDocument, useDeleteDocument } from "@/hooks/hr/use-employee-documents";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -24,8 +30,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmployeeFormDialog } from "@/components/hr/employee-form-dialog";
-import { Calendar, Clock, UserX, Users } from "lucide-react";
+import { Calendar, Clock, UserX, Users, Play, Upload, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
@@ -116,6 +129,7 @@ export function EmployeeProfileSheet({
                 <TabsList className="w-full">
                   <TabsTrigger value="perfil">Perfil</TabsTrigger>
                   <TabsTrigger value="ferias">Ferias</TabsTrigger>
+                  <TabsTrigger value="docs">Documentos</TabsTrigger>
                   <TabsTrigger value="acoes">Acoes</TabsTrigger>
                 </TabsList>
 
@@ -127,7 +141,15 @@ export function EmployeeProfileSheet({
                 </TabsContent>
 
                 <TabsContent value="ferias" className="mt-4">
-                  <TimeOffTab timeOff={timeOff} isLoading={isLoadingTimeOff} />
+                  <TimeOffTab
+                    employeeId={employee.id}
+                    timeOff={timeOff}
+                    isLoading={isLoadingTimeOff}
+                  />
+                </TabsContent>
+
+                <TabsContent value="docs" className="mt-4">
+                  <DocumentsTab employee={employee} />
                 </TabsContent>
 
                 <TabsContent value="acoes" className="mt-4">
@@ -197,65 +219,103 @@ function InfoField({ label, value }: { label: string; value: string }) {
 }
 
 function TimeOffTab({
+  employeeId,
   timeOff,
   isLoading,
 }: {
+  employeeId: string;
   timeOff: ReturnType<typeof useEmployeeDetail>["timeOff"];
   isLoading: boolean;
 }) {
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-16 rounded bg-muted animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (timeOff.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Calendar className="h-10 w-10 text-muted-foreground/50 mb-2" />
-        <p className="text-sm font-medium">Nenhuma solicitacao</p>
-        <p className="text-xs text-muted-foreground">
-          Este colaborador nao possui solicitacoes de ferias.
-        </p>
-      </div>
-    );
-  }
+  const currentYear = new Date().getFullYear();
+  const { data: balances, isLoading: loadingBalance } = useTimeOffBalance(
+    employeeId,
+    currentYear
+  );
 
   return (
-    <div className="space-y-3">
-      {timeOff.map((req) => {
-        const statusInfo = TIME_OFF_STATUS_MAP[req.status] ?? {
-          label: req.status,
-          variant: "outline" as const,
-        };
-        return (
-          <div key={req.id} className="rounded-md border p-3 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {req.policy?.name ?? "Ferias"}
-              </span>
-              <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>
-                {dateFormat.format(new Date(req.start_date))} -{" "}
-                {dateFormat.format(new Date(req.end_date))}
-              </span>
-              <span>({req.days_count} dias)</span>
-            </div>
-            {req.status === "rejected" && req.rejection_reason && (
-              <p className="text-xs text-destructive">
-                Motivo: {req.rejection_reason}
-              </p>
-            )}
-          </div>
-        );
-      })}
+    <div className="space-y-4">
+      {loadingBalance ? (
+        <div className="grid grid-cols-2 gap-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="h-20 rounded bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : balances && balances.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2">
+          {balances.map((b) => {
+            const pct =
+              b.total_days > 0 ? (b.available_days / b.total_days) * 100 : 0;
+            const colorClass =
+              pct > 50
+                ? "border-green-200 bg-green-50/50 dark:border-green-900/30 dark:bg-green-900/10"
+                : pct > 25
+                ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-900/30 dark:bg-yellow-900/10"
+                : "border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-900/10";
+            return (
+              <div key={b.policy_id} className={`rounded-md border p-3 ${colorClass}`}>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {b.policy_name}
+                </p>
+                <p className="text-lg font-bold">{b.available_days}d</p>
+                <div className="text-xs text-muted-foreground space-x-2">
+                  <span>Total: {b.total_days}</span>
+                  <span>Usado: {b.used_days}</span>
+                  {b.pending_days > 0 && <span>Pend.: {b.pending_days}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-16 rounded bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : timeOff.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Calendar className="h-10 w-10 text-muted-foreground/50 mb-2" />
+          <p className="text-sm font-medium">Nenhuma solicitacao</p>
+          <p className="text-xs text-muted-foreground">
+            Este colaborador nao possui solicitacoes de ferias.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {timeOff.map((req) => {
+            const statusInfo = TIME_OFF_STATUS_MAP[req.status] ?? {
+              label: req.status,
+              variant: "outline" as const,
+            };
+            return (
+              <div key={req.id} className="rounded-md border p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {req.policy?.name ?? "Ferias"}
+                  </span>
+                  <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>
+                    {dateFormat.format(new Date(req.start_date))} -{" "}
+                    {dateFormat.format(new Date(req.end_date))}
+                  </span>
+                  <span>({req.days_count} dias)</span>
+                </div>
+                {req.status === "rejected" && req.rejection_reason && (
+                  <p className="text-xs text-destructive">
+                    Motivo: {req.rejection_reason}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -271,7 +331,270 @@ function ActionsTab({
     <div className="space-y-3">
       <EditEmployeeButton employee={employee} />
       {employee.status !== "terminated" && (
-        <TerminateEmployeeButton employee={employee} onOpenChange={onOpenChange} />
+        <>
+          <StartOnboardingButton employee={employee} />
+          <TerminateEmployeeButton employee={employee} onOpenChange={onOpenChange} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function StartOnboardingButton({
+  employee,
+}: {
+  employee: NonNullable<ReturnType<typeof useEmployeeDetail>["employee"]>;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const { data: templates } = useOnboardingTemplates(employee.sector_id);
+  const startOnboarding = useStartOnboarding();
+  const queryClient = useQueryClient();
+
+  async function handleStart() {
+    if (!selectedTemplate) return;
+    const result = await startOnboarding.mutateAsync({
+      employeeId: employee.id,
+      templateId: selectedTemplate,
+    });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao iniciar onboarding"
+      );
+      return;
+    }
+    toast.success("Onboarding iniciado!");
+    queryClient.invalidateQueries({ queryKey: ["hr-onboarding"] });
+    setDialogOpen(false);
+    setSelectedTemplate("");
+  }
+
+  return (
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogTrigger
+        render={<Button variant="outline" className="w-full" />}
+      >
+        <Play className="h-4 w-4 mr-2" />
+        Iniciar Onboarding
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Iniciar Onboarding</DialogTitle>
+          <DialogDescription>
+            Selecione um template para iniciar o onboarding de{" "}
+            <strong>{employee.full_name}</strong>.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2 py-2">
+          <Label>Template</Label>
+          <Select
+            value={selectedTemplate}
+            onValueChange={(v) => setSelectedTemplate(v ?? "")}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecione um template" />
+            </SelectTrigger>
+            <SelectContent>
+              {(templates ?? []).map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(!templates || templates.length === 0) && (
+            <p className="text-xs text-muted-foreground">
+              Nenhum template disponivel. Crie um em Onboarding &gt; Templates.
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleStart}
+            disabled={
+              startOnboarding.isPending ||
+              !selectedTemplate
+            }
+          >
+            {startOnboarding.isPending ? "Iniciando..." : "Iniciar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DocumentsTab({
+  employee,
+}: {
+  employee: NonNullable<ReturnType<typeof useEmployeeDetail>["employee"]>;
+}) {
+  const { data: documents, isLoading } = useEmployeeDocuments(employee.id);
+  const uploadDoc = useUploadDocument();
+  const deleteDoc = useDeleteDocument();
+
+  const CATEGORY_MAP: Record<string, string> = {
+    contract: "Contrato",
+    id: "Documento",
+    certificate: "Certificado",
+    other: "Outro",
+  };
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState("other");
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await uploadDoc.mutateAsync({
+        employeeId: employee.id,
+        sectorId: employee.sector_id,
+        file,
+        category: uploadCategory,
+      });
+      if (result.error) {
+        toast.error(
+          typeof result.error === "string" ? result.error : "Erro ao enviar"
+        );
+      } else {
+        toast.success("Documento enviado");
+      }
+    } catch {
+      toast.error("Erro ao enviar documento");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDelete(docId: string) {
+    if (!confirm("Excluir este documento?")) return;
+    const result = await deleteDoc.mutateAsync(docId);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string" ? result.error : "Erro ao excluir"
+      );
+    } else {
+      toast.success("Documento excluido");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="h-12 rounded bg-muted animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  const grouped = (documents ?? []).reduce<Record<string, typeof documents>>(
+    (acc, doc) => {
+      if (!doc) return acc;
+      const cat = doc.category || "other";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat]!.push(doc);
+      return acc;
+    },
+    {}
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Select
+          value={uploadCategory}
+          onValueChange={(v) => setUploadCategory(v ?? "other")}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="contract">Contrato</SelectItem>
+            <SelectItem value="id">Documento</SelectItem>
+            <SelectItem value="certificate">Certificado</SelectItem>
+            <SelectItem value="other">Outro</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={uploading}
+          onClick={() =>
+            document.getElementById("doc-upload-input")?.click()
+          }
+        >
+          <Upload className="h-3.5 w-3.5 mr-1" />
+          {uploading ? "Enviando..." : "Enviar"}
+        </Button>
+        <input
+          id="doc-upload-input"
+          type="file"
+          className="hidden"
+          onChange={handleUpload}
+        />
+      </div>
+
+      {Object.keys(grouped).length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <FileText className="h-10 w-10 text-muted-foreground/50 mb-2" />
+          <p className="text-sm font-medium">Nenhum documento</p>
+          <p className="text-xs text-muted-foreground">
+            Envie documentos do colaborador.
+          </p>
+        </div>
+      ) : (
+        Object.entries(grouped).map(([category, docs]) => (
+          <div key={category} className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase">
+              {CATEGORY_MAP[category] ?? category}
+            </p>
+            {(docs ?? []).map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between rounded-md border p-2"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{doc.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {dateFormat.format(new Date(doc.created_at))}
+                      {doc.file_size
+                        ? ` - ${(doc.file_size / 1024).toFixed(0)} KB`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => window.open(doc.file_url, "_blank")}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleDelete(doc.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))
       )}
     </div>
   );

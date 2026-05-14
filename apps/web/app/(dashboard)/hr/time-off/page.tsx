@@ -6,6 +6,7 @@ import {
   useTimeOffRequests,
   type TimeOffRequest,
 } from "@/hooks/hr/use-time-off-requests";
+import { useTimeOffBalance } from "@/hooks/hr/use-time-off-balance";
 import { TimeOffRequestDialog } from "@/components/hr/time-off-request-dialog";
 import { approveTimeOff, rejectTimeOff } from "@/lib/actions/hr/time-off";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +36,29 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   rejected: { label: "Rejeitado", variant: "destructive" },
 };
 
+function BalanceCell({ employeeId, policyId }: { employeeId: string; policyId: string }) {
+  const currentYear = new Date().getFullYear();
+  const { data: balances } = useTimeOffBalance(employeeId, currentYear);
+
+  const balance = balances?.find((b) => b.policy_id === policyId);
+  if (!balance) return <span className="text-muted-foreground">--</span>;
+
+  const pct = balance.total_days > 0
+    ? (balance.available_days / balance.total_days) * 100
+    : 0;
+  const colorClass = pct > 50
+    ? "text-green-600"
+    : pct > 25
+    ? "text-yellow-600"
+    : "text-red-600";
+
+  return (
+    <span className={`font-medium ${colorClass}`}>
+      {balance.available_days}d
+    </span>
+  );
+}
+
 export default function TimeOffPage() {
   const { currentSector } = useCurrentSector();
   const { data: requests, isLoading } = useTimeOffRequests(currentSector?.id);
@@ -59,6 +83,7 @@ export default function TimeOffPage() {
       toast.success("Solicitacao aprovada");
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
       queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["hr-time-off-balance"] });
     },
   });
 
@@ -78,6 +103,7 @@ export default function TimeOffPage() {
       toast.success("Solicitacao rejeitada");
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
       queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["hr-time-off-balance"] });
     },
     onError: (err) => {
       if (err.message !== "cancelled") {
@@ -138,6 +164,7 @@ export default function TimeOffPage() {
                     <th className="pb-2 font-medium">Colaborador</th>
                     <th className="pb-2 font-medium">Periodo</th>
                     <th className="pb-2 font-medium">Dias</th>
+                    <th className="pb-2 font-medium">Saldo</th>
                     <th className="pb-2 font-medium">Status</th>
                     <th className="pb-2 font-medium">Acoes</th>
                   </tr>
@@ -165,6 +192,12 @@ export default function TimeOffPage() {
                           {dateFormat.format(new Date(req.end_date))}
                         </td>
                         <td className="py-2">{req.days_count}</td>
+                        <td className="py-2">
+                          <BalanceCell
+                            employeeId={req.employee_id}
+                            policyId={req.policy_id}
+                          />
+                        </td>
                         <td className="py-2">
                           <Badge variant={statusInfo.variant}>
                             {statusInfo.label}
