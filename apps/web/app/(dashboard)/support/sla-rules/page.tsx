@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import {
+  useSLARules,
+  useDeleteSlaRule,
+  useToggleSlaRule,
+} from "@/hooks/support/use-sla-rules";
+import type { SlaRule } from "@/hooks/support/use-sla-rules";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { SlaRuleFormDialog } from "@/components/support/sla-rule-form-dialog";
 import {
   Card,
   CardContent,
@@ -12,8 +18,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import { ShieldCheck, Plus, Pencil, Trash2 } from "lucide-react";
 
 const priorityLabels: Record<string, string> = {
   critical: "Critica",
@@ -29,24 +38,6 @@ const priorityColors: Record<string, string> = {
   low: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
 };
 
-function useSLARules(sectorId: string | undefined) {
-  return useQuery({
-    queryKey: ["sla-rules", sectorId],
-    queryFn: async () => {
-      if (!sectorId) return [];
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("sla_rules")
-        .select("*")
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("priority", { ascending: true });
-      return data || [];
-    },
-    enabled: !!sectorId,
-  });
-}
-
 function formatHours(hours: number): string {
   if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
@@ -58,6 +49,10 @@ function formatHours(hours: number): string {
 export default function SLARulesPage() {
   const { currentSector } = useCurrentSector();
   const { data: rules, isLoading } = useSLARules(currentSector?.id);
+  const deleteMutation = useDeleteSlaRule();
+  const toggleMutation = useToggleSlaRule();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<SlaRule | undefined>();
 
   if (!currentSector) {
     return (
@@ -65,6 +60,42 @@ export default function SLARulesPage() {
         Selecione um setor para acessar as Regras SLA.
       </p>
     );
+  }
+
+  function handleEdit(rule: SlaRule) {
+    setEditingRule(rule);
+    setDialogOpen(true);
+  }
+
+  function handleCreate() {
+    setEditingRule(undefined);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    const result = await deleteMutation.mutateAsync(id);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao excluir regra"
+      );
+      return;
+    }
+    toast.success("Regra SLA excluida");
+  }
+
+  async function handleToggle(id: string, isActive: boolean) {
+    const result = await toggleMutation.mutateAsync({ id, isActive });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao alterar status"
+      );
+      return;
+    }
+    toast.success(isActive ? "Regra ativada" : "Regra desativada");
   }
 
   return (
@@ -81,10 +112,18 @@ export default function SLARulesPage() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Regras de SLA</CardTitle>
-            <CardDescription>
-              Tempos de resposta e resolucao configurados por prioridade
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Regras de SLA</CardTitle>
+                <CardDescription>
+                  Tempos de resposta e resolucao configurados por prioridade
+                </CardDescription>
+              </div>
+              <Button size="sm" onClick={handleCreate}>
+                <Plus className="size-4 mr-1" />
+                Nova Regra SLA
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -111,10 +150,12 @@ export default function SLARulesPage() {
                       <th className="pb-2 font-medium">Tempo de Resposta</th>
                       <th className="pb-2 font-medium">Tempo de Resolucao</th>
                       <th className="pb-2 font-medium">Horario Comercial</th>
+                      <th className="pb-2 font-medium">Ativo</th>
+                      <th className="pb-2 font-medium">Acoes</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rules.map((rule: any) => (
+                    {rules.map((rule) => (
                       <tr
                         key={rule.id}
                         className="border-b last:border-0 hover:bg-muted/50"
@@ -137,7 +178,7 @@ export default function SLARulesPage() {
                         <td className="py-3 pr-4 font-mono text-muted-foreground">
                           {formatHours(rule.resolve_time_hours)}
                         </td>
-                        <td className="py-3">
+                        <td className="py-3 pr-4">
                           <Badge
                             variant={
                               rule.business_hours_only ? "secondary" : "outline"
@@ -145,6 +186,34 @@ export default function SLARulesPage() {
                           >
                             {rule.business_hours_only ? "Sim" : "Nao"}
                           </Badge>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <Switch
+                            checked={rule.is_active}
+                            onCheckedChange={(checked) =>
+                              handleToggle(rule.id, checked)
+                            }
+                          />
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => handleEdit(rule)}
+                              title="Editar"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => handleDelete(rule.id)}
+                              title="Excluir"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -155,6 +224,16 @@ export default function SLARulesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <SlaRuleFormDialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setEditingRule(undefined);
+        }}
+        sectorId={currentSector.id}
+        rule={editingRule}
+      />
     </PermissionGate>
   );
 }
