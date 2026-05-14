@@ -25,7 +25,7 @@ export async function moveDealToColumn(input: {
 
   const { data: deal } = await supabase
     .from("crm_deals")
-    .select("sector_id, card_id")
+    .select("sector_id, card_id, probability_locked")
     .eq("id", parsed.data.dealId)
     .single();
 
@@ -70,6 +70,23 @@ export async function moveDealToColumn(input: {
       new_column_name: column?.name ?? null,
     },
   });
+
+  // Auto-update probability if not locked
+  if (!deal.probability_locked && column?.name) {
+    const { data: stageDefault } = await supabase
+      .from("crm_pipeline_stage_defaults")
+      .select("default_probability")
+      .eq("sector_id", deal.sector_id)
+      .eq("stage_name", column.name)
+      .single();
+
+    if (stageDefault) {
+      await supabase
+        .from("crm_deals")
+        .update({ win_probability: stageDefault.default_probability })
+        .eq("id", parsed.data.dealId);
+    }
+  }
 
   revalidatePath("/");
   return { success: true };

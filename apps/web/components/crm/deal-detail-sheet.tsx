@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useDealDetail } from "@/hooks/crm/use-deal-detail";
 import { useActivities } from "@/hooks/crm/use-activities";
 import { useCloseDealWon, useCloseDealLost } from "@/hooks/crm/use-deals";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toggleProbabilityLock } from "@/lib/actions/crm/stage-defaults";
 import {
   Sheet,
   SheetContent,
@@ -19,6 +21,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { ProposalFormDialog } from "./proposal-form-dialog";
+import { ProposalDetailSheet } from "./proposal-detail-sheet";
 import {
   Building2,
   User,
@@ -32,6 +36,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Plus,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 const formatCurrency = (value: number) =>
@@ -75,6 +82,7 @@ const activityTypeLabels: Record<string, string> = {
 const proposalStatusLabels: Record<string, { label: string; className: string }> = {
   draft: { label: "Rascunho", className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },
   sent: { label: "Enviada", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  viewed: { label: "Visualizada", className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" },
   accepted: { label: "Aceita", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
   rejected: { label: "Rejeitada", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
 };
@@ -99,8 +107,19 @@ export function DealDetailSheet({
   });
   const closeDealWon = useCloseDealWon();
   const closeDealLost = useCloseDealLost();
+  const queryClient = useQueryClient();
+  const toggleLock = useMutation({
+    mutationFn: ({ id, locked }: { id: string; locked: boolean }) =>
+      toggleProbabilityLock(id, locked),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-deal-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-deals"] });
+    },
+  });
   const [lostReason, setLostReason] = useState("");
   const [showLostForm, setShowLostForm] = useState(false);
+  const [showProposalCreate, setShowProposalCreate] = useState(false);
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 
   const handleWon = async () => {
     if (!dealId) return;
@@ -213,15 +232,42 @@ export function DealDetailSheet({
                     label="Valor"
                     value={deal.value != null ? formatCurrency(deal.value) : "—"}
                   />
-                  <InfoItem
-                    icon={TrendingUp}
-                    label="Probabilidade"
-                    value={
-                      deal.win_probability != null
-                        ? `${deal.win_probability}%`
-                        : "—"
-                    }
-                  />
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Probabilidade
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-sm font-medium">
+                        {deal.win_probability != null
+                          ? `${deal.win_probability}%`
+                          : "—"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          dealId &&
+                          toggleLock.mutate({
+                            id: dealId,
+                            locked: !deal.probability_locked,
+                          })
+                        }
+                        className="p-0.5 rounded hover:bg-muted transition-colors"
+                        title={
+                          deal.probability_locked
+                            ? "Probabilidade travada manualmente"
+                            : "Probabilidade automatica (clique para travar)"
+                        }
+                        disabled={toggleLock.isPending}
+                      >
+                        {deal.probability_locked ? (
+                          <Lock className="h-3 w-3 text-amber-500" />
+                        ) : (
+                          <Unlock className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                   <InfoItem
                     icon={Calendar}
                     label="Fechamento previsto"
@@ -447,6 +493,16 @@ export function DealDetailSheet({
               </TabsContent>
 
               <TabsContent value="propostas" className="mt-4">
+                <div className="flex justify-end mb-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowProposalCreate(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Nova Proposta
+                  </Button>
+                </div>
                 {deal.proposals.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-6 text-center">
                     Nenhuma proposta cadastrada para este deal.
@@ -461,7 +517,8 @@ export function DealDetailSheet({
                       return (
                         <div
                           key={proposal.id}
-                          className="border rounded-lg p-3 space-y-1"
+                          className="border rounded-lg p-3 space-y-1 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => setSelectedProposalId(proposal.id)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-sm font-medium">
@@ -503,6 +560,23 @@ export function DealDetailSheet({
           </>
         )}
       </SheetContent>
+
+      {deal && (
+        <>
+          <ProposalFormDialog
+            open={showProposalCreate}
+            onOpenChange={setShowProposalCreate}
+            sectorId={sectorId}
+            defaultDealId={deal.id}
+          />
+          <ProposalDetailSheet
+            proposalId={selectedProposalId}
+            sectorId={sectorId}
+            open={!!selectedProposalId}
+            onOpenChange={(o) => !o && setSelectedProposalId(null)}
+          />
+        </>
+      )}
     </Sheet>
   );
 }
