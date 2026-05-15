@@ -10,13 +10,20 @@
 -- A deal "rots" when it sits in a stage longer than
 -- the stage's configured rotting_days threshold.
 -- ---------------------------------------------
+-- Added nullable first so the backfill can target only new rows, then
+-- defaulted + NOT NULL — genuinely idempotent on re-run.
 ALTER TABLE crm_deals
-  ADD COLUMN IF NOT EXISTS last_stage_change_at timestamptz NOT NULL DEFAULT now();
+  ADD COLUMN IF NOT EXISTS last_stage_change_at timestamptz;
 
 -- Backfill: existing deals start their rotting clock at creation time.
 UPDATE crm_deals
   SET last_stage_change_at = created_at
-  WHERE last_stage_change_at IS NULL OR last_stage_change_at = now();
+  WHERE last_stage_change_at IS NULL;
+
+ALTER TABLE crm_deals
+  ALTER COLUMN last_stage_change_at SET DEFAULT now();
+ALTER TABLE crm_deals
+  ALTER COLUMN last_stage_change_at SET NOT NULL;
 
 -- Per-stage rotting threshold (days). 0 = rotting disabled for the stage.
 ALTER TABLE crm_pipeline_stage_defaults
@@ -68,23 +75,19 @@ CREATE INDEX IF NOT EXISTS idx_crm_deal_stage_history_sector_id
 
 ALTER TABLE crm_deal_stage_history ENABLE ROW LEVEL SECURITY;
 
+-- Uses the shared helper so global admins (who may have no user_sector_roles
+-- row) are handled consistently with every other CRM table.
 DROP POLICY IF EXISTS "deal_stage_history_select" ON crm_deal_stage_history;
 CREATE POLICY "deal_stage_history_select" ON crm_deal_stage_history
   FOR SELECT TO authenticated
-  USING (
-    sector_id IN (
-      SELECT sector_id FROM user_sector_roles WHERE user_id = auth.uid()
-    )
-  );
+  USING (user_has_sector_access(sector_id));
 
 DROP POLICY IF EXISTS "deal_stage_history_insert" ON crm_deal_stage_history;
 CREATE POLICY "deal_stage_history_insert" ON crm_deal_stage_history
   FOR INSERT TO authenticated
   WITH CHECK (
     changed_by = auth.uid()
-    AND sector_id IN (
-      SELECT sector_id FROM user_sector_roles WHERE user_id = auth.uid()
-    )
+    AND user_has_sector_access(sector_id)
   );
 
 -- History is an immutable audit log: no UPDATE/DELETE policies are granted,

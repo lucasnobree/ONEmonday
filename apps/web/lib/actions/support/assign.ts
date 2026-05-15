@@ -26,8 +26,10 @@ async function loadTicketForAssignment(ticketId: string) {
     .single();
   if (!ticket) return { error: "Ticket nao encontrado" as const };
 
+  // 'assign' is not a seeded permission action; reassignment is gated on
+  // 'ticket:update', consistent with the escalation action.
   const perms = await getUserPermissions(user.id);
-  if (!hasPermission(perms, ticket.sector_id, "ticket", "assign")) {
+  if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
     return { error: "Sem permissao" as const };
   }
 

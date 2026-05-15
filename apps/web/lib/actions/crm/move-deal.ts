@@ -100,20 +100,25 @@ export async function moveDealToColumn(input: {
     }
   }
 
-  await supabase
+  const { error: dealUpdateError } = await supabase
     .from("crm_deals")
     .update(dealUpdate)
     .eq("id", parsed.data.dealId);
+  if (dealUpdateError) return { error: dealUpdateError.message };
 
-  // Append to the immutable stage-history audit log.
+  // Append to the immutable stage-history audit log. A failure here must not
+  // be swallowed: the log is the source of truth for time-in-stage analytics.
   if (column?.name) {
-    await supabase.from("crm_deal_stage_history").insert({
-      deal_id: parsed.data.dealId,
-      sector_id: deal.sector_id,
-      from_stage_name: fromStageName,
-      to_stage_name: column.name,
-      changed_by: user.id,
-    });
+    const { error: historyError } = await supabase
+      .from("crm_deal_stage_history")
+      .insert({
+        deal_id: parsed.data.dealId,
+        sector_id: deal.sector_id,
+        from_stage_name: fromStageName,
+        to_stage_name: column.name,
+        changed_by: user.id,
+      });
+    if (historyError) return { error: historyError.message };
   }
 
   revalidatePath("/");

@@ -21,7 +21,9 @@ export const updateCardSchema = z.object({
 
 export const setCardTagsSchema = z.object({
   cardId: z.string().uuid(),
-  tagIds: z.array(z.string().uuid()),
+  tagIds: z
+    .array(z.string().uuid())
+    .refine((ids) => new Set(ids).size === ids.length, "tagIds duplicados"),
 });
 
 export type SetCardTagsInput = z.infer<typeof setCardTagsSchema>;

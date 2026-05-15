@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   AlertCircle,
   TrendingUp,
+  CheckCircle2,
   FolderKanban,
 } from "lucide-react";
 import type { DashboardStats } from "@/hooks/use-dashboard-stats";
@@ -28,9 +29,15 @@ const cards = [
   },
   {
     key: "cardsThisWeek" as const,
-    label: "Esta Semana",
+    label: "Criados na Semana",
     icon: TrendingUp,
     color: "text-emerald-500",
+  },
+  {
+    key: "completedThisWeek" as const,
+    label: "Concluídos na Semana",
+    icon: CheckCircle2,
+    color: "text-teal-500",
   },
   {
     key: "activeProjects" as const,
@@ -42,7 +49,7 @@ const cards = [
 
 export function StatsCards({ stats }: StatsCardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const value = stats[card.key];

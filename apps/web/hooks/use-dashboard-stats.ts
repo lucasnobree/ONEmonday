@@ -7,6 +7,7 @@ export interface DashboardStats {
   totalCards: number;
   overdueCards: number;
   cardsThisWeek: number;
+  completedThisWeek: number;
   activeProjects: number;
   cardsByPriority: { priority: string; count: number }[];
   cardsByColumn: { column_name: string; column_color: string; count: number }[];
@@ -28,6 +29,7 @@ async function fetchDashboardStats(
     columnRes,
     overdueRes,
     weekRes,
+    completedWeekRes,
     projectsRes,
   ] = await Promise.all([
     // Total active cards in sector
@@ -70,6 +72,14 @@ async function fetchDashboardStats(
       .eq("sector_id", sectorId)
       .eq("is_active", true)
       .gte("created_at", startOfWeek.toISOString()),
+
+    // Cards completed this week (completed_at stamped by the DB trigger)
+    supabase
+      .from("cards")
+      .select("id", { count: "exact", head: true })
+      .eq("sector_id", sectorId)
+      .eq("is_active", true)
+      .gte("completed_at", startOfWeek.toISOString()),
 
     // Active projects in sector
     supabase
@@ -123,6 +133,7 @@ async function fetchDashboardStats(
     totalCards: totalRes.count ?? 0,
     overdueCards: overdueRes.data?.length ?? 0,
     cardsThisWeek: weekRes.count ?? 0,
+    completedThisWeek: completedWeekRes.count ?? 0,
     activeProjects: projectsRes.data?.length ?? 0,
     cardsByPriority,
     cardsByColumn,

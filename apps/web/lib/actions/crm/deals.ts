@@ -103,7 +103,12 @@ export async function closeDealWon(dealId: string) {
 
   const { error: dealError } = await supabase
     .from("crm_deals")
-    .update({ actual_close_date: new Date().toISOString().split("T")[0] })
+    .update({
+      actual_close_date: new Date().toISOString().split("T")[0],
+      // Clear any prior lost markers so a re-won deal is not miscounted as lost.
+      lost_reason: null,
+      lost_reason_category: null,
+    })
     .eq("id", dealId);
 
   if (dealError) return { error: dealError.message };
