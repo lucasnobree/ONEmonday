@@ -12,6 +12,9 @@ import {
   Activity,
   Plus,
   ArrowRightLeft,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -22,7 +25,12 @@ import {
   createChecklist,
   createChecklistItem,
   toggleChecklistItem,
+  deleteChecklistItem,
 } from "@/lib/actions/checklists";
+import { deleteCard } from "@/lib/actions/cards";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { CardEditDialog } from "./card-edit-dialog";
+import { CardTagsEditor } from "./card-tags-editor";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,6 +161,7 @@ function ChecklistsSection({
   onNewItemTextChange,
   onAddItem,
   onToggleItem,
+  onDeleteItem,
   addingChecklist,
   newChecklistTitle,
   onNewChecklistTitleChange,
@@ -164,6 +173,7 @@ function ChecklistsSection({
   onNewItemTextChange: (checklistId: string, text: string) => void;
   onAddItem: (checklistId: string) => void;
   onToggleItem: (itemId: string, isCompleted: boolean) => void;
+  onDeleteItem: (itemId: string) => void;
   addingChecklist: boolean;
   newChecklistTitle: string;
   onNewChecklistTitleChange: (title: string) => void;
@@ -200,25 +210,35 @@ function ChecklistsSection({
             )}
             <div className="space-y-1">
               {items.map((item) => (
-                <label
+                <div
                   key={item.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
+                  className="group flex items-center gap-2 text-sm"
                 >
-                  <input
-                    type="checkbox"
-                    checked={item.is_completed}
-                    onChange={(e) => onToggleItem(item.id, e.target.checked)}
-                    className="rounded"
-                  />
-                  <span
-                    className={cn(
-                      item.is_completed &&
-                        "line-through text-muted-foreground"
-                    )}
+                  <label className="flex flex-1 items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={item.is_completed}
+                      onChange={(e) => onToggleItem(item.id, e.target.checked)}
+                      className="rounded"
+                    />
+                    <span
+                      className={cn(
+                        item.is_completed &&
+                          "line-through text-muted-foreground"
+                      )}
+                    >
+                      {item.content}
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteItem(item.id)}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    aria-label="Remover item"
                   >
-                    {item.content}
-                  </span>
-                </label>
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
             <div className="flex gap-2">
@@ -351,10 +371,35 @@ export function BoardCardDetail({
   const [addingChecklist, setAddingChecklist] = useState(false);
   const [newItemTexts, setNewItemTexts] = useState<Record<string, string>>({});
   const [escalateOpen, setEscalateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["card-detail", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board", boardId] });
+  }
+
+  async function handleDeleteCard() {
+    if (!cardId) return;
+    const result = await deleteCard(cardId);
+    if (result.error) {
+      toast.error("Erro ao excluir card", {
+        description:
+          typeof result.error === "string" ? result.error : undefined,
+      });
+      return;
+    }
+    toast.success("Card excluido");
+    queryClient.invalidateQueries({ queryKey: ["board", boardId] });
+    onOpenChange(false);
+  }
+
+  async function handleDeleteChecklistItem(itemId: string) {
+    const result = await deleteChecklistItem(itemId);
+    if (result.error) {
+      toast.error("Erro ao remover item");
+      return;
+    }
+    invalidate();
   }
 
   async function handleAddComment() {
@@ -422,16 +467,36 @@ export function BoardCardDetail({
           <div className="p-6 space-y-6">
             {/* Header */}
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <h2 className="text-xl font-bold">{card.title}</h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEscalateOpen(true)}
-                >
-                  <ArrowRightLeft className="h-4 w-4 mr-1" />
-                  Escalar
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEscalateOpen(true)}
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-1" />
+                    Escalar
+                  </Button>
+                  <ConfirmDialog
+                    title="Excluir card"
+                    description="Esta acao desativa o card. Deseja continuar?"
+                    onConfirm={handleDeleteCard}
+                  >
+                    <Button variant="ghost" size="icon-sm">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <span className="sr-only">Excluir card</span>
+                    </Button>
+                  </ConfirmDialog>
+                </div>
               </div>
               <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
                 <span
@@ -481,27 +546,19 @@ export function BoardCardDetail({
             )}
 
             {/* Tags */}
-            {card.card_tags.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <Tag className="h-4 w-4" /> Tags
-                </h3>
-                <div className="flex flex-wrap gap-1">
-                  {card.card_tags.map((t) => (
-                    <Badge
-                      key={t.tags?.id}
-                      variant="secondary"
-                      style={{
-                        backgroundColor: t.tags?.color + "20",
-                        color: t.tags?.color,
-                      }}
-                    >
-                      {t.tags?.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div>
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Tag className="h-4 w-4" /> Tags
+              </h3>
+              <CardTagsEditor
+                cardId={card.id}
+                sectorId={card.sector_id}
+                selectedTagIds={card.card_tags
+                  .map((t) => t.tags?.id)
+                  .filter((id): id is string => Boolean(id))}
+                onChanged={invalidate}
+              />
+            </div>
 
             {/* Cross-references */}
             {card.card_cross_references.length > 0 && (
@@ -580,6 +637,7 @@ export function BoardCardDetail({
                   }
                   onAddItem={handleAddChecklistItem}
                   onToggleItem={handleToggleItem}
+                  onDeleteItem={handleDeleteChecklistItem}
                   addingChecklist={addingChecklist}
                   newChecklistTitle={newChecklistTitle}
                   onNewChecklistTitleChange={setNewChecklistTitle}
@@ -611,13 +669,27 @@ export function BoardCardDetail({
       </SheetContent>
 
       {cardId && card && (
-        <EscalateDialog
-          cardId={cardId}
-          cardTitle={card.title}
-          currentSectorId={sectorId}
-          open={escalateOpen}
-          onOpenChange={setEscalateOpen}
-        />
+        <>
+          <EscalateDialog
+            cardId={cardId}
+            cardTitle={card.title}
+            currentSectorId={sectorId}
+            open={escalateOpen}
+            onOpenChange={setEscalateOpen}
+          />
+          <CardEditDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            card={{
+              id: card.id,
+              title: card.title,
+              description: card.description,
+              priority: card.priority,
+              due_date: card.due_date,
+            }}
+            onSaved={invalidate}
+          />
+        </>
       )}
     </Sheet>
   );

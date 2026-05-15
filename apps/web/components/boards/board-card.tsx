@@ -11,10 +11,12 @@ import type { BoardCard as BoardCardType } from "@/hooks/use-board-data";
 
 interface BoardCardProps {
   card: BoardCardType;
+  /** When true the card cannot be dragged (e.g. board filter active). */
+  dragDisabled?: boolean;
   onClick?: () => void;
 }
 
-export function BoardCard({ card, onClick }: BoardCardProps) {
+export function BoardCard({ card, dragDisabled = false, onClick }: BoardCardProps) {
   const {
     attributes,
     listeners,
@@ -22,7 +24,7 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: card.id });
+  } = useSortable({ id: card.id, disabled: dragDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -42,7 +44,10 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
       {...listeners}
       onClick={onClick}
       className={cn(
-        "rounded-lg border border-l-4 bg-card p-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-foreground/20 transition-colors",
+        "rounded-lg border border-l-4 bg-card p-3 shadow-sm hover:border-foreground/20 transition-colors",
+        dragDisabled
+          ? "cursor-pointer"
+          : "cursor-grab active:cursor-grabbing",
         PRIORITY_BORDER_COLORS[card.priority],
         isDragging && "opacity-50 shadow-lg"
       )}
