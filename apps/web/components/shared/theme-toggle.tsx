@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,11 +17,21 @@ const themeConfig = {
   system: { icon: Monitor, next: "light", label: "Tema do sistema" },
 } as const;
 
+// Reports false on the server and during the first client render, true
+// afterwards. Lets us defer theme-dependent UI until hydration without a
+// setState-in-effect (which the React compiler/lint rule rejects).
+const emptySubscribe = () => () => {};
+function useHasMounted(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useHasMounted();
 
   if (!mounted) {
     return (

@@ -2,7 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { UserPermissions, Resource, Action } from "@/lib/permissions/types";
+import { mapSectorRoleRow } from "@/lib/permissions/types";
+import type {
+  UserPermissions,
+  Resource,
+  Action,
+  SectorRoleRow,
+} from "@/lib/permissions/types";
 
 async function fetchPermissions(): Promise<UserPermissions> {
   const supabase = createClient();
@@ -30,18 +36,9 @@ async function fetchPermissions(): Promise<UserPermissions> {
     )
     .eq("user_id", user.id);
 
-  const mappedRoles = (sectorRoles || []).map((sr: any) => ({
-    sectorId: sr.sector_id,
-    sectorSlug: sr.sectors.slug,
-    sectorName: sr.sectors.name,
-    roleId: sr.role_id,
-    roleSlug: sr.roles.slug,
-    roleLevel: sr.roles.level,
-    permissions: (sr.roles.role_permissions || []).map((rp: any) => ({
-      resource: rp.permissions.resource,
-      action: rp.permissions.action,
-    })),
-  }));
+  const mappedRoles = (
+    (sectorRoles ?? []) as unknown as SectorRoleRow[]
+  ).map(mapSectorRoleRow);
 
   return {
     userId: user.id,

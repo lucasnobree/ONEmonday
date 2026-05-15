@@ -46,9 +46,9 @@ export function BoardTimelineView({ board, onCardClick }: BoardTimelineViewProps
     return cards;
   }, [board.columns]);
 
-  const { weeks, timelineStart, totalDays } = useMemo(() => {
+  const { weeks, timelineStart } = useMemo(() => {
     if (cardsWithDates.length === 0) {
-      return { weeks: [], timelineStart: new Date(), totalDays: 0 };
+      return { weeks: [], timelineStart: new Date() };
     }
 
     const dates = cardsWithDates.map((c) => new Date(c.due_date!));
@@ -57,8 +57,6 @@ export function BoardTimelineView({ board, onCardClick }: BoardTimelineViewProps
 
     const start = startOfWeek(addWeeks(minDate, -1), { locale: ptBR });
     const end = endOfWeek(addWeeks(maxDate, 1), { locale: ptBR });
-
-    const totalD = differenceInDays(end, start) + 1;
 
     const wks: { start: Date; end: Date; label: string }[] = [];
     let current = start;
@@ -72,7 +70,7 @@ export function BoardTimelineView({ board, onCardClick }: BoardTimelineViewProps
       current = addWeeks(current, 1);
     }
 
-    return { weeks: wks, timelineStart: start, totalDays: totalD };
+    return { weeks: wks, timelineStart: start };
   }, [cardsWithDates]);
 
   if (cardsWithDates.length === 0) {

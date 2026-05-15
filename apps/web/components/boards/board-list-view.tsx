@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIORITY_CONFIG, formatDateFull } from "@/lib/constants";
@@ -42,14 +42,6 @@ interface BoardListViewProps {
 export function BoardListView({ board, onCardClick }: BoardListViewProps) {
   const [sortField, setSortField] = useState<SortField>("column");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-
-  const columnMap = useMemo(() => {
-    const map = new Map<string, { name: string; color: string | null; position: number }>();
-    for (const col of board.columns) {
-      map.set(col.id, { name: col.name, color: col.color, position: col.position });
-    }
-    return map;
-  }, [board.columns]);
 
   const allCards = useMemo(() => {
     const cards: (BoardCard & { columnName: string; columnColor: string | null; columnPosition: number })[] = [];

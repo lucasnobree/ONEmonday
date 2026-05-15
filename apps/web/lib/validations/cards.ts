@@ -13,11 +13,18 @@ export const createCardSchema = z.object({
 
 export const updateCardSchema = z.object({
   id: z.string().uuid(),
-  title: z.string().min(1).max(200).optional(),
-  description: z.string().max(5000).optional(),
+  title: z.string().min(1, "Titulo obrigatorio").max(200).optional(),
+  description: z.string().max(5000).nullable().optional(),
   priority: z.enum(["critical", "high", "medium", "low"]).optional(),
   dueDate: z.string().nullable().optional(),
 });
+
+export const setCardTagsSchema = z.object({
+  cardId: z.string().uuid(),
+  tagIds: z.array(z.string().uuid()),
+});
+
+export type SetCardTagsInput = z.infer<typeof setCardTagsSchema>;
 
 export const reorderCardsSchema = z.object({
   boardId: z.string().uuid(),

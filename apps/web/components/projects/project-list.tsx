@@ -113,7 +113,7 @@ export function ProjectList() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects?.map((project: any) => {
+          {projects?.map((project) => {
             const statusCfg =
               STATUS_CONFIG[project.status as keyof typeof STATUS_CONFIG] ??
               STATUS_CONFIG.active;

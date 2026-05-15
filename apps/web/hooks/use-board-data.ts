@@ -40,6 +40,30 @@ export interface BoardData {
   columns: (BoardColumn & { cards: BoardCard[] })[];
 }
 
+/** Raw shape of a card row with its nested joins from the Supabase query. */
+interface RawCardRow {
+  id: string;
+  title: string;
+  description: string | null;
+  position: number;
+  priority: string | null;
+  due_date: string | null;
+  column_id: string;
+  sector_id: string;
+  created_by: string;
+  created_at: string;
+  card_assignees:
+    | {
+        user_id: string;
+        users: { full_name: string; avatar_url: string | null } | null;
+      }[]
+    | null;
+  card_tags:
+    | { tags: { id: string; name: string; color: string } | null }[]
+    | null;
+  card_cross_references: { id: string }[] | null;
+}
+
 export function useBoardData(boardId: string | undefined) {
   const supabase = createClient();
 
@@ -78,25 +102,34 @@ export function useBoardData(boardId: string | undefined) {
         .order("position");
       if (cardError) throw cardError;
 
-      const columnsWithCards = (columns || []).map((col) => ({
+      const rawCards = (cards ?? []) as unknown as RawCardRow[];
+
+      const columnsWithCards = (columns ?? []).map((col) => ({
         ...col,
         is_done_column: col.is_done_column ?? false,
-        cards: (cards || [])
+        cards: rawCards
           .filter((card) => card.column_id === col.id)
-          .map((card) => ({
-            ...card,
+          .map<BoardCard>((card) => ({
+            id: card.id,
+            title: card.title,
+            description: card.description,
+            position: card.position,
             priority: (card.priority ?? "medium") as BoardCard["priority"],
-            assignees: ((card as any).card_assignees || []).map((a: any) => ({
+            due_date: card.due_date,
+            column_id: card.column_id,
+            sector_id: card.sector_id,
+            created_by: card.created_by,
+            created_at: card.created_at,
+            assignees: (card.card_assignees ?? []).map((a) => ({
               user_id: a.user_id,
               full_name: a.users?.full_name ?? "",
               avatar_url: a.users?.avatar_url ?? null,
             })),
-            tags: ((card as any).card_tags || []).map((t: any) => ({
-              id: t.tags?.id ?? "",
-              name: t.tags?.name ?? "",
-              color: t.tags?.color ?? "",
-            })),
-            cross_ref_count: ((card as any).card_cross_references || []).length,
+            tags: (card.card_tags ?? [])
+              .map((t) => t.tags)
+              .filter((t): t is NonNullable<typeof t> => t !== null)
+              .map((t) => ({ id: t.id, name: t.name, color: t.color })),
+            cross_ref_count: (card.card_cross_references ?? []).length,
           })),
       }));
 

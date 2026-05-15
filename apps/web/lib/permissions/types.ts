@@ -58,3 +58,36 @@ export interface UserPermissions {
   isGlobalAdmin: boolean;
   sectorRoles: SectorRole[];
 }
+
+/**
+ * Raw shape of a `user_sector_roles` row with its nested sector, role and
+ * role-permission joins, as returned by the Supabase query builder. Used to
+ * type the mapping into {@link SectorRole} without resorting to `any`.
+ */
+export interface SectorRoleRow {
+  sector_id: string;
+  role_id: string;
+  sectors: { slug: string; name: string };
+  roles: {
+    slug: string;
+    level: number;
+    role_permissions: {
+      permissions: { resource: Resource; action: Action } | null;
+    }[];
+  };
+}
+
+/** Maps a raw {@link SectorRoleRow} into the app-facing {@link SectorRole}. */
+export function mapSectorRoleRow(row: SectorRoleRow): SectorRole {
+  return {
+    sectorId: row.sector_id,
+    sectorSlug: row.sectors.slug,
+    sectorName: row.sectors.name,
+    roleId: row.role_id,
+    roleSlug: row.roles.slug,
+    roleLevel: row.roles.level,
+    permissions: (row.roles.role_permissions ?? [])
+      .map((rp) => rp.permissions)
+      .filter((p): p is { resource: Resource; action: Action } => p !== null),
+  };
+}

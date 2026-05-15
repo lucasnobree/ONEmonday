@@ -1,5 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import type { UserPermissions, Resource, Action } from "./types";
+import { mapSectorRoleRow } from "./types";
+import type {
+  UserPermissions,
+  Resource,
+  Action,
+  SectorRoleRow,
+} from "./types";
 
 export async function getUserPermissions(
   userId: string
@@ -19,28 +25,14 @@ export async function getUserPermissions(
       sector_id,
       sectors!inner(slug, name),
       role_id,
-      roles!inner(slug, level),
-      roles(
-        role_permissions(
-          permissions(resource, action)
-        )
-      )
+      roles!inner(slug, level, role_permissions(permissions(resource, action)))
     `
     )
     .eq("user_id", userId);
 
-  const mappedRoles = (sectorRoles || []).map((sr: any) => ({
-    sectorId: sr.sector_id,
-    sectorSlug: sr.sectors.slug,
-    sectorName: sr.sectors.name,
-    roleId: sr.role_id,
-    roleSlug: sr.roles.slug,
-    roleLevel: sr.roles.level,
-    permissions: (sr.roles.role_permissions || []).map((rp: any) => ({
-      resource: rp.permissions.resource,
-      action: rp.permissions.action,
-    })),
-  }));
+  const mappedRoles = ((sectorRoles ?? []) as unknown as SectorRoleRow[]).map(
+    mapSectorRoleRow
+  );
 
   return {
     userId,

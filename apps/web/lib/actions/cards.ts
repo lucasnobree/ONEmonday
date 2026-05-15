@@ -6,6 +6,7 @@ import {
   createCardSchema,
   updateCardSchema,
   reorderCardsSchema,
+  setCardTagsSchema,
 } from "@/lib/validations/cards";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -23,6 +24,27 @@ export async function createCard(formData: unknown) {
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "card", "create")) {
     return { error: "Sem permissao" };
+  }
+
+  // Enforce the column WIP limit (the UI displays it but the limit is
+  // only meaningful if creation is actually blocked).
+  const { data: column } = await supabase
+    .from("board_columns")
+    .select("wip_limit")
+    .eq("id", parsed.data.columnId)
+    .single();
+
+  if (column?.wip_limit != null) {
+    const { count } = await supabase
+      .from("cards")
+      .select("id", { count: "exact", head: true })
+      .eq("column_id", parsed.data.columnId)
+      .eq("is_active", true);
+    if ((count ?? 0) >= column.wip_limit) {
+      return {
+        error: `Limite de ${column.wip_limit} cards atingido nesta coluna`,
+      };
+    }
   }
 
   const { data: maxPos } = await supabase
@@ -84,7 +106,7 @@ export async function updateCard(formData: unknown) {
 
   const { data: card } = await supabase
     .from("cards")
-    .select("sector_id")
+    .select("sector_id, title")
     .eq("id", parsed.data.id)
     .single();
 
@@ -98,11 +120,15 @@ export async function updateCard(formData: unknown) {
   const updateData: Record<string, unknown> = {};
   if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
   if (parsed.data.description !== undefined)
-    updateData.description = parsed.data.description;
+    updateData.description = parsed.data.description || null;
   if (parsed.data.priority !== undefined)
     updateData.priority = parsed.data.priority;
   if (parsed.data.dueDate !== undefined)
-    updateData.due_date = parsed.data.dueDate;
+    updateData.due_date = parsed.data.dueDate || null;
+
+  if (Object.keys(updateData).length === 0) {
+    return { error: "Nenhuma alteracao informada" };
+  }
 
   const { error } = await supabase
     .from("cards")
@@ -110,6 +136,13 @@ export async function updateCard(formData: unknown) {
     .eq("id", parsed.data.id);
 
   if (error) return { error: error.message };
+
+  await supabase.from("card_activity_log").insert({
+    card_id: parsed.data.id,
+    user_id: user.id,
+    action: "card_updated",
+    metadata: { fields: Object.keys(updateData) },
+  });
 
   revalidatePath("/");
   return { success: true };
@@ -191,4 +224,65 @@ export async function reorderCards(formData: unknown) {
   }
 
   return { data: { updatedAt: result.updated_at } };
+}
+
+/**
+ * Replaces the full set of tags on a card. Tags must belong to the card's
+ * sector (or be global, sector_id NULL); any tag failing that check is
+ * rejected so a caller cannot attach another sector's tags.
+ */
+export async function setCardTags(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const parsed = setCardTagsSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: card } = await supabase
+    .from("cards")
+    .select("sector_id")
+    .eq("id", parsed.data.cardId)
+    .single();
+  if (!card) return { error: "Card nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, card.sector_id, "card", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  if (parsed.data.tagIds.length > 0) {
+    const { data: validTags } = await supabase
+      .from("tags")
+      .select("id")
+      .in("id", parsed.data.tagIds)
+      .eq("is_active", true)
+      .or(`sector_id.eq.${card.sector_id},sector_id.is.null`);
+
+    const validIds = new Set((validTags ?? []).map((t) => t.id));
+    if (validIds.size !== parsed.data.tagIds.length) {
+      return { error: "Tag invalida para este setor" };
+    }
+  }
+
+  // Replace the set: clear then re-insert.
+  const { error: delError } = await supabase
+    .from("card_tags")
+    .delete()
+    .eq("card_id", parsed.data.cardId);
+  if (delError) return { error: delError.message };
+
+  if (parsed.data.tagIds.length > 0) {
+    const rows = parsed.data.tagIds.map((tagId) => ({
+      card_id: parsed.data.cardId,
+      tag_id: tagId,
+    }));
+    const { error: insError } = await supabase.from("card_tags").insert(rows);
+    if (insError) return { error: insError.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
 }

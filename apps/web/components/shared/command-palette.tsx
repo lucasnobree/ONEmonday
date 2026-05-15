@@ -47,6 +47,17 @@ interface SearchResult {
   type: "board" | "card" | "user" | "ticket" | "deal" | "contact" | "company" | "employee";
 }
 
+/* Raw row shapes returned by each Supabase search query. */
+type BoardSectorRow = { board_id: string; boards: { id: string; name: string } };
+type BoardRow = { id: string; name: string };
+type CardRow = { id: string; title: string; board_id: string };
+type UserRow = { id: string; full_name: string; email: string };
+type TicketRow = { id: string; title: string };
+type DealRow = { id: string; name: string; value: number | null };
+type ContactRow = { id: string; full_name: string; email: string | null };
+type CompanyRow = { id: string; name: string; industry: string | null };
+type EmployeeRow = { id: string; full_name: string; position: string | null };
+
 function getRecentSearches(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -87,25 +98,7 @@ export function CommandPalette() {
 
   const basePath = currentSector ? `/${currentSector.slug}` : "";
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-    function handleOpen() {
-      setOpen(true);
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("open-command-palette", handleOpen);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("open-command-palette", handleOpen);
-    };
-  }, []);
-
-  function clearResults() {
+  const clearResults = useCallback(() => {
     setBoards([]);
     setCards([]);
     setUsers([]);
@@ -114,15 +107,47 @@ export function CommandPalette() {
     setContacts([]);
     setCompanies([]);
     setEmployees([]);
-  }
+  }, []);
+
+  // Open/close the palette, resetting query state on open. Centralising
+  // this here avoids a setState-in-effect that watches `open`.
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      if (next) {
+        setRecentSearches(getRecentSearches());
+        setQuery("");
+        clearResults();
+      }
+    },
+    [clearResults]
+  );
 
   useEffect(() => {
-    if (open) {
-      setRecentSearches(getRecentSearches());
-      setQuery("");
-      clearResults();
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setOpen((prev) => {
+          const next = !prev;
+          if (next) {
+            setRecentSearches(getRecentSearches());
+            setQuery("");
+            clearResults();
+          }
+          return next;
+        });
+      }
     }
-  }, [open]);
+    function handleOpen() {
+      handleOpenChange(true);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("open-command-palette", handleOpen);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("open-command-palette", handleOpen);
+    };
+  }, [clearResults, handleOpenChange]);
 
   const searchSupabase = useCallback(
     async (searchQuery: string) => {
@@ -220,13 +245,13 @@ export function CommandPalette() {
 
         if (boardsRes.data) {
           const mapped: SearchResult[] = currentSector
-            ? (boardsRes.data as any[]).map((bs) => ({
+            ? (boardsRes.data as unknown as BoardSectorRow[]).map((bs) => ({
                 id: bs.boards.id,
                 label: bs.boards.name,
                 href: `${basePath}/boards/${bs.boards.id}`,
                 type: "board" as const,
               }))
-            : (boardsRes.data as any[]).map((b) => ({
+            : (boardsRes.data as unknown as BoardRow[]).map((b) => ({
                 id: b.id,
                 label: b.name,
                 href: `/boards/${b.id}`,
@@ -237,7 +262,7 @@ export function CommandPalette() {
 
         if (cardsRes.data) {
           setCards(
-            (cardsRes.data as any[]).map((c) => ({
+            (cardsRes.data as unknown as CardRow[]).map((c) => ({
               id: c.id,
               label: c.title,
               href: `${basePath}/boards/${c.board_id}?card=${c.id}`,
@@ -248,7 +273,7 @@ export function CommandPalette() {
 
         if (usersRes.data) {
           setUsers(
-            (usersRes.data as any[]).map((u) => ({
+            (usersRes.data as unknown as UserRow[]).map((u) => ({
               id: u.id,
               label: u.full_name,
               href: `/settings`,
@@ -259,7 +284,7 @@ export function CommandPalette() {
 
         if (ticketsRes.data) {
           setTickets(
-            (ticketsRes.data as any[]).map((t) => ({
+            (ticketsRes.data as unknown as TicketRow[]).map((t) => ({
               id: t.id,
               label: `#${t.id.slice(0, 8)} ${t.title}`,
               href: `/support/tickets`,
@@ -270,7 +295,7 @@ export function CommandPalette() {
 
         if (dealsRes.data) {
           setDeals(
-            (dealsRes.data as any[]).map((d) => ({
+            (dealsRes.data as unknown as DealRow[]).map((d) => ({
               id: d.id,
               label: d.value
                 ? `${d.name} \u00B7 ${currencyFmt.format(d.value)}`
@@ -283,7 +308,7 @@ export function CommandPalette() {
 
         if (contactsRes.data) {
           setContacts(
-            (contactsRes.data as any[]).map((c) => ({
+            (contactsRes.data as unknown as ContactRow[]).map((c) => ({
               id: c.id,
               label: c.email ? `${c.full_name} (${c.email})` : c.full_name,
               href: `/crm/contacts`,
@@ -294,7 +319,7 @@ export function CommandPalette() {
 
         if (companiesRes.data) {
           setCompanies(
-            (companiesRes.data as any[]).map((c) => ({
+            (companiesRes.data as unknown as CompanyRow[]).map((c) => ({
               id: c.id,
               label: c.industry ? `${c.name} \u00B7 ${c.industry}` : c.name,
               href: `/crm/companies`,
@@ -305,7 +330,7 @@ export function CommandPalette() {
 
         if (employeesRes.data) {
           setEmployees(
-            (employeesRes.data as any[]).map((e) => ({
+            (employeesRes.data as unknown as EmployeeRow[]).map((e) => ({
               id: e.id,
               label: e.position
                 ? `${e.full_name} \u00B7 ${e.position}`
@@ -321,15 +346,12 @@ export function CommandPalette() {
         setLoading(false);
       }
     },
-    [currentSector, basePath, supabase]
+    [currentSector, basePath, supabase, clearResults]
   );
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim()) {
-      clearResults();
-      return;
-    }
+    if (!query.trim()) return;
     debounceRef.current = setTimeout(() => {
       searchSupabase(query);
     }, 300);
@@ -337,6 +359,16 @@ export function CommandPalette() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, searchSupabase]);
+
+  // Clear stale results synchronously as the user empties the input,
+  // rather than reacting to `query` inside an effect.
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value);
+      if (!value.trim()) clearResults();
+    },
+    [clearResults]
+  );
 
   function navigate(href: string) {
     if (query.trim()) addRecentSearch(query);
@@ -380,7 +412,7 @@ export function CommandPalette() {
   return (
     <CommandDialog
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       title="Command Palette"
       description="Buscar paginas, boards, cards e pessoas"
       className="sm:max-w-lg"
@@ -389,7 +421,7 @@ export function CommandPalette() {
         <CommandInput
           placeholder="Buscar..."
           value={query}
-          onValueChange={setQuery}
+          onValueChange={handleQueryChange}
         />
         <CommandList>
           <CommandEmpty>

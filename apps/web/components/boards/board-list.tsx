@@ -92,7 +92,7 @@ export function BoardList() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {boards?.map((board: any) => (
+          {boards?.map((board) => (
             <Card
               key={board.id}
               className="group hover:border-foreground/20 transition-colors"

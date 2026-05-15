@@ -42,12 +42,20 @@ export function ModuleGate({
 
   if (!data || !data.is_enabled) return fallback;
 
-  const module = data.modules as any;
-  if (module?.status === "coming_soon") {
+  // A `!inner` join can be typed as either an object or a single-element
+  // array depending on Supabase's inference — normalise both shapes.
+  type ModuleJoin = { slug: string; status: string };
+  const joined = data.modules as unknown as
+    | ModuleJoin
+    | ModuleJoin[]
+    | null;
+  const moduleInfo = Array.isArray(joined) ? joined[0] : joined;
+
+  if (moduleInfo?.status === "coming_soon") {
     return comingSoonFallback ?? fallback;
   }
 
-  if (module?.status === "disabled") return fallback;
+  if (moduleInfo?.status === "disabled") return fallback;
 
   return children;
 }
