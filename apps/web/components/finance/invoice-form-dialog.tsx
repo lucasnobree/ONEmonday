@@ -152,6 +152,7 @@ export function InvoiceFormDialog({
               <div className="grid gap-2">
                 <Label htmlFor="invoice-amount">Valor (R$)</Label>
                 <MoneyInput
+                  key={formKey}
                   id="invoice-amount"
                   valueCents={amountCents}
                   onChangeCents={setAmountCents}

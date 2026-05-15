@@ -1,0 +1,127 @@
+"use client";
+
+import { useState } from "react";
+import { Plus, Users } from "lucide-react";
+import { toast } from "sonner";
+import { useCurrentSector } from "@/hooks/use-current-sector";
+import {
+  useSegments,
+  useDeleteSegment,
+  type AudienceSegment,
+} from "@/hooks/marketing/use-segments";
+import { SegmentFormDialog } from "@/components/marketing/segment-form-dialog";
+import { CHANNEL_LABELS } from "@/lib/marketing/labels";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function MarketingAudiencesPage() {
+  const { currentSector } = useCurrentSector();
+  const { data: segments, isLoading } = useSegments(currentSector?.id);
+  const deleteSegment = useDeleteSegment();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<AudienceSegment>();
+
+  if (!currentSector) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Selecione um setor no menu lateral para ver as audiencias.
+      </p>
+    );
+  }
+
+  const handleDelete = async (id: string) => {
+    const result = await deleteSegment.mutateAsync(id);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string" ? result.error : "Erro ao excluir"
+      );
+      return;
+    }
+    toast.success("Audiencia excluida");
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Audiencias</h2>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing(undefined);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          Nova Audiencia
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <Skeleton className="h-40 w-full" />
+      ) : segments && segments.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {segments.map((s) => (
+            <Card key={s.id}>
+              <CardContent className="space-y-2 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium">{s.name}</p>
+                  <Badge variant="secondary">{CHANNEL_LABELS[s.channel]}</Badge>
+                </div>
+                {s.description && (
+                  <p className="text-sm text-muted-foreground">
+                    {s.description}
+                  </p>
+                )}
+                <p className="text-sm">
+                  <span className="font-semibold">
+                    {s.estimated_size.toLocaleString("pt-BR")}
+                  </span>{" "}
+                  <span className="text-muted-foreground">contatos estimados</span>
+                </p>
+                <div className="flex gap-1 pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditing(s);
+                      setDialogOpen(true);
+                    }}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500"
+                    disabled={deleteSegment.isPending}
+                    onClick={() => handleDelete(s.id)}
+                  >
+                    Excluir
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
+          <Users className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Nenhuma audiencia cadastrada. Crie segmentos para planejar o
+            alcance das campanhas.
+          </p>
+        </div>
+      )}
+
+      <SegmentFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        sectorId={currentSector.id}
+        segment={editing}
+      />
+    </div>
+  );
+}

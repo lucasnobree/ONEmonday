@@ -154,6 +154,7 @@ export function ExpenseFormDialog({
               <div className="grid gap-2">
                 <Label htmlFor="expense-amount">Valor (R$)</Label>
                 <MoneyInput
+                  key={formKey}
                   id="expense-amount"
                   valueCents={amountCents}
                   onChangeCents={setAmountCents}

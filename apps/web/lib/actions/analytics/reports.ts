@@ -44,7 +44,7 @@ export async function createReport(formData: unknown) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/analytics/reports");
+  revalidatePath("/analytics");
   return { data };
 }
 
@@ -87,7 +87,7 @@ export async function updateReport(formData: unknown) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/analytics/reports");
+  revalidatePath("/analytics");
   return { success: true };
 }
 
@@ -121,6 +121,6 @@ export async function deleteReport(reportId: string) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/analytics/reports");
+  revalidatePath("/analytics");
   return { success: true };
 }

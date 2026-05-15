@@ -129,6 +129,7 @@ export function BudgetFormDialog({
               <div className="grid gap-2">
                 <Label htmlFor="budget-amount">Valor (R$)</Label>
                 <MoneyInput
+                  key={formKey}
                   id="budget-amount"
                   valueCents={amountCents}
                   onChangeCents={setAmountCents}

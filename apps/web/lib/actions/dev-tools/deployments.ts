@@ -84,6 +84,16 @@ export async function updateDeployment(formData: unknown) {
     return { error: "Sem permissao" };
   }
 
+  // Guard: the (possibly changed) service must belong to the deploy's sector.
+  const { data: service } = await supabase
+    .from("dev_services")
+    .select("sector_id")
+    .eq("id", parsed.data.serviceId)
+    .single();
+  if (!service || service.sector_id !== existing.sector_id) {
+    return { error: "Servico invalido para este setor" };
+  }
+
   const { error } = await supabase
     .from("dev_deployments")
     .update(toRow(parsed.data))

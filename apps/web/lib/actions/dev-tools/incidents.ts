@@ -88,9 +88,24 @@ export async function updateIncident(formData: unknown) {
     resolved_at: existing.resolved_at,
   });
 
+  // Build the update explicitly: `assignedTo` is optional and the form does
+  // not send it, so omit `assigned_to` when undefined rather than nulling a
+  // real assignee on an unrelated edit (e.g. a status change).
+  const updateRow: Record<string, unknown> = {
+    service_id: parsed.data.serviceId || null,
+    title: parsed.data.title,
+    description: parsed.data.description || null,
+    severity: parsed.data.severity,
+    status: parsed.data.status,
+    ...timestamps,
+  };
+  if (parsed.data.assignedTo !== undefined) {
+    updateRow.assigned_to = parsed.data.assignedTo || null;
+  }
+
   const { error } = await supabase
     .from("dev_incidents")
-    .update({ ...baseRow(parsed.data), ...timestamps })
+    .update(updateRow)
     .eq("id", parsed.data.id);
 
   if (error) return { error: error.message };
