@@ -18,8 +18,6 @@ import {
   MapPin,
   Phone,
   Mail,
-  User,
-  DollarSign,
   Star,
 } from "lucide-react";
 

@@ -17,7 +17,7 @@ import {
   DollarSign,
   TrendingUp,
   CheckCircle2,
-  Users,
+  Target,
   Trophy,
   Clock,
 } from "lucide-react";
@@ -28,19 +28,15 @@ const formatCurrency = (value: number) =>
     currency: "BRL",
   }).format(value);
 
-const priorityLabels: Record<string, string> = {
-  critical: "Critica",
-  high: "Alta",
-  medium: "Media",
-  low: "Baixa",
-};
-
-const priorityVariants: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
-  critical: "destructive",
-  high: "destructive",
-  medium: "secondary",
-  low: "outline",
-};
+/** Compact two-letter initials for an avatar placeholder. */
+const initials = (name: string) =>
+  name
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
 export default function CRMDashboardPage() {
   const { currentSector } = useCurrentSector();
@@ -65,22 +61,33 @@ export default function CRMDashboardPage() {
     }));
   }, [deals]);
 
+  // Weighted pipeline forecast: sum of (value x win_probability) across
+  // open deals. Best-practice forecasting signal alongside raw pipeline value.
+  const weightedPipeline = useMemo(() => {
+    if (!deals) return 0;
+    return deals
+      .filter((d) => !d.actual_close_date)
+      .reduce((sum, d) => {
+        const value = Number(d.value) || 0;
+        const prob = d.win_probability ?? 0;
+        return sum + (value * prob) / 100;
+      }, 0);
+  }, [deals]);
+
+  // Top performers: ranked by total value of WON deals, grouped by the deal
+  // creator (cards.created_by -> users). crm_deals has no owner_id, so the
+  // card creator is the canonical "owner" of the deal.
   const topPerformers = useMemo(() => {
     if (!deals) return [];
-    const wonDeals = deals.filter(
-      (d) => d.actual_close_date && !d.lost_reason
-    );
-    const performerMap = new Map<
-      string,
-      { name: string; total: number }
-    >();
+    const wonDeals = deals.filter((d) => d.actual_close_date && !d.lost_reason);
+    const performerMap = new Map<string, { name: string; total: number }>();
     for (const deal of wonDeals) {
-      const creatorId = deal.card_id;
-      const name = deal.company?.name ?? "—";
-      const key = creatorId;
-      const existing = performerMap.get(key) ?? { name, total: 0 };
+      const creatorId = deal.card?.created_by;
+      if (!creatorId) continue;
+      const name = deal.card?.users?.full_name ?? "Usuario";
+      const existing = performerMap.get(creatorId) ?? { name, total: 0 };
       existing.total += Number(deal.value) || 0;
-      performerMap.set(key, existing);
+      performerMap.set(creatorId, existing);
     }
     return Array.from(performerMap.values())
       .sort((a, b) => b.total - a.total)
@@ -150,14 +157,15 @@ export default function CRMDashboardPage() {
       icon: TrendingUp,
     },
     {
+      title: "Previsao Ponderada",
+      value: formatCurrency(weightedPipeline),
+      icon: Target,
+      hint: "Soma de valor x probabilidade dos deals abertos",
+    },
+    {
       title: "Deals Ganhos",
       value: String(stats?.wonDeals ?? 0),
       icon: CheckCircle2,
-    },
-    {
-      title: "Contatos",
-      value: String(stats?.totalContacts ?? 0),
-      icon: Users,
     },
   ];
 
@@ -173,9 +181,16 @@ export default function CRMDashboardPage() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <stat.icon className="h-5 w-5 text-primary" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-2xl font-bold truncate" title={stat.value}>
+                    {stat.value}
+                  </p>
+                  {"hint" in stat && stat.hint && (
+                    <p className="text-[11px] text-muted-foreground/80 leading-tight">
+                      {stat.hint}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -263,11 +278,14 @@ export default function CRMDashboardPage() {
             <div className="space-y-3">
               {topPerformers.map((performer, index) => (
                 <div
-                  key={index}
+                  key={`${performer.name}-${index}`}
                   className="flex items-center gap-3"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary shrink-0">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary shrink-0">
                     {index + 1}
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium shrink-0">
+                    {initials(performer.name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
@@ -324,14 +342,20 @@ export default function CRMDashboardPage() {
                           : "—"}
                       </td>
                       <td className="py-3">
-                        <Badge
-                          variant={
-                            priorityVariants[deal.card?.priority ?? "medium"] ??
-                            "secondary"
-                          }
-                        >
-                          {deal.card?.board_columns?.name ?? "—"}
-                        </Badge>
+                        {deal.card?.board_columns ? (
+                          <Badge
+                            variant="secondary"
+                            style={{
+                              backgroundColor:
+                                deal.card.board_columns.color + "20",
+                              color: deal.card.board_columns.color,
+                            }}
+                          >
+                            {deal.card.board_columns.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}

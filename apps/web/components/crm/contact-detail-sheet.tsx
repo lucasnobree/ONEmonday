@@ -11,7 +11,6 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,7 +19,6 @@ import {
   Phone,
   Building2,
   Star,
-  FileText,
   Calendar,
 } from "lucide-react";
 

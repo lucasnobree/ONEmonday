@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCreateCompany, useUpdateCompany } from "@/hooks/crm/use-companies";
 import type { Company } from "@/hooks/crm/use-companies";
 import {
@@ -51,29 +51,22 @@ export function CompanyFormDialog({
   const [state, setState] = useState("");
   const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    if (company) {
-      setName(company.name);
-      setDomain(company.domain ?? "");
-      setIndustry(company.industry ?? "");
-      setSize(company.size ?? "");
-      setPhone(company.phone ?? "");
-      setEmail(company.email ?? "");
-      setCity(company.city ?? "");
-      setState(company.state ?? "");
-      setNotes(company.notes ?? "");
-    } else {
-      setName("");
-      setDomain("");
-      setIndustry("");
-      setSize("");
-      setPhone("");
-      setEmail("");
-      setCity("");
-      setState("");
-      setNotes("");
-    }
-  }, [company, open]);
+  // Re-seed form fields when the dialog (re)opens, by adjusting state during
+  // render — the React-recommended alternative to a syncing effect.
+  const formKey = `${open}:${company?.id ?? "new"}`;
+  const [seededKey, setSeededKey] = useState<string | null>(null);
+  if (open && seededKey !== formKey) {
+    setSeededKey(formKey);
+    setName(company?.name ?? "");
+    setDomain(company?.domain ?? "");
+    setIndustry(company?.industry ?? "");
+    setSize(company?.size ?? "");
+    setPhone(company?.phone ?? "");
+    setEmail(company?.email ?? "");
+    setCity(company?.city ?? "");
+    setState(company?.state ?? "");
+    setNotes(company?.notes ?? "");
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

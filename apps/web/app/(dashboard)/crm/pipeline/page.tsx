@@ -4,8 +4,17 @@ import { useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useDeals, type Deal } from "@/hooks/crm/use-deals";
+import {
+  useStageDefaults,
+  toRottingConfig,
+} from "@/hooks/crm/use-stage-defaults";
 import { useBoards } from "@/hooks/use-boards";
 import { moveDealToColumn } from "@/lib/actions/crm/move-deal";
+import {
+  getDealRotting,
+  rottingLabel,
+  type RottingConfig,
+} from "@/lib/crm/deal-rotting";
 import { DealCreateDialog } from "@/components/crm/deal-create-dialog";
 import { DealDetailSheet } from "@/components/crm/deal-detail-sheet";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +26,7 @@ import {
   Building2,
   CalendarDays,
   GripVertical,
+  AlertTriangle,
 } from "lucide-react";
 
 const formatCurrency = (value: number) =>
@@ -50,6 +60,7 @@ interface StageColumn {
 export default function PipelinePage() {
   const { currentSector } = useCurrentSector();
   const { data: deals, isLoading: dealsLoading } = useDeals(currentSector?.id);
+  const { data: stageDefaults } = useStageDefaults(currentSector?.id);
   const { data: boards, isLoading: boardsLoading } = useBoards(
     currentSector?.id
   );
@@ -167,12 +178,16 @@ export default function PipelinePage() {
     );
   }
 
-  const crmBoard = (boards || []).find(
-    (b: any) =>
-      b.name?.toLowerCase().includes("crm") ||
-      b.name?.toLowerCase().includes("pipeline") ||
-      b.name?.toLowerCase().includes("vendas")
-  );
+  const rottingConfig: RottingConfig = toRottingConfig(stageDefaults);
+
+  const crmBoard = (boards || []).find((b) => {
+    const name = (b.name ?? "").toLowerCase();
+    return (
+      name.includes("crm") ||
+      name.includes("pipeline") ||
+      name.includes("vendas")
+    );
+  });
 
   if (!crmBoard && (!deals || deals.length === 0)) {
     return (
@@ -289,6 +304,7 @@ export default function PipelinePage() {
                     <DealCard
                       key={deal.id}
                       deal={deal}
+                      rottingConfig={rottingConfig}
                       isDragging={draggingDealId === deal.id}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
@@ -324,6 +340,7 @@ export default function PipelinePage() {
 
 function DealCard({
   deal,
+  rottingConfig,
   isDragging,
   onDragStart,
   onDragEnd,
@@ -331,6 +348,7 @@ function DealCard({
   onClick,
 }: {
   deal: Deal;
+  rottingConfig: RottingConfig;
   isDragging: boolean;
   onDragStart: (e: React.DragEvent, deal: Deal) => void;
   onDragEnd: () => void;
@@ -340,6 +358,13 @@ function DealCard({
   const priority = deal.card?.priority ?? "low";
   const borderClass = priorityColors[priority] ?? priorityColors.low;
 
+  const rotting = getDealRotting(
+    deal.card?.board_columns?.name,
+    deal.last_stage_change_at,
+    rottingConfig
+  );
+  const rottingText = rottingLabel(rotting);
+
   return (
     <div
       draggable={!disabled}
@@ -347,6 +372,8 @@ function DealCard({
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={`group rounded-lg border border-l-[3px] bg-background p-3 cursor-grab active:cursor-grabbing transition-all ${borderClass} ${
+        rotting.isRotting ? "ring-1 ring-red-300 dark:ring-red-900" : ""
+      } ${
         isDragging
           ? "opacity-40 scale-95 shadow-none"
           : "hover:shadow-md"
@@ -359,6 +386,17 @@ function DealCard({
           {deal.card?.title ?? "Sem titulo"}
         </span>
       </div>
+
+      {/* Rotting badge */}
+      {rottingText && (
+        <div
+          className="mt-2 inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950 dark:text-red-400"
+          title={`Sem movimentacao ha ${rotting.idleDays} dias (limite do estagio: ${rotting.thresholdDays})`}
+        >
+          <AlertTriangle className="h-3 w-3" />
+          {rottingText}
+        </div>
+      )}
 
       {/* Value */}
       {deal.value != null && (

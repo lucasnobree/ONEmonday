@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useDeals } from "@/hooks/crm/use-deals";
 import { useCreateProposal, useUpdateProposal } from "@/hooks/crm/use-proposals";
 import type { ProposalDetail } from "@/hooks/crm/use-proposals";
@@ -58,24 +58,28 @@ export function ProposalFormDialog({
   const { data: deals } = useDeals(sectorId);
   const isEdit = !!proposal;
 
+  const emptyItems = (): LineItem[] => [
+    { description: "", quantity: 1, unit_price: 0 },
+  ];
+
   const [dealId, setDealId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
-  const [items, setItems] = useState<LineItem[]>([
-    { description: "", quantity: 1, unit_price: 0 },
-  ]);
+  const [items, setItems] = useState<LineItem[]>(emptyItems);
 
-  useEffect(() => {
+  // Re-seed form state when the dialog is (re)opened for a different
+  // proposal. Adjusting state during render — the React-recommended pattern
+  // for syncing state to props — instead of an effect.
+  const formKey = `${open}:${proposal?.id ?? defaultDealId ?? "new"}`;
+  const [seededKey, setSeededKey] = useState<string | null>(null);
+  if (open && seededKey !== formKey) {
+    setSeededKey(formKey);
     if (proposal) {
       setDealId(proposal.deal_id);
       setTitle(proposal.title);
       setContent(proposal.content ?? "");
-      setExpiresAt(
-        proposal.expires_at
-          ? proposal.expires_at.substring(0, 10)
-          : ""
-      );
+      setExpiresAt(proposal.expires_at?.substring(0, 10) ?? "");
       setItems(
         proposal.items.length > 0
           ? proposal.items.map((i) => ({
@@ -83,16 +87,16 @@ export function ProposalFormDialog({
               quantity: i.quantity,
               unit_price: i.unit_price,
             }))
-          : [{ description: "", quantity: 1, unit_price: 0 }]
+          : emptyItems()
       );
     } else {
       setDealId(defaultDealId ?? "");
       setTitle("");
       setContent("");
       setExpiresAt("");
-      setItems([{ description: "", quantity: 1, unit_price: 0 }]);
+      setItems(emptyItems());
     }
-  }, [proposal, open, defaultDealId]);
+  }
 
   const total = items.reduce(
     (sum, item) => sum + item.quantity * item.unit_price,

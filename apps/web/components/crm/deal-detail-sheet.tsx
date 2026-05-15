@@ -18,9 +18,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import {
+  LOST_REASON_CATEGORIES,
+  LOST_REASON_LABELS,
+  lostReasonLabel,
+  type LostReasonCategory,
+} from "@/lib/crm/lost-reasons";
 import { ProposalFormDialog } from "./proposal-form-dialog";
 import { ProposalDetailSheet } from "./proposal-detail-sheet";
 import {
@@ -117,6 +130,7 @@ export function DealDetailSheet({
     },
   });
   const [lostReason, setLostReason] = useState("");
+  const [lostCategory, setLostCategory] = useState<LostReasonCategory | "">("");
   const [showLostForm, setShowLostForm] = useState(false);
   const [showProposalCreate, setShowProposalCreate] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
@@ -133,9 +147,10 @@ export function DealDetailSheet({
   };
 
   const handleLost = async () => {
-    if (!dealId || !lostReason.trim()) return;
+    if (!dealId || !lostReason.trim() || !lostCategory) return;
     const result = await closeDealLost.mutateAsync({
       dealId,
+      category: lostCategory,
       reason: lostReason,
     });
     if (result && "error" in result) {
@@ -144,6 +159,7 @@ export function DealDetailSheet({
     }
     toast.success("Deal marcado como perdido");
     setLostReason("");
+    setLostCategory("");
     setShowLostForm(false);
     onOpenChange(false);
   };
@@ -387,6 +403,14 @@ export function DealDetailSheet({
                       <h4 className="text-sm font-medium text-red-600">
                         Motivo da perda
                       </h4>
+                      {deal.lost_reason_category && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        >
+                          {lostReasonLabel(deal.lost_reason_category)}
+                        </Badge>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {deal.lost_reason}
                       </p>
@@ -419,8 +443,28 @@ export function DealDetailSheet({
                     </div>
                     {showLostForm && (
                       <div className="space-y-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Categoria da perda</Label>
+                          <Select
+                            value={lostCategory}
+                            onValueChange={(v) =>
+                              setLostCategory((v as LostReasonCategory) ?? "")
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione a categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {LOST_REASON_CATEGORIES.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {LOST_REASON_LABELS[c]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <Textarea
-                          placeholder="Motivo da perda..."
+                          placeholder="Detalhes do motivo da perda..."
                           value={lostReason}
                           onChange={(e) => setLostReason(e.target.value)}
                           rows={3}
@@ -430,7 +474,9 @@ export function DealDetailSheet({
                           variant="destructive"
                           onClick={handleLost}
                           disabled={
-                            !lostReason.trim() || closeDealLost.isPending
+                            !lostReason.trim() ||
+                            !lostCategory ||
+                            closeDealLost.isPending
                           }
                         >
                           Confirmar perda
@@ -457,8 +503,10 @@ export function DealDetailSheet({
                       return (
                         <div key={activity.id} className="relative pl-6 pb-4">
                           <div
-                            className={`absolute -left-[5px] top-1 h-2 w-2 rounded-full ${typeInfo.color} bg-current`}
-                          />
+                            className={`absolute -left-2.25 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background ${typeInfo.color}`}
+                          >
+                            <Icon className="h-3 w-3" />
+                          </div>
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-medium text-muted-foreground uppercase">
