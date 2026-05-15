@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createEmployee, updateEmployee } from "@/lib/actions/hr/employees";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useEmployees } from "@/hooks/hr/use-employees";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,12 @@ interface EmployeeFormDialogProps {
   employee?: EmployeeFormData;
 }
 
+type EmployeeActionResult = {
+  error?: string | Record<string, string[] | undefined>;
+  data?: unknown;
+  success?: boolean;
+};
+
 export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
   const isEdit = !!employee;
   const { currentSector } = useCurrentSector();
@@ -58,15 +65,24 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState(employee?.fullName ?? "");
   const [email, setEmail] = useState(employee?.email ?? "");
+  const [phone, setPhone] = useState(employee?.phone ?? "");
   const [position, setPosition] = useState(employee?.position ?? "");
   const [department, setDepartment] = useState(employee?.department ?? "");
   const [hireDate, setHireDate] = useState(employee?.hireDate ?? "");
+  const [birthDate, setBirthDate] = useState(employee?.birthDate ?? "");
+  const [managerId, setManagerId] = useState(employee?.managerId ?? "");
   const [employmentType, setEmploymentType] = useState(employee?.employmentType ?? "full_time");
+
+  const sectorId = employee?.sectorId ?? currentSector?.id;
+  const { data: coworkers } = useEmployees(open ? sectorId : undefined);
+  const managerOptions = (coworkers ?? []).filter(
+    (c) => c.id !== employee?.id && c.status !== "terminated"
+  );
 
   const mutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
       const result = isEdit ? await updateEmployee(data) : await createEmployee(data);
-      return result as { error?: any; data?: any; success?: boolean };
+      return result as EmployeeActionResult;
     },
     onSuccess: (result) => {
       if (result.error) {
@@ -89,15 +105,17 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
   function resetForm() {
     setFullName("");
     setEmail("");
+    setPhone("");
     setPosition("");
     setDepartment("");
     setHireDate("");
+    setBirthDate("");
+    setManagerId("");
     setEmploymentType("full_time");
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const sectorId = employee?.sectorId ?? currentSector?.id;
     if (!sectorId) return;
 
     mutation.mutate({
@@ -105,9 +123,12 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
       sectorId,
       fullName,
       email,
+      phone: phone || undefined,
       position,
       department,
       hireDate,
+      birthDate: birthDate || undefined,
+      managerId: managerId || undefined,
       employmentType,
     });
   }
@@ -146,15 +167,26 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@empresa.com"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@empresa.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -189,6 +221,17 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
                 />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="birthDate">Data de nascimento</Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <Label>Tipo de contrato</Label>
                 <Select
                   value={employmentType}
@@ -201,6 +244,25 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
                     {EMPLOYMENT_TYPES.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
                         {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Gestor</Label>
+                <Select
+                  value={managerId || "none"}
+                  onValueChange={(v) => setManagerId(v === "none" ? "" : v ?? "")}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sem gestor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem gestor</SelectItem>
+                    {managerOptions.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
