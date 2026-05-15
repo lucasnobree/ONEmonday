@@ -68,8 +68,13 @@ export default function AdminSettingsPage() {
         .eq("sector_id", currentSector!.id);
 
       if (memberData) {
+        type MemberRow = {
+          user_id: string;
+          users: { full_name: string; email: string };
+          roles: { name: string; slug: string };
+        };
         setMembers(
-          memberData.map((m: any) => ({
+          (memberData as unknown as MemberRow[]).map((m) => ({
             userId: m.user_id,
             fullName: m.users.full_name,
             email: m.users.email,

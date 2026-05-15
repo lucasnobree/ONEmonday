@@ -77,7 +77,9 @@ export async function deleteAttachment(attachmentId: string) {
     .single();
   if (!attachment) return { error: "Anexo nao encontrado" };
 
-  const sectorId = (attachment as any).cards?.sector_id;
+  const sectorId = (attachment as { cards?: { sector_id?: string } | null })
+    .cards?.sector_id;
+  if (!sectorId) return { error: "Anexo invalido" };
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, sectorId, "card_attachment", "delete"))
     return { error: "Sem permissao" };

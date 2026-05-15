@@ -71,7 +71,7 @@ function useRecentActivity(sectorId: string | undefined) {
       }
 
       for (const ticket of ticketsRes.data || []) {
-        const t = ticket as any;
+        const t = ticket as { cards?: { title?: string } | null };
         items.push({
           id: `ticket-${ticket.id}`,
           type: "ticket",
@@ -82,7 +82,7 @@ function useRecentActivity(sectorId: string | undefined) {
       }
 
       for (const deal of dealsRes.data || []) {
-        const d = deal as any;
+        const d = deal as { cards?: { title?: string } | null };
         items.push({
           id: `deal-${deal.id}`,
           type: "deal",

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { closeDealLostSchema, stageDefaultSchema } from "./crm";
 
-const UUID = "11111111-1111-1111-1111-111111111111";
+const UUID = "11111111-1111-4111-8111-111111111111";
 
 describe("closeDealLostSchema", () => {
   it("accepts a valid closed-lost payload", () => {

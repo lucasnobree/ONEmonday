@@ -2,7 +2,7 @@
  * Enforces Conventional Commits. See ../../CONTRIBUTING.md for the
  * accepted types and scopes.
  */
-export default {
+const config = {
   extends: ["@commitlint/config-conventional"],
   rules: {
     "scope-enum": [
@@ -33,3 +33,5 @@ export default {
     ],
   },
 };
+
+export default config;
