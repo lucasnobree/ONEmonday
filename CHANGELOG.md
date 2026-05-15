@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   directory search, and the onboarding responsible-role surfaced in the UI.
 - **Support Desk**: Canned Responses CRUD, first-response tracking, ticket
   reopening, ticket tags, and ticket assignment to sector agents.
+- **Finance** module: invoices, expenses, budgets, and a cash-flow dashboard;
+  all monetary amounts stored as integer cents.
+- **Legal** module: contract repository with renewal tracking, legal matters
+  intake, and a clause library.
 
 ### Changed
 - Sector switching is backed by `useSyncExternalStore` for snapshot-stable,
@@ -46,7 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Migrations
 - `00016` card completion tracking · `00020` CRM deal health ·
-  `00030` HR wave 1 · `00040` Support ticket tags.
+  `00030` HR wave 1 · `00040` Support ticket tags · `00070` Finance ·
+  `00080` Legal.
 
 ## [0.1.0] - 2026-05-15
 
