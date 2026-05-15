@@ -44,7 +44,11 @@ export type Resource =
   | "service"
   | "incident"
   | "deployment"
-  | "feature_flag";
+  | "feature_flag"
+  // Marketing
+  | "campaign"
+  | "content_item"
+  | "audience_segment";
 
 export type Action =
   | "create"
