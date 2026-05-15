@@ -69,11 +69,21 @@ RLS on every new table; per-wave numbering bands (Wave 1: 00016/00020/00030/
   typecheck 0, **131 unit tests**, build OK, migrations `00016/00020/00030/00040`
   applied locally.
 
-### Wave 2 — started then halted (paused for handoff)
-5 agents were launched to build the placeholder modules (Analytics, Dev-Tools,
-Finance, Legal, Marketing) but were **stopped before finishing**. The partial
-`feat/*-wave2` branches / worktrees are incomplete and should be **discarded**;
-Wave 2 should be **re-launched fresh** when resuming (see §6).
+### Wave 2 — partially done
+- **Finance** and **Legal** modules: built, integrated into `master`,
+  verified green (**213 unit tests**), migrations `00070`/`00080` applied,
+  sidebar nav promoted to active.
+- **Analytics, Dev-Tools, Marketing**: NOT done. Multiple background-agent
+  attempts failed on an API socket-instability issue. Partial work is
+  preserved on branches:
+  - `feat/analytics-wave2` — research, schema migration, validations/actions/
+    hooks (backend done, no UI).
+  - `feat/dev-tools-wave2` — research, schema, actions (UI in progress).
+  - `salvage/wave2-partial-2` — Marketing schema/actions/hooks/UI components.
+  - `salvage/wave2-partial` — earlier round-1 partial analytics/marketing.
+  None of these three is complete or verified. To finish them, either retry
+  the agents when the API is stable, or complete them manually from the
+  partial branches.
 
 ### ⚠️ Not yet pushed to GitHub
 - `origin/master` is still at the original `43c12e7`. Tag `v0.1.0` IS pushed.
@@ -87,12 +97,18 @@ Wave 2 should be **re-launched fresh** when resuming (see §6).
 
 1. **Push first** (see §5) — otherwise another device cloning the repo only
    gets the old `43c12e7` state.
-2. Check `git branch` for `feat/*-wave2`; if the agents finished, integrate
-   them: merge to `master`, resolve any `vitest.config.ts`/migration conflicts,
-   then promote the 5 modules in `apps/web/components/shared/sidebar.tsx` from
-   the `comingSoonModules` list to `activeModules`.
-3. `supabase migration up --local`, run `npm run lint/typecheck/test/build`.
-4. Run a senior-review pass per Wave 2 module (see `.claude/agents/senior-reviewer.md`).
-5. Open follow-ups deferred from Wave 1: WIP-limit check-then-insert race
+2. Finish Analytics, Dev-Tools and Marketing from their partial branches
+   (§5). Each still needs: completed UI, unit + E2E tests, then
+   `npm run lint/typecheck/test/build` green. Integrate by merging to
+   `master` (expect a `lib/permissions/types.ts` `Resource`-union conflict —
+   combine the additions), `supabase migration up --local`, and promote them
+   in `apps/web/components/shared/sidebar.tsx` from `comingSoonModules` to
+   `activeModules`.
+3. Run a senior-review pass per module (see `.claude/agents/senior-reviewer.md`).
+4. Open follow-ups deferred from Wave 1: WIP-limit check-then-insert race
    (`lib/actions/cards.ts`), HR document-deletion permission granularity, and
    minor review nits.
+
+Note: long-running background agents were hitting an API socket-instability
+issue during this session. If re-launching agents keeps failing, finish the
+modules in the foreground instead.
