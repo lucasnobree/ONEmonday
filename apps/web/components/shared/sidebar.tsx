@@ -52,13 +52,13 @@ const activeModules = [
   { name: "RH Portal", icon: UserCog, href: "/hr" },
   { name: "Financeiro", icon: DollarSign, href: "/finance" },
   { name: "Jurídico", icon: Scale, href: "/legal" },
-];
-
-const comingSoonModules = [
   { name: "Analytics", icon: BarChart3, href: "/analytics" },
   { name: "Dev Tools", icon: Terminal, href: "/dev-tools" },
   { name: "Marketing", icon: Megaphone, href: "/marketing" },
 ];
+
+const comingSoonModules: { name: string; icon: typeof Lock; href: string }[] =
+  [];
 
 function SidebarContent({ user }: SidebarProps) {
   const { currentSector } = useCurrentSector();
@@ -119,27 +119,31 @@ function SidebarContent({ user }: SidebarProps) {
           })}
         </div>
 
-        <Separator className="my-4" />
+        {comingSoonModules.length > 0 && (
+          <>
+            <Separator className="my-4" />
 
-        <div className="space-y-1">
-          <span className="px-3 text-xs font-medium text-muted-foreground">
-            Em breve
-          </span>
-          <TooltipProvider>
-            {comingSoonModules.map((mod) => (
-              <Tooltip key={mod.name}>
-                <TooltipTrigger
-                  render={<Link href={mod.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/50 hover:text-muted-foreground hover:bg-accent/50 transition-colors" />}
-                >
-                  <mod.icon className="h-4 w-4" />
-                  <span className="flex-1">{mod.name}</span>
-                  <Lock className="h-3 w-3" />
-                </TooltipTrigger>
-                <TooltipContent side="right">Em breve</TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
-        </div>
+            <div className="space-y-1">
+              <span className="px-3 text-xs font-medium text-muted-foreground">
+                Em breve
+              </span>
+              <TooltipProvider>
+                {comingSoonModules.map((mod) => (
+                  <Tooltip key={mod.name}>
+                    <TooltipTrigger
+                      render={<Link href={mod.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/50 hover:text-muted-foreground hover:bg-accent/50 transition-colors" />}
+                    >
+                      <mod.icon className="h-4 w-4" />
+                      <span className="flex-1">{mod.name}</span>
+                      <Lock className="h-3 w-3" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Em breve</TooltipContent>
+                  </Tooltip>
+                ))}
+              </TooltipProvider>
+            </div>
+          </>
+        )}
       </div>
 
       <Separator />

@@ -29,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all monetary amounts stored as integer cents.
 - **Legal** module: contract repository with renewal tracking, legal matters
   intake, and a clause library.
+- **Analytics** module: a sector dashboard with period-over-period KPI cards
+  and saved metric reports rendered as bar/line/pie/KPI charts.
+- **Dev-Tools** module: incident tracking with MTTA/MTTR metrics, a service
+  registry, a deployment log, and feature flags.
+- **Marketing** module: campaigns with funnel metrics, a content calendar,
+  and audience segments.
+- All nine sector modules are now active in the sidebar.
 
 ### Changed
 - Sector switching is backed by `useSyncExternalStore` for snapshot-stable,
@@ -50,8 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Migrations
 - `00016` card completion tracking · `00020` CRM deal health ·
-  `00030` HR wave 1 · `00040` Support ticket tags · `00070` Finance ·
-  `00080` Legal.
+  `00030` HR wave 1 · `00040` Support ticket tags · `00050` Analytics ·
+  `00060` Dev-Tools · `00070` Finance · `00080` Legal · `00090` Marketing.
 
 ## [0.1.0] - 2026-05-15
 
