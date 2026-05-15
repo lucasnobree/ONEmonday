@@ -6,6 +6,10 @@ import {
   createTicketSchema,
   submitCSATSchema,
 } from "@/lib/validations/support";
+import {
+  isSlaBreached,
+  computeResponseBreachOnResolve,
+} from "@/lib/support/sla";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -172,9 +176,7 @@ export async function markFirstResponse(ticketId: string) {
 
   const now = new Date();
   // The response SLA is breached if the first reply lands after its deadline.
-  const responseBreached = ticket.sla_response_due_at
-    ? now > new Date(ticket.sla_response_due_at)
-    : false;
+  const responseBreached = isSlaBreached(ticket.sla_response_due_at, now);
 
   const { error } = await supabase
     .from("support_tickets")
@@ -225,16 +227,15 @@ export async function resolveTicket(ticketId: string) {
   // Compute SLA breach flags at resolution time so the dashboard counts
   // and SLA compliance RPC stay accurate (previously never recomputed).
   const now = new Date();
-  const resolveBreached = ticket.sla_resolve_due_at
-    ? now > new Date(ticket.sla_resolve_due_at)
-    : false;
+  const resolveBreached = isSlaBreached(ticket.sla_resolve_due_at, now);
   // A ticket resolved with no recorded first response also missed the
   // response SLA if a response deadline existed.
-  const responseBreached =
-    ticket.sla_response_breached ||
-    (!ticket.first_response_at &&
-      !!ticket.sla_response_due_at &&
-      now > new Date(ticket.sla_response_due_at));
+  const responseBreached = computeResponseBreachOnResolve({
+    alreadyBreached: ticket.sla_response_breached,
+    firstResponseAt: ticket.first_response_at,
+    responseDueAt: ticket.sla_response_due_at,
+    at: now,
+  });
 
   // Mark ticket as resolved
   const { error: ticketError } = await supabase
