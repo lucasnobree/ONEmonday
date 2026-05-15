@@ -28,7 +28,11 @@ export type Resource =
   | "time_off"
   | "job_opening"
   | "candidate"
-  | "onboarding";
+  | "onboarding"
+  // Legal (Juridico)
+  | "contract"
+  | "legal_matter"
+  | "clause";
 
 export type Action =
   | "create"
