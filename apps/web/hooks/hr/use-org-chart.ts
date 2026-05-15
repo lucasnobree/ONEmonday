@@ -80,7 +80,7 @@ export function useDepartments(sectorId: string | undefined) {
       if (error) throw error;
 
       const depts = new Set<string>();
-      (data ?? []).forEach((d: any) => {
+      ((data ?? []) as { department: string | null }[]).forEach((d) => {
         if (d.department) depts.add(d.department);
       });
       return Array.from(depts).sort();

@@ -66,7 +66,10 @@ export function useEmployeeDetail(employeeId: string | null) {
         .order("start_date", { ascending: false });
 
       if (error) throw error;
-      return (data ?? []).map((r: any) => ({
+      type RawTimeOff = Omit<EmployeeTimeOff, "policy"> & {
+        policy: { name: string } | { name: string }[] | null;
+      };
+      return ((data ?? []) as RawTimeOff[]).map((r) => ({
         ...r,
         policy: Array.isArray(r.policy) ? r.policy[0] ?? null : r.policy,
       })) as EmployeeTimeOff[];

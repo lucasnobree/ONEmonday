@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Download } from "lucide-react";
+import { Users, Download, Search } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { exportToCSV } from "@/lib/utils/export-csv";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
@@ -44,6 +45,7 @@ export default function EmployeesPage() {
   const { data: employees, isLoading } = useEmployees(currentSector?.id);
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
   const departments = useMemo(() => {
@@ -55,13 +57,20 @@ export default function EmployeesPage() {
   }, [employees]);
 
   const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
     return (employees ?? []).filter((e: Employee) => {
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (departmentFilter !== "all" && e.department !== departmentFilter)
         return false;
+      if (term) {
+        const haystack = [e.full_name, e.email ?? "", e.position]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       return true;
     });
-  }, [employees, statusFilter, departmentFilter]);
+  }, [employees, statusFilter, departmentFilter, search]);
 
   if (!currentSector) {
     return (
@@ -75,6 +84,15 @@ export default function EmployeesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome, email ou cargo"
+              className="w-64 pl-8"
+            />
+          </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
             <SelectTrigger>
               <SelectValue placeholder="Status" />

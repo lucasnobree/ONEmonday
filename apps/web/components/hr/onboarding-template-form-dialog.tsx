@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   useCreateOnboardingTemplate,
   useUpdateOnboardingTemplate,
@@ -40,32 +40,47 @@ export function OnboardingTemplateFormDialog({
   sectorId,
   template,
 }: OnboardingTemplateFormDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        {/* Keyed so the form state re-initializes whenever the dialog is
+            reopened or switched between create / edit. */}
+        {open && (
+          <TemplateForm
+            key={template?.id ?? "new"}
+            sectorId={sectorId}
+            template={template}
+            onOpenChange={onOpenChange}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TemplateForm({
+  sectorId,
+  template,
+  onOpenChange,
+}: {
+  sectorId: string;
+  template?: OnboardingTemplate;
+  onOpenChange: (open: boolean) => void;
+}) {
   const createTemplate = useCreateOnboardingTemplate();
   const updateTemplate = useUpdateOnboardingTemplate();
   const isEdit = !!template;
 
-  const [name, setName] = useState("");
-  const [position, setPosition] = useState("");
-  const [items, setItems] = useState<TemplateItemForm[]>([]);
-
-  useEffect(() => {
-    if (template) {
-      setName(template.name);
-      setPosition(template.position ?? "");
-      setItems(
-        (template.items || []).map((i) => ({
-          title: i.title,
-          description: i.description ?? "",
-          responsibleRole: i.responsible_role ?? "",
-          dueDaysAfterHire: i.due_days_offset ?? 0,
-        }))
-      );
-    } else {
-      setName("");
-      setPosition("");
-      setItems([]);
-    }
-  }, [template, open]);
+  const [name, setName] = useState(template?.name ?? "");
+  const [position, setPosition] = useState(template?.position ?? "");
+  const [items, setItems] = useState<TemplateItemForm[]>(
+    (template?.items ?? []).map((i) => ({
+      title: i.title,
+      description: i.description ?? "",
+      responsibleRole: i.responsible_role ?? "",
+      dueDaysAfterHire: i.due_days_offset ?? 0,
+    }))
+  );
 
   function addItem() {
     setItems((prev) => [
@@ -99,7 +114,7 @@ export function OnboardingTemplateFormDialog({
       })),
     };
 
-    const result = isEdit
+    const result = template
       ? await updateTemplate.mutateAsync({ id: template.id, data: payload })
       : await createTemplate.mutateAsync(payload);
 
@@ -119,9 +134,7 @@ export function OnboardingTemplateFormDialog({
   const isPending = createTemplate.isPending || updateTemplate.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
               {isEdit ? "Editar Template" : "Novo Template de Onboarding"}
@@ -171,7 +184,8 @@ export function OnboardingTemplateFormDialog({
 
               {items.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4 border rounded-md">
-                  Nenhuma etapa adicionada. Clique em "Adicionar" para comecar.
+                  Nenhuma etapa adicionada. Clique em &quot;Adicionar&quot;
+                  para comecar.
                 </p>
               )}
 
@@ -259,8 +273,6 @@ export function OnboardingTemplateFormDialog({
                 : "Criar Template"}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    </form>
   );
 }

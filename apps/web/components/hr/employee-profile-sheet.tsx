@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmployeeFormDialog } from "@/components/hr/employee-form-dialog";
+import { getExpiryStatus } from "@/lib/hr/document-expiry";
 import { Calendar, Clock, UserX, Users, Play, Upload, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -447,6 +448,7 @@ function DocumentsTab({
 
   const [uploading, setUploading] = useState(false);
   const [uploadCategory, setUploadCategory] = useState("other");
+  const [uploadExpiry, setUploadExpiry] = useState("");
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -459,6 +461,7 @@ function DocumentsTab({
         sectorId: employee.sector_id,
         file,
         category: uploadCategory,
+        expiryDate: uploadExpiry || undefined,
       });
       if (result.error) {
         toast.error(
@@ -466,6 +469,7 @@ function DocumentsTab({
         );
       } else {
         toast.success("Documento enviado");
+        setUploadExpiry("");
       }
     } catch {
       toast.error("Erro ao enviar documento");
@@ -510,38 +514,52 @@ function DocumentsTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Select
-          value={uploadCategory}
-          onValueChange={(v) => setUploadCategory(v ?? "other")}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="contract">Contrato</SelectItem>
-            <SelectItem value="id">Documento</SelectItem>
-            <SelectItem value="certificate">Certificado</SelectItem>
-            <SelectItem value="other">Outro</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={uploading}
-          onClick={() =>
-            document.getElementById("doc-upload-input")?.click()
-          }
-        >
-          <Upload className="h-3.5 w-3.5 mr-1" />
-          {uploading ? "Enviando..." : "Enviar"}
-        </Button>
-        <input
-          id="doc-upload-input"
-          type="file"
-          className="hidden"
-          onChange={handleUpload}
-        />
+      <div className="space-y-2 rounded-md border p-3">
+        <div className="flex items-center gap-2">
+          <Select
+            value={uploadCategory}
+            onValueChange={(v) => setUploadCategory(v ?? "other")}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="contract">Contrato</SelectItem>
+              <SelectItem value="id">Documento</SelectItem>
+              <SelectItem value="certificate">Certificado</SelectItem>
+              <SelectItem value="other">Outro</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={uploading}
+            onClick={() =>
+              document.getElementById("doc-upload-input")?.click()
+            }
+          >
+            <Upload className="h-3.5 w-3.5 mr-1" />
+            {uploading ? "Enviando..." : "Enviar"}
+          </Button>
+          <input
+            id="doc-upload-input"
+            type="file"
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="doc-expiry" className="text-xs text-muted-foreground">
+            Validade (opcional)
+          </Label>
+          <Input
+            id="doc-expiry"
+            type="date"
+            value={uploadExpiry}
+            onChange={(e) => setUploadExpiry(e.target.value)}
+            className="h-8 w-40"
+          />
+        </div>
       </div>
 
       {Object.keys(grouped).length === 0 ? (
@@ -558,7 +576,9 @@ function DocumentsTab({
             <p className="text-xs font-medium text-muted-foreground uppercase">
               {CATEGORY_MAP[category] ?? category}
             </p>
-            {(docs ?? []).map((doc) => (
+            {(docs ?? []).map((doc) => {
+              const expiryStatus = getExpiryStatus(doc.expiry_date);
+              return (
               <div
                 key={doc.id}
                 className="flex items-center justify-between rounded-md border p-2"
@@ -566,11 +586,26 @@ function DocumentsTab({
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium truncate">{doc.name}</p>
+                      {expiryStatus === "expired" && (
+                        <Badge variant="destructive" className="text-[10px]">
+                          Vencido
+                        </Badge>
+                      )}
+                      {expiryStatus === "expiring" && (
+                        <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600">
+                          Vence em breve
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {dateFormat.format(new Date(doc.created_at))}
                       {doc.file_size
                         ? ` - ${(doc.file_size / 1024).toFixed(0)} KB`
+                        : ""}
+                      {doc.expiry_date
+                        ? ` - Validade: ${dateFormat.format(new Date(doc.expiry_date))}`
                         : ""}
                     </p>
                   </div>
@@ -592,7 +627,8 @@ function DocumentsTab({
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ))
       )}

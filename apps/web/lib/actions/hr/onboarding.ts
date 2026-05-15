@@ -179,6 +179,7 @@ export async function startOnboarding(employeeId: string, templateId: string) {
           onboarding_id: instance.id,
           title: item.title,
           description: item.description || null,
+          responsible_role: item.responsible_role || null,
           due_date: dueDate.toISOString().split("T")[0],
           is_completed: false,
           position: index,
@@ -199,11 +200,35 @@ export async function startOnboarding(employeeId: string, templateId: string) {
 }
 
 export async function toggleOnboardingItem(itemId: string, completed: boolean) {
+  const idParsed = z.string().uuid().safeParse(itemId);
+  if (!idParsed.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nao autenticado" };
+
+  // Resolve the owning instance/sector before mutating, so we can authorize.
+  const { data: item } = await supabase
+    .from("hr_onboarding_items")
+    .select("onboarding_id, hr_onboarding_instances(sector_id)")
+    .eq("id", itemId)
+    .single();
+
+  if (!item) return { error: "Etapa nao encontrada" };
+
+  const rawInstance = item.hr_onboarding_instances as
+    | { sector_id: string }
+    | { sector_id: string }[]
+    | null;
+  const instance = Array.isArray(rawInstance) ? rawInstance[0] : rawInstance;
+  if (!instance) return { error: "Onboarding nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, instance.sector_id, "onboarding", "update")) {
+    return { error: "Sem permissao" };
+  }
 
   const { error } = await supabase
     .from("hr_onboarding_items")
@@ -216,48 +241,48 @@ export async function toggleOnboardingItem(itemId: string, completed: boolean) {
 
   if (error) return { error: error.message };
 
-  const { data: item } = await supabase
+  // Auto-sync the instance status to whether every item is now complete.
+  const { data: allItems } = await supabase
     .from("hr_onboarding_items")
-    .select("onboarding_id")
-    .eq("id", itemId)
-    .single();
+    .select("is_completed")
+    .eq("onboarding_id", item.onboarding_id);
 
-  if (item) {
-    const { data: allItems } = await supabase
-      .from("hr_onboarding_items")
-      .select("is_completed")
-      .eq("onboarding_id", item.onboarding_id);
-
-    const allCompleted = allItems?.every((i) => i.is_completed);
-    if (allCompleted) {
-      await supabase
-        .from("hr_onboarding_instances")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", item.onboarding_id);
-    } else {
-      await supabase
-        .from("hr_onboarding_instances")
-        .update({
-          status: "in_progress",
-          completed_at: null,
-        })
-        .eq("id", item.onboarding_id);
-    }
-  }
+  const allCompleted = (allItems ?? []).every((i) => i.is_completed);
+  await supabase
+    .from("hr_onboarding_instances")
+    .update(
+      allCompleted
+        ? { status: "completed", completed_at: new Date().toISOString() }
+        : { status: "in_progress", completed_at: null }
+    )
+    .eq("id", item.onboarding_id);
 
   revalidatePath("/hr/onboarding");
   return { success: true };
 }
 
 export async function completeOnboarding(instanceId: string) {
+  const idParsed = z.string().uuid().safeParse(instanceId);
+  if (!idParsed.success) return { error: "ID invalido" };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nao autenticado" };
+
+  const { data: instance } = await supabase
+    .from("hr_onboarding_instances")
+    .select("sector_id")
+    .eq("id", instanceId)
+    .single();
+
+  if (!instance) return { error: "Onboarding nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, instance.sector_id, "onboarding", "update")) {
+    return { error: "Sem permissao" };
+  }
 
   const { error } = await supabase
     .from("hr_onboarding_instances")
