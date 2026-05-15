@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import {
+  useCannedResponses,
+  useDeleteCannedResponse,
+} from "@/hooks/support/use-canned-responses";
+import type { CannedResponse } from "@/hooks/support/use-canned-responses";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { CannedResponseFormDialog } from "@/components/support/canned-response-form-dialog";
 import {
   Card,
   CardContent,
@@ -15,39 +19,54 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { MessageSquareText, Copy, Check } from "lucide-react";
-
-function useCannedResponses(sectorId: string | undefined) {
-  return useQuery({
-    queryKey: ["canned-responses", sectorId],
-    queryFn: async () => {
-      if (!sectorId) return [];
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("canned_responses")
-        .select("*")
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("title", { ascending: true });
-      return data || [];
-    },
-    enabled: !!sectorId,
-  });
-}
+import {
+  MessageSquareText,
+  Copy,
+  Check,
+  Plus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 export default function CannedResponsesPage() {
   const { currentSector } = useCurrentSector();
-  const { data: responses, isLoading } = useCannedResponses(
-    currentSector?.id
-  );
+  const { data: responses, isLoading } = useCannedResponses(currentSector?.id);
+  const deleteMutation = useDeleteCannedResponse();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingResponse, setEditingResponse] = useState<
+    CannedResponse | undefined
+  >(undefined);
 
   function handleCopy(content: string, id: string) {
     navigator.clipboard.writeText(content);
     setCopiedId(id);
     toast.success("Copiado para a area de transferencia");
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  function handleCreate() {
+    setEditingResponse(undefined);
+    setDialogOpen(true);
+  }
+
+  function handleEdit(response: CannedResponse) {
+    setEditingResponse(response);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    const result = await deleteMutation.mutateAsync(id);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao excluir resposta"
+      );
+      return;
+    }
+    toast.success("Resposta excluida");
   }
 
   if (!currentSector) {
@@ -70,6 +89,16 @@ export default function CannedResponsesPage() {
       }
     >
       <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Respostas reutilizaveis para agilizar o atendimento de tickets.
+          </p>
+          <Button size="sm" onClick={handleCreate}>
+            <Plus className="size-4 mr-1" />
+            Nova Resposta
+          </Button>
+        </div>
+
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -85,10 +114,10 @@ export default function CannedResponsesPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {responses.map((response: any) => (
+            {responses.map((response) => (
               <Card
                 key={response.id}
-                className="hover:shadow-md transition-shadow cursor-pointer"
+                className="hover:shadow-md transition-shadow cursor-pointer group"
                 onClick={() =>
                   setExpandedId(
                     expandedId === response.id ? null : response.id
@@ -137,12 +166,46 @@ export default function CannedResponsesPage() {
                   >
                     {response.content}
                   </p>
+                  <div className="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(response);
+                      }}
+                      title="Editar"
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(response.id);
+                      }}
+                      title="Excluir"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      <CannedResponseFormDialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setEditingResponse(undefined);
+        }}
+        sectorId={currentSector.id}
+        response={editingResponse}
+      />
     </PermissionGate>
   );
 }
