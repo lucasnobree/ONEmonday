@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useTicketDetail } from "@/hooks/support/use-ticket-detail";
-import { resolveTicket } from "@/lib/actions/support/tickets";
+import {
+  resolveTicket,
+  reopenTicket,
+  markFirstResponse,
+} from "@/lib/actions/support/tickets";
 import { addTicketComment } from "@/lib/actions/support/comments";
 import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
 import {
@@ -28,6 +32,8 @@ import {
   MessageSquare,
   Send,
   ArrowUpRight,
+  RotateCcw,
+  Reply,
 } from "lucide-react";
 
 interface TicketDetailSheetProps {
@@ -285,6 +291,21 @@ function DetailsTab({
           <span className="text-muted-foreground text-xs">Email solicitante</span>
           <p className="font-medium truncate">
             {ticket.requester_email || "---"}
+          </p>
+        </div>
+        <div>
+          <span className="text-muted-foreground text-xs">
+            Primeira resposta
+          </span>
+          <p className="font-medium">
+            {ticket.first_response_at
+              ? new Date(ticket.first_response_at).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Pendente"}
           </p>
         </div>
         <div>
@@ -557,7 +578,15 @@ export function TicketDetailSheet({
   const { data: ticket, isLoading } = useTicketDetail(ticketId);
   const queryClient = useQueryClient();
   const [resolving, setResolving] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [markingResponse, setMarkingResponse] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
+
+  function invalidateTicket() {
+    queryClient.invalidateQueries({ queryKey: ["ticket-detail", ticketId] });
+    queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["sla-status"] });
+  }
 
   async function handleResolve() {
     if (!ticket) return;
@@ -573,8 +602,43 @@ export function TicketDetailSheet({
     }
 
     toast.success("Ticket resolvido");
-    queryClient.invalidateQueries({ queryKey: ["ticket-detail", ticketId] });
-    queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    invalidateTicket();
+  }
+
+  async function handleReopen() {
+    if (!ticket) return;
+    setReopening(true);
+    const result = await reopenTicket(ticket.id);
+    setReopening(false);
+
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string" ? result.error : "Erro ao reabrir"
+      );
+      return;
+    }
+
+    toast.success("Ticket reaberto");
+    invalidateTicket();
+  }
+
+  async function handleMarkFirstResponse() {
+    if (!ticket) return;
+    setMarkingResponse(true);
+    const result = await markFirstResponse(ticket.id);
+    setMarkingResponse(false);
+
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao registrar resposta"
+      );
+      return;
+    }
+
+    toast.success("Primeira resposta registrada");
+    invalidateTicket();
   }
 
   return (
@@ -677,10 +741,35 @@ export function TicketDetailSheet({
             </Tabs>
 
             {/* Footer actions */}
-            {!ticket.resolved_at && (
-              <>
-                <Separator />
-                <div className="p-4 pt-2 flex gap-2">
+            <Separator />
+            {ticket.resolved_at ? (
+              <div className="p-4 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={handleReopen}
+                  disabled={reopening}
+                  className="w-full"
+                >
+                  <RotateCcw className="size-4 mr-2" />
+                  {reopening ? "Reabrindo..." : "Reabrir Ticket"}
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 pt-2 space-y-2">
+                {!ticket.first_response_at && (
+                  <Button
+                    variant="outline"
+                    onClick={handleMarkFirstResponse}
+                    disabled={markingResponse}
+                    className="w-full"
+                  >
+                    <Reply className="size-4 mr-2" />
+                    {markingResponse
+                      ? "Registrando..."
+                      : "Marcar primeira resposta"}
+                  </Button>
+                )}
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     onClick={() => setEscalateOpen(true)}
@@ -698,7 +787,7 @@ export function TicketDetailSheet({
                     {resolving ? "Resolvendo..." : "Resolver Ticket"}
                   </Button>
                 </div>
-              </>
+              </div>
             )}
 
             {ticket && !ticket.resolved_at && (

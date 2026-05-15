@@ -51,6 +51,28 @@ export async function addTicketComment(formData: unknown) {
     metadata: {},
   });
 
+  // Auto-record the first agent response: stamp first_response_at and
+  // compute the response SLA breach flag the first time someone replies.
+  const { data: ticket } = await supabase
+    .from("support_tickets")
+    .select("id, first_response_at, sla_response_due_at")
+    .eq("card_id", parsed.data.cardId)
+    .maybeSingle();
+
+  if (ticket && !ticket.first_response_at) {
+    const now = new Date();
+    const responseBreached = ticket.sla_response_due_at
+      ? now > new Date(ticket.sla_response_due_at)
+      : false;
+    await supabase
+      .from("support_tickets")
+      .update({
+        first_response_at: now.toISOString(),
+        sla_response_breached: responseBreached,
+      })
+      .eq("id", ticket.id);
+  }
+
   revalidatePath("/");
   return { data };
 }
