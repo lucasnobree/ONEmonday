@@ -3,6 +3,8 @@ node_modules
 .env.local
 .env*.local
 *.log
-.claude/*
-!.claude/agents/
+# Track .claude markdown (agent definitions etc.); never the agent worktrees
+# (nested git checkouts) or machine-local settings.
+.claude/worktrees/
+.claude/settings.local.json
 .playwright-mcp/

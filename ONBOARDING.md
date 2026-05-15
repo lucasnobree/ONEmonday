@@ -69,11 +69,11 @@ RLS on every new table; per-wave numbering bands (Wave 1: 00016/00020/00030/
   typecheck 0, **131 unit tests**, build OK, migrations `00016/00020/00030/00040`
   applied locally.
 
-### In progress — Wave 2
-5 background agents are building the placeholder modules from scratch, each on
-its own branch: `feat/analytics-wave2`, `feat/dev-tools-wave2`,
-`feat/finance-wave2`, `feat/legal-wave2`, `feat/marketing-wave2`. When they
-finish, their branches exist **locally only**.
+### Wave 2 — started then halted (paused for handoff)
+5 agents were launched to build the placeholder modules (Analytics, Dev-Tools,
+Finance, Legal, Marketing) but were **stopped before finishing**. The partial
+`feat/*-wave2` branches / worktrees are incomplete and should be **discarded**;
+Wave 2 should be **re-launched fresh** when resuming (see §6).
 
 ### ⚠️ Not yet pushed to GitHub
 - `origin/master` is still at the original `43c12e7`. Tag `v0.1.0` IS pushed.
