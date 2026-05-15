@@ -28,7 +28,12 @@ export type Resource =
   | "time_off"
   | "job_opening"
   | "candidate"
-  | "onboarding";
+  | "onboarding"
+  // Finance
+  | "invoice"
+  | "expense"
+  | "budget"
+  | "transaction";
 
 export type Action =
   | "create"
