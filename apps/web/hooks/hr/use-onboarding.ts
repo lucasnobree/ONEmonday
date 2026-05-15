@@ -16,6 +16,7 @@ export interface OnboardingItem {
   onboarding_id: string;
   title: string;
   description: string | null;
+  responsible_role: string | null;
   due_date: string | null;
   is_completed: boolean;
   completed_at: string | null;
@@ -60,6 +61,34 @@ export interface OnboardingTemplate {
   created_at: string;
 }
 
+const INSTANCE_SELECT = `
+  id, employee_id, template_id, sector_id, start_date, status, completed_at, created_at,
+  hr_employees (full_name, position, department),
+  hr_onboarding_templates (name),
+  hr_onboarding_items (id, onboarding_id, title, description, responsible_role, due_date, is_completed, completed_at, position)
+`;
+
+/** Shape of an instance row as returned by Supabase before flattening. */
+interface RawOnboardingInstance {
+  hr_employees: OnboardingInstance["employee"];
+  hr_onboarding_templates: OnboardingInstance["template"];
+  hr_onboarding_items: OnboardingItem[] | null;
+  [key: string]: unknown;
+}
+
+function flattenInstance(row: RawOnboardingInstance): OnboardingInstance {
+  const { hr_employees, hr_onboarding_templates, hr_onboarding_items, ...rest } =
+    row;
+  return {
+    ...rest,
+    employee: hr_employees,
+    template: hr_onboarding_templates,
+    items: [...(hr_onboarding_items ?? [])].sort(
+      (a, b) => a.position - b.position
+    ),
+  } as OnboardingInstance;
+}
+
 export function useOnboardingInstances(sectorId: string | undefined) {
   const supabase = createClient();
 
@@ -70,27 +99,15 @@ export function useOnboardingInstances(sectorId: string | undefined) {
 
       const { data, error } = await supabase
         .from("hr_onboarding_instances")
-        .select(
-          `
-          id, employee_id, template_id, sector_id, start_date, status, completed_at, created_at,
-          hr_employees (full_name, position, department),
-          hr_onboarding_templates (name),
-          hr_onboarding_items (id, onboarding_id, title, description, due_date, is_completed, completed_at, position)
-        `
-        )
+        .select(INSTANCE_SELECT)
         .eq("sector_id", sectorId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      return (data || []).map((d: any) => ({
-        ...d,
-        employee: d.hr_employees,
-        template: d.hr_onboarding_templates,
-        items: (d.hr_onboarding_items || []).sort(
-          (a: any, b: any) => a.position - b.position
-        ),
-      })) as OnboardingInstance[];
+      return ((data ?? []) as unknown as RawOnboardingInstance[]).map(
+        flattenInstance
+      );
     },
     enabled: !!sectorId,
   });
@@ -106,27 +123,13 @@ export function useOnboardingDetail(instanceId: string | null) {
 
       const { data, error } = await supabase
         .from("hr_onboarding_instances")
-        .select(
-          `
-          id, employee_id, template_id, sector_id, start_date, status, completed_at, created_at,
-          hr_employees (full_name, position, department),
-          hr_onboarding_templates (name),
-          hr_onboarding_items (id, onboarding_id, title, description, due_date, is_completed, completed_at, position)
-        `
-        )
+        .select(INSTANCE_SELECT)
         .eq("id", instanceId)
         .single();
 
       if (error) throw error;
 
-      return {
-        ...data,
-        employee: (data as any).hr_employees,
-        template: (data as any).hr_onboarding_templates,
-        items: ((data as any).hr_onboarding_items || []).sort(
-          (a: any, b: any) => a.position - b.position
-        ),
-      } as OnboardingInstance;
+      return flattenInstance(data as unknown as RawOnboardingInstance);
     },
     enabled: !!instanceId,
   });
@@ -149,11 +152,13 @@ export function useOnboardingTemplates(sectorId: string | undefined) {
 
       if (error) throw error;
 
-      return (data || []).map((t: any) => {
+      return ((data ?? []) as Record<string, unknown>[]).map((t) => {
         let items: OnboardingTemplateItem[] = [];
         try {
           items =
-            typeof t.items === "string" ? JSON.parse(t.items) : t.items || [];
+            typeof t.items === "string"
+              ? (JSON.parse(t.items) as OnboardingTemplateItem[])
+              : ((t.items as OnboardingTemplateItem[] | null) ?? []);
         } catch {
           items = [];
         }

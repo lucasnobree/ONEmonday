@@ -79,9 +79,7 @@ export function OnboardingDetailSheet({
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{instance.template.name}</span>
                   <Badge
-                    variant={
-                      (statusMap[instance.status]?.variant as any) ?? "outline"
-                    }
+                    variant={statusMap[instance.status]?.variant ?? "outline"}
                   >
                     {statusMap[instance.status]?.label ?? instance.status}
                   </Badge>
@@ -164,7 +162,12 @@ export function OnboardingDetailSheet({
                             {item.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {item.responsible_role && (
+                            <span className="text-xs text-muted-foreground">
+                              Responsavel: {item.responsible_role}
+                            </span>
+                          )}
                           {item.due_date && (
                             <span
                               className={`text-xs ${
