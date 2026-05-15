@@ -284,6 +284,36 @@ INSERT INTO canned_responses (sector_id, title, content, category, shortcut, cre
 ON CONFLICT DO NOTHING;
 
 
+-- ============================================================
+-- TICKET TAGS (migration 00040)
+-- ============================================================
+
+INSERT INTO ticket_tags (id, sector_id, name, color, created_by) VALUES
+  ('a7100000-0001-0000-0000-000000000001'::uuid,
+   '3826e880-b077-4930-a676-7c5b96d10f63', 'bug', 'red',
+   '765672fc-f1ae-408d-9758-68cd0b2269d6'),
+  ('a7100000-0001-0000-0000-000000000002'::uuid,
+   '3826e880-b077-4930-a676-7c5b96d10f63', 'duvida', 'blue',
+   '765672fc-f1ae-408d-9758-68cd0b2269d6'),
+  ('a7100000-0001-0000-0000-000000000003'::uuid,
+   '3826e880-b077-4930-a676-7c5b96d10f63', 'cliente-vip', 'purple',
+   '765672fc-f1ae-408d-9758-68cd0b2269d6')
+ON CONFLICT (sector_id, name) DO NOTHING;
+
+-- Link a couple of tags to existing sample tickets.
+INSERT INTO support_ticket_tags (ticket_id, tag_id)
+SELECT st.id, 'a7100000-0001-0000-0000-000000000001'::uuid
+FROM support_tickets st
+WHERE st.card_id = 'cd100000-f001-0000-0000-000000000001'::uuid
+ON CONFLICT DO NOTHING;
+
+INSERT INTO support_ticket_tags (ticket_id, tag_id)
+SELECT st.id, 'a7100000-0001-0000-0000-000000000003'::uuid
+FROM support_tickets st
+WHERE st.card_id = 'cd100000-f001-0000-0000-000000000001'::uuid
+ON CONFLICT DO NOTHING;
+
+
 -- ############################################################
 --                        CRM MODULE
 -- ############################################################

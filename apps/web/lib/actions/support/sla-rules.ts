@@ -31,6 +31,7 @@ export async function createSlaRule(formData: unknown) {
       response_time_hours: parsed.data.responseTimeHours,
       resolve_time_hours: parsed.data.resolveTimeHours,
       business_hours_only: parsed.data.businessHoursOnly,
+      is_active: parsed.data.isActive,
     })
     .select()
     .single();
@@ -76,6 +77,7 @@ export async function updateSlaRule(id: string, formData: unknown) {
       response_time_hours: parsed.data.responseTimeHours,
       resolve_time_hours: parsed.data.resolveTimeHours,
       business_hours_only: parsed.data.businessHoursOnly,
+      is_active: parsed.data.isActive,
     })
     .eq("id", id);
 

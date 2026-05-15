@@ -30,7 +30,7 @@ export async function createKBArticle(formData: unknown) {
       category: parsed.data.category,
       tags: parsed.data.tags,
       author_id: user.id,
-      is_published: false,
+      is_published: parsed.data.isPublished,
     })
     .select()
     .single();
@@ -74,6 +74,7 @@ export async function updateKBArticle(id: string, formData: unknown) {
       content: parsed.data.content,
       category: parsed.data.category,
       tags: parsed.data.tags,
+      is_published: parsed.data.isPublished,
     })
     .eq("id", id);
 

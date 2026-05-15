@@ -30,6 +30,11 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { TicketDetailSheet } from "@/components/support/ticket-detail-sheet";
 import { useSlaStatus } from "@/hooks/support/use-sla-status";
 import type { SlaStatusEntry } from "@/hooks/support/use-sla-status";
+import {
+  useSectorTags,
+  useSectorTicketTags,
+  TAG_COLOR_CLASSES,
+} from "@/hooks/support/use-ticket-tags";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -77,10 +82,13 @@ export default function TicketsPage() {
   const { currentSector } = useCurrentSector();
   const { data: tickets, isLoading } = useTickets(currentSector?.id);
   const { data: slaEntries } = useSlaStatus();
+  const { data: sectorTags } = useSectorTags(currentSector?.id);
+  const { data: ticketTagsMap } = useSectorTicketTags(currentSector?.id);
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const slaMap = useMemo(() => {
@@ -96,23 +104,34 @@ export default function TicketsPage() {
   const categories = useMemo(() => {
     if (!tickets) return [];
     const cats = new Set(
-      tickets.map((t: any) => t.category).filter(Boolean)
+      tickets.map((t) => t.category).filter(Boolean)
     );
     return Array.from(cats) as string[];
   }, [tickets]);
 
   const filtered = useMemo(() => {
     if (!tickets) return [];
-    return tickets.filter((t: any) => {
+    return tickets.filter((t) => {
       if (statusFilter === "open" && t.resolved_at) return false;
       if (statusFilter === "resolved" && !t.resolved_at) return false;
       if (priorityFilter !== "all" && t.card?.priority !== priorityFilter)
         return false;
       if (categoryFilter !== "all" && t.category !== categoryFilter)
         return false;
+      if (tagFilter !== "all") {
+        const tags = ticketTagsMap?.get(t.id) ?? [];
+        if (!tags.some((tag) => tag.id === tagFilter)) return false;
+      }
       return true;
     });
-  }, [tickets, statusFilter, priorityFilter, categoryFilter]);
+  }, [
+    tickets,
+    statusFilter,
+    priorityFilter,
+    categoryFilter,
+    tagFilter,
+    ticketTagsMap,
+  ]);
 
   async function handleResolve(ticketId: string) {
     const result = await resolveTicket(ticketId);
@@ -188,15 +207,31 @@ export default function TicketsPage() {
             </SelectContent>
           </Select>
 
+          <Select value={tagFilter} onValueChange={(v) => setTagFilter(v ?? "all")}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as tags</SelectItem>
+              {(sectorTags ?? []).map((tag) => (
+                <SelectItem key={tag.id} value={tag.id}>
+                  {tag.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="ml-auto flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() =>
                 exportToCSV(
-                  filtered.map((t: any) => ({
+                  filtered.map((t) => ({
                     titulo: t.card?.title ?? "",
-                    prioridade: priorityLabels[t.card?.priority] ?? t.card?.priority ?? "",
+                    prioridade: t.card?.priority
+                      ? (priorityLabels[t.card.priority] ?? t.card.priority)
+                      : "",
                     status: t.resolved_at ? "Resolvido" : "Aberto",
                     categoria: t.category ?? "",
                     canal: t.channel ?? "",
@@ -274,6 +309,7 @@ export default function TicketsPage() {
                       <th className="pb-2 font-medium">Prioridade</th>
                       <th className="pb-2 font-medium">Status</th>
                       <th className="pb-2 font-medium">Categoria</th>
+                      <th className="pb-2 font-medium">Responsavel</th>
                       <th className="pb-2 font-medium">Canal</th>
                       <th className="pb-2 font-medium">SLA</th>
                       <th className="pb-2 font-medium">Criado em</th>
@@ -281,23 +317,44 @@ export default function TicketsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((ticket: any) => (
+                    {filtered.map((ticket) => (
                       <tr
                         key={ticket.id}
                         className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
                         onClick={() => setSelectedTicketId(ticket.card?.id || null)}
                       >
                         <td className="py-3 pr-4 font-medium">
-                          {ticket.card?.title || "—"}
+                          <div className="space-y-1">
+                            <span>{ticket.card?.title || "—"}</span>
+                            {(() => {
+                              const tags = ticketTagsMap?.get(ticket.id) ?? [];
+                              if (!tags.length) return null;
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {tags.map((tag) => (
+                                    <Badge
+                                      key={tag.id}
+                                      variant="secondary"
+                                      className={`text-[10px] px-1.5 py-0 font-normal ${
+                                        TAG_COLOR_CLASSES[tag.color]
+                                      }`}
+                                    >
+                                      {tag.name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td className="py-3 pr-4">
                           <Badge
                             variant="secondary"
                             className={
-                              priorityColors[ticket.card?.priority] || ""
+                              priorityColors[ticket.card?.priority ?? ""] || ""
                             }
                           >
-                            {priorityLabels[ticket.card?.priority] ||
+                            {priorityLabels[ticket.card?.priority ?? ""] ||
                               ticket.card?.priority}
                           </Badge>
                         </td>
@@ -325,6 +382,16 @@ export default function TicketsPage() {
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground">
                           {ticket.category || "—"}
+                        </td>
+                        <td className="py-3 pr-4 text-muted-foreground">
+                          {(() => {
+                            const assignees = ticket.card?.card_assignees ?? [];
+                            if (!assignees.length) return "—";
+                            const names = assignees
+                              .map((a) => a.users?.full_name)
+                              .filter(Boolean);
+                            return names.length ? names.join(", ") : "—";
+                          })()}
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground capitalize">
                           {ticket.channel || "—"}

@@ -142,7 +142,7 @@ export default function SupportDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tickets.slice(0, 10).map((ticket: any) => (
+                    {tickets.slice(0, 10).map((ticket) => (
                       <tr
                         key={ticket.id}
                         className="border-b last:border-0 hover:bg-muted/50"
@@ -154,10 +154,10 @@ export default function SupportDashboardPage() {
                           <Badge
                             variant="secondary"
                             className={
-                              priorityColors[ticket.card?.priority] || ""
+                              priorityColors[ticket.card?.priority ?? ""] || ""
                             }
                           >
-                            {priorityLabels[ticket.card?.priority] ||
+                            {priorityLabels[ticket.card?.priority ?? ""] ||
                               ticket.card?.priority}
                           </Badge>
                         </td>

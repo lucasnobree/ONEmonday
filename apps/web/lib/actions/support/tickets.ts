@@ -6,6 +6,10 @@ import {
   createTicketSchema,
   submitCSATSchema,
 } from "@/lib/validations/support";
+import {
+  isSlaBreached,
+  computeResponseBreachOnResolve,
+} from "@/lib/support/sla";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -142,6 +146,59 @@ export async function createTicket(formData: unknown) {
   return { data: { ...ticket, card } };
 }
 
+export async function markFirstResponse(ticketId: string) {
+  const parsed = z.string().uuid().safeParse(ticketId);
+  if (!parsed.success) return { error: "ID invalido" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: ticket } = await supabase
+    .from("support_tickets")
+    .select("sector_id, card_id, first_response_at, sla_response_due_at")
+    .eq("id", ticketId)
+    .single();
+
+  if (!ticket) return { error: "Ticket nao encontrado" };
+
+  // Idempotent: the first response timestamp is only ever set once.
+  if (ticket.first_response_at) {
+    return { success: true, alreadyMarked: true };
+  }
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  const now = new Date();
+  // The response SLA is breached if the first reply lands after its deadline.
+  const responseBreached = isSlaBreached(ticket.sla_response_due_at, now);
+
+  const { error } = await supabase
+    .from("support_tickets")
+    .update({
+      first_response_at: now.toISOString(),
+      sla_response_breached: responseBreached,
+    })
+    .eq("id", ticketId);
+
+  if (error) return { error: error.message };
+
+  await supabase.from("card_activity_log").insert({
+    card_id: ticket.card_id,
+    user_id: user.id,
+    action: "status_changed",
+    metadata: { title: "Primeira resposta registrada" },
+  });
+
+  revalidatePath("/");
+  return { success: true };
+}
+
 export async function resolveTicket(ticketId: string) {
   const parsed = z.string().uuid().safeParse(ticketId);
   if (!parsed.success) return { error: "ID invalido" };
@@ -154,7 +211,9 @@ export async function resolveTicket(ticketId: string) {
 
   const { data: ticket } = await supabase
     .from("support_tickets")
-    .select("sector_id, card_id")
+    .select(
+      "sector_id, card_id, first_response_at, sla_response_due_at, sla_resolve_due_at, sla_response_breached"
+    )
     .eq("id", ticketId)
     .single();
 
@@ -165,10 +224,27 @@ export async function resolveTicket(ticketId: string) {
     return { error: "Sem permissao" };
   }
 
+  // Compute SLA breach flags at resolution time so the dashboard counts
+  // and SLA compliance RPC stay accurate (previously never recomputed).
+  const now = new Date();
+  const resolveBreached = isSlaBreached(ticket.sla_resolve_due_at, now);
+  // A ticket resolved with no recorded first response also missed the
+  // response SLA if a response deadline existed.
+  const responseBreached = computeResponseBreachOnResolve({
+    alreadyBreached: ticket.sla_response_breached,
+    firstResponseAt: ticket.first_response_at,
+    responseDueAt: ticket.sla_response_due_at,
+    at: now,
+  });
+
   // Mark ticket as resolved
   const { error: ticketError } = await supabase
     .from("support_tickets")
-    .update({ resolved_at: new Date().toISOString() })
+    .update({
+      resolved_at: now.toISOString(),
+      sla_resolve_breached: resolveBreached,
+      sla_response_breached: responseBreached,
+    })
     .eq("id", ticketId);
 
   if (ticketError) return { error: ticketError.message };
@@ -196,6 +272,74 @@ export async function resolveTicket(ticketId: string) {
         .eq("id", ticket.card_id);
     }
   }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function reopenTicket(ticketId: string) {
+  const parsed = z.string().uuid().safeParse(ticketId);
+  if (!parsed.success) return { error: "ID invalido" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: ticket } = await supabase
+    .from("support_tickets")
+    .select("sector_id, card_id, resolved_at")
+    .eq("id", ticketId)
+    .single();
+
+  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket.resolved_at) return { error: "Ticket ja esta aberto" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  // Clear the resolution timestamp.
+  const { error: ticketError } = await supabase
+    .from("support_tickets")
+    .update({ resolved_at: null })
+    .eq("id", ticketId);
+
+  if (ticketError) return { error: ticketError.message };
+
+  // Move the card off the done column back to the first column.
+  const { data: card } = await supabase
+    .from("cards")
+    .select("board_id")
+    .eq("id", ticket.card_id)
+    .single();
+
+  if (card) {
+    const { data: firstColumn } = await supabase
+      .from("board_columns")
+      .select("id")
+      .eq("board_id", card.board_id)
+      .eq("is_done_column", false)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (firstColumn) {
+      await supabase
+        .from("cards")
+        .update({ column_id: firstColumn.id })
+        .eq("id", ticket.card_id);
+    }
+  }
+
+  await supabase.from("card_activity_log").insert({
+    card_id: ticket.card_id,
+    user_id: user.id,
+    action: "status_changed",
+    metadata: { title: "Ticket reaberto" },
+  });
 
   revalidatePath("/");
   return { success: true };

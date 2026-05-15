@@ -4,9 +4,15 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useTicketDetail } from "@/hooks/support/use-ticket-detail";
-import { resolveTicket } from "@/lib/actions/support/tickets";
+import {
+  resolveTicket,
+  reopenTicket,
+  markFirstResponse,
+} from "@/lib/actions/support/tickets";
 import { addTicketComment } from "@/lib/actions/support/comments";
 import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
+import { TicketTagEditor } from "@/components/support/ticket-tag-editor";
+import { TicketAssigneePicker } from "@/components/support/ticket-assignee-picker";
 import {
   Sheet,
   SheetContent,
@@ -28,6 +34,8 @@ import {
   MessageSquare,
   Send,
   ArrowUpRight,
+  RotateCcw,
+  Reply,
 } from "lucide-react";
 
 interface TicketDetailSheetProps {
@@ -151,9 +159,18 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 // -- Escalation History --
+interface EscalationLogEntry {
+  id: string;
+  reason: string;
+  created_at: string;
+  from_sector: { name: string } | null;
+  to_sector: { name: string } | null;
+  user: { full_name: string } | null;
+}
+
 function EscalationHistory({ ticketId }: { ticketId: string }) {
   const supabase = createClient();
-  const { data: logs } = useQuery({
+  const { data: logs } = useQuery<EscalationLogEntry[]>({
     queryKey: ["escalation-log", ticketId],
     queryFn: async () => {
       const { data } = await supabase
@@ -161,7 +178,7 @@ function EscalationHistory({ ticketId }: { ticketId: string }) {
         .select("*, from_sector:sectors!ticket_escalation_log_from_sector_id_fkey(name), to_sector:sectors!ticket_escalation_log_to_sector_id_fkey(name), user:users!ticket_escalation_log_escalated_by_fkey(full_name)")
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: false });
-      return data || [];
+      return (data || []) as unknown as EscalationLogEntry[];
     },
     enabled: !!ticketId,
   });
@@ -178,18 +195,18 @@ function EscalationHistory({ ticketId }: { ticketId: string }) {
         <div className="relative">
           <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
           <div className="space-y-3">
-            {logs.map((log: any) => (
+            {logs.map((log) => (
               <div key={log.id} className="relative pl-6">
                 <div className="absolute left-0 top-1 size-[14px] rounded-full border-2 border-background bg-orange-500" />
                 <div className="space-y-0.5">
                   <p className="text-sm">
-                    <span className="font-medium">{(log.from_sector as any)?.name}</span>
+                    <span className="font-medium">{log.from_sector?.name}</span>
                     {" -> "}
-                    <span className="font-medium">{(log.to_sector as any)?.name}</span>
+                    <span className="font-medium">{log.to_sector?.name}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">{log.reason}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{(log.user as any)?.full_name || "---"}</span>
+                    <span>{log.user?.full_name || "---"}</span>
                     <span>-</span>
                     <span>{formatRelativeTime(log.created_at)}</span>
                   </div>
@@ -230,6 +247,14 @@ function DetailsTab({
           <p className="text-sm whitespace-pre-wrap">{card.description}</p>
         </div>
       )}
+
+      <Separator />
+
+      {/* Tags */}
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">Tags</h4>
+        <TicketTagEditor ticketId={ticket.id} sectorId={ticket.sector_id} />
+      </div>
 
       <Separator />
 
@@ -279,6 +304,21 @@ function DetailsTab({
           </p>
         </div>
         <div>
+          <span className="text-muted-foreground text-xs">
+            Primeira resposta
+          </span>
+          <p className="font-medium">
+            {ticket.first_response_at
+              ? new Date(ticket.first_response_at).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Pendente"}
+          </p>
+        </div>
+        <div>
           <span className="text-muted-foreground text-xs">SLA Resposta</span>
           <p>
             <span
@@ -303,32 +343,24 @@ function DetailsTab({
       </div>
 
       {/* Assignees */}
-      {card?.card_assignees && card.card_assignees.length > 0 && (
-        <>
-          <Separator />
-          <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">
-              Responsaveis
-            </h4>
-            <div className="space-y-1">
-              {card.card_assignees.map((a) => (
-                <div
-                  key={a.user_id}
-                  className="flex items-center gap-2 text-sm"
-                >
-                  <div className="size-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                    {(a.users?.full_name || "?").charAt(0).toUpperCase()}
-                  </div>
-                  <span>{a.users?.full_name || a.users?.email || "---"}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      <Separator />
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">
+          Responsaveis
+        </h4>
+        <TicketAssigneePicker
+          ticketId={ticket.id}
+          ticketCardId={ticket.card_id}
+          sectorId={ticket.sector_id}
+          assignees={(card?.card_assignees ?? []).map((a) => ({
+            user_id: a.user_id,
+            name: a.users?.full_name || a.users?.email || "---",
+          }))}
+        />
+      </div>
 
       {/* Escalation Info */}
-      {(ticket as any).escalated_to_sector_id && (
+      {ticket.escalated_to_sector_id && (
         <>
           <Separator />
           <div>
@@ -347,13 +379,13 @@ function DetailsTab({
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="text-muted-foreground text-xs">Motivo</span>
-                <p className="text-sm">{(ticket as any).escalation_reason || "---"}</p>
+                <p className="text-sm">{ticket.escalation_reason || "---"}</p>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs">Data</span>
                 <p className="text-sm">
-                  {(ticket as any).escalated_at
-                    ? new Date((ticket as any).escalated_at).toLocaleDateString("pt-BR", {
+                  {ticket.escalated_at
+                    ? new Date(ticket.escalated_at).toLocaleDateString("pt-BR", {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",
@@ -513,15 +545,23 @@ function ActivityTab({
                   <span>{formatRelativeTime(activity.created_at)}</span>
                 </div>
                 {activity.metadata &&
-                  Object.keys(activity.metadata).length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {activity.metadata.from && activity.metadata.to
-                        ? `${activity.metadata.from} -> ${activity.metadata.to}`
-                        : activity.metadata.title
-                          ? activity.metadata.title
-                          : null}
-                    </p>
-                  )}
+                  Object.keys(activity.metadata).length > 0 &&
+                  (() => {
+                    const meta = activity.metadata;
+                    const from =
+                      typeof meta.from === "string" ? meta.from : null;
+                    const to = typeof meta.to === "string" ? meta.to : null;
+                    const metaTitle =
+                      typeof meta.title === "string" ? meta.title : null;
+                    const text =
+                      from && to ? `${from} -> ${to}` : metaTitle;
+                    if (!text) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {text}
+                      </p>
+                    );
+                  })()}
               </div>
             </div>
           );
@@ -540,7 +580,15 @@ export function TicketDetailSheet({
   const { data: ticket, isLoading } = useTicketDetail(ticketId);
   const queryClient = useQueryClient();
   const [resolving, setResolving] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [markingResponse, setMarkingResponse] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
+
+  function invalidateTicket() {
+    queryClient.invalidateQueries({ queryKey: ["ticket-detail", ticketId] });
+    queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["sla-status"] });
+  }
 
   async function handleResolve() {
     if (!ticket) return;
@@ -556,8 +604,43 @@ export function TicketDetailSheet({
     }
 
     toast.success("Ticket resolvido");
-    queryClient.invalidateQueries({ queryKey: ["ticket-detail", ticketId] });
-    queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    invalidateTicket();
+  }
+
+  async function handleReopen() {
+    if (!ticket) return;
+    setReopening(true);
+    const result = await reopenTicket(ticket.id);
+    setReopening(false);
+
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string" ? result.error : "Erro ao reabrir"
+      );
+      return;
+    }
+
+    toast.success("Ticket reaberto");
+    invalidateTicket();
+  }
+
+  async function handleMarkFirstResponse() {
+    if (!ticket) return;
+    setMarkingResponse(true);
+    const result = await markFirstResponse(ticket.id);
+    setMarkingResponse(false);
+
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao registrar resposta"
+      );
+      return;
+    }
+
+    toast.success("Primeira resposta registrada");
+    invalidateTicket();
   }
 
   return (
@@ -611,7 +694,7 @@ export function TicketDetailSheet({
                 ) : (
                   <Badge variant="secondary">Aberto</Badge>
                 )}
-                {(ticket as any).escalated_to_sector_id && (
+                {ticket.escalated_to_sector_id && (
                   <Badge
                     variant="secondary"
                     className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
@@ -660,10 +743,35 @@ export function TicketDetailSheet({
             </Tabs>
 
             {/* Footer actions */}
-            {!ticket.resolved_at && (
-              <>
-                <Separator />
-                <div className="p-4 pt-2 flex gap-2">
+            <Separator />
+            {ticket.resolved_at ? (
+              <div className="p-4 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={handleReopen}
+                  disabled={reopening}
+                  className="w-full"
+                >
+                  <RotateCcw className="size-4 mr-2" />
+                  {reopening ? "Reabrindo..." : "Reabrir Ticket"}
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 pt-2 space-y-2">
+                {!ticket.first_response_at && (
+                  <Button
+                    variant="outline"
+                    onClick={handleMarkFirstResponse}
+                    disabled={markingResponse}
+                    className="w-full"
+                  >
+                    <Reply className="size-4 mr-2" />
+                    {markingResponse
+                      ? "Registrando..."
+                      : "Marcar primeira resposta"}
+                  </Button>
+                )}
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     onClick={() => setEscalateOpen(true)}
@@ -681,7 +789,7 @@ export function TicketDetailSheet({
                     {resolving ? "Resolvendo..." : "Resolver Ticket"}
                   </Button>
                 </div>
-              </>
+              </div>
             )}
 
             {ticket && !ticket.resolved_at && (
