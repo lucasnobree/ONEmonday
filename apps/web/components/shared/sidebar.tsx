@@ -50,14 +50,14 @@ const activeModules = [
   { name: "Support Desk", icon: Headphones, href: "/support" },
   { name: "CRM", icon: Users, href: "/crm" },
   { name: "RH Portal", icon: UserCog, href: "/hr" },
+  { name: "Financeiro", icon: DollarSign, href: "/finance" },
+  { name: "Jurídico", icon: Scale, href: "/legal" },
 ];
 
 const comingSoonModules = [
   { name: "Analytics", icon: BarChart3, href: "/analytics" },
   { name: "Dev Tools", icon: Terminal, href: "/dev-tools" },
-  { name: "Financeiro", icon: DollarSign, href: "/finance" },
   { name: "Marketing", icon: Megaphone, href: "/marketing" },
-  { name: "Jurídico", icon: Scale, href: "/legal" },
 ];
 
 function SidebarContent({ user }: SidebarProps) {
