@@ -39,7 +39,12 @@ export type Resource =
   | "legal_matter"
   | "clause"
   // Analytics
-  | "analytics_report";
+  | "analytics_report"
+  // Dev-Tools
+  | "service"
+  | "incident"
+  | "deployment"
+  | "feature_flag";
 
 export type Action =
   | "create"
