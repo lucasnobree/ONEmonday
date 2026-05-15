@@ -1,0 +1,229 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useCurrentSector } from "@/hooks/use-current-sector";
+import {
+  useInvoices,
+  useDeleteInvoice,
+} from "@/hooks/finance/use-invoices";
+import type { Invoice, InvoiceStatus } from "@/hooks/finance/use-invoices";
+import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
+import {
+  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_VARIANTS,
+} from "@/components/finance/labels";
+import { formatCents } from "@/lib/finance/money";
+import { exportToCSV } from "@/lib/utils/export-csv";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { toast } from "sonner";
+import { Plus, Download, Pencil, Trash2, Receipt } from "lucide-react";
+
+const STATUS_TABS: (InvoiceStatus | "all")[] = [
+  "all",
+  "draft",
+  "sent",
+  "paid",
+  "overdue",
+  "void",
+];
+
+export default function InvoicesPage() {
+  const { currentSector } = useCurrentSector();
+  const { data: invoices, isLoading } = useInvoices(currentSector?.id);
+  const deleteInvoice = useDeleteInvoice();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Invoice | undefined>();
+  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all");
+
+  const filtered = useMemo(() => {
+    if (!invoices) return [];
+    if (statusFilter === "all") return invoices;
+    return invoices.filter((i) => i.status === statusFilter);
+  }, [invoices, statusFilter]);
+
+  if (!currentSector) {
+    return (
+      <p className="text-muted-foreground">
+        Selecione um setor para acessar as faturas.
+      </p>
+    );
+  }
+
+  const openCreate = () => {
+    setEditing(undefined);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (invoice: Invoice) => {
+    setEditing(invoice);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (invoice: Invoice) => {
+    const result = await deleteInvoice.mutateAsync(invoice.id);
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string" ? result.error : "Erro ao excluir"
+      );
+      return;
+    }
+    toast.success("Fatura excluida");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Faturas</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!filtered.length}
+            onClick={() =>
+              exportToCSV(
+                filtered.map((i) => ({
+                  numero: i.number,
+                  cliente: i.customer_name,
+                  valor: formatCents(i.amount_cents, i.currency),
+                  status: INVOICE_STATUS_LABELS[i.status],
+                  emissao: i.issue_date,
+                  vencimento: i.due_date,
+                })),
+                `faturas-${new Date().toISOString().split("T")[0]}`,
+                [
+                  { key: "numero", label: "Numero" },
+                  { key: "cliente", label: "Cliente" },
+                  { key: "valor", label: "Valor" },
+                  { key: "status", label: "Status" },
+                  { key: "emissao", label: "Emissao" },
+                  { key: "vencimento", label: "Vencimento" },
+                ]
+              )
+            }
+          >
+            <Download className="size-4 mr-1" />
+            Exportar
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="size-4 mr-1" />
+            Nova Fatura
+          </Button>
+        </div>
+      </div>
+
+      <div className="inline-flex h-8 items-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+        {STATUS_TABS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setStatusFilter(s)}
+            className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
+              statusFilter === s
+                ? "bg-background text-foreground shadow-sm"
+                : "hover:text-foreground"
+            }`}
+          >
+            {s === "all" ? "Todas" : INVOICE_STATUS_LABELS[s]}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={Receipt}
+          title="Nenhuma fatura"
+          description="Registre contas a receber para acompanhar seu faturamento."
+          action={
+            <Button onClick={openCreate}>
+              <Plus className="size-4 mr-1" />
+              Nova Fatura
+            </Button>
+          }
+        />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="p-3 font-medium">Numero</th>
+                    <th className="p-3 font-medium">Cliente</th>
+                    <th className="p-3 font-medium">Valor</th>
+                    <th className="p-3 font-medium">Vencimento</th>
+                    <th className="p-3 font-medium">Status</th>
+                    <th className="p-3 font-medium text-right">Acoes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((inv) => (
+                    <tr key={inv.id} className="border-b last:border-0">
+                      <td className="p-3 font-medium">{inv.number}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {inv.customer_name}
+                      </td>
+                      <td className="p-3 font-medium">
+                        {formatCents(inv.amount_cents, inv.currency)}
+                      </td>
+                      <td className="p-3 text-muted-foreground">
+                        {new Date(inv.due_date).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={INVOICE_STATUS_VARIANTS[inv.status]}>
+                          {INVOICE_STATUS_LABELS[inv.status]}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Editar fatura"
+                            onClick={() => openEdit(inv)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <ConfirmDialog
+                            title="Excluir fatura"
+                            description={`Tem certeza que deseja excluir a fatura ${inv.number}?`}
+                            onConfirm={() => handleDelete(inv)}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Excluir fatura"
+                            >
+                              <Trash2 className="size-4 text-destructive" />
+                            </Button>
+                          </ConfirmDialog>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <InvoiceFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        sectorId={currentSector.id}
+        invoice={editing}
+      />
+    </div>
+  );
+}
