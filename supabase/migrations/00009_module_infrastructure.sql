@@ -10,6 +10,11 @@ ALTER TABLE boards ADD COLUMN IF NOT EXISTS module_id uuid REFERENCES modules(id
 -- Index for filtering boards by type
 CREATE INDEX IF NOT EXISTS idx_boards_type ON boards(board_type) WHERE board_type != 'general';
 
+-- Ensure Desenvolvimento sector exists (seed.sql runs after migrations)
+INSERT INTO sectors (id, name, slug, icon, color)
+VALUES ('3826e880-b077-4930-a676-7c5b96d10f63', 'Desenvolvimento', 'dev', 'Code', '#818cf8')
+ON CONFLICT (id) DO NOTHING;
+
 -- Register new modules
 INSERT INTO modules (slug, name, description, icon, status, category) VALUES
   ('support-desk', 'Support Desk', 'Central de atendimento com tickets, SLA e base de conhecimento', 'Headphones', 'active', 'hub'),

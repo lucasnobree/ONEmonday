@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONEmonday - Comparacao Visual de Estilos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0a;
+    color: #fafafa;
+    overflow-x: hidden;
+  }
+
+  /* ── Theme Switcher ── */
+  .theme-switcher {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #262626;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .theme-switcher h1 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-right: 24px;
+    white-space: nowrap;
+  }
+  .theme-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: transparent;
+    color: #a1a1aa;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .theme-btn:hover { border-color: #555; color: #fff; }
+  .theme-btn.active { background: #fff; color: #000; border-color: #fff; }
+
+  .theme-desc {
+    margin-left: auto;
+    font-size: 12px;
+    color: #71717a;
+    max-width: 400px;
+    text-align: right;
+  }
+
+  /* ── Main Container ── */
+  .main { padding: 80px 32px 32px; max-width: 1400px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #71717a;
+    margin-bottom: 12px;
+    margin-top: 32px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* ── Sidebar + Content Layout ── */
+  .app-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    min-height: 700px;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sidebar-logo .logo-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #fff;
+  }
+  .sidebar-logo span { font-weight: 700; font-size: 15px; }
+  .sidebar-section { padding: 8px 12px; }
+  .sidebar-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sidebar-item:hover { background: var(--hover); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--active-bg); color: var(--text-primary); font-weight: 500; }
+  .sidebar-item svg { width: 16px; height: 16px; opacity: 0.6; }
+  .sidebar-item.active svg { opacity: 1; }
+  .sidebar-badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--badge-bg);
+    color: var(--badge-text);
+  }
+
+  .sidebar-user {
+    margin-top: auto;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sidebar-user-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 12px; color: #fff;
+  }
+  .sidebar-user-info { font-size: 12px; }
+  .sidebar-user-info .name { font-weight: 600; color: var(--text-primary); }
+  .sidebar-user-info .role { color: var(--muted); }
+
+  /* ── Content Area ── */
+  .content {
+    background: var(--content-bg);
+    padding: 24px;
+    overflow-x: auto;
+  }
+
+  /* ── Page Header ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-header h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+  .page-header-actions { display: flex; gap: 8px; }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { border-color: var(--text-secondary); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+  /* ── Stats Row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stat-card .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .stat-card .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .stat-card .stat-change {
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .stat-card .stat-change.up { color: #22c55e; }
+  .stat-card .stat-change.down { color: #ef4444; }
+
+  /* ── Kanban Board ── */
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    min-height: 380px;
+  }
+  .kanban-col {
+    background: var(--column-bg);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .kanban-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 4px 8px;
+  }
+  .kanban-col-header .col-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .col-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .col-count {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--hover);
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+
+  .kanban-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    cursor: grab;
+    transition: all 0.15s;
+  }
+  .kanban-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .kanban-card-tags {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .kanban-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .kanban-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  .kanban-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .kanban-card-assignees {
+    display: flex;
+  }
+  .kanban-assignee {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    margin-right: -6px;
+    border: 2px solid var(--card-bg);
+  }
+  .kanban-card-meta {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .kanban-card-priority {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ── Data Table ── */
+  .data-table-container {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 24px;
+  }
+  .data-table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table-search {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    width: 240px;
+  }
+  .data-table-search::placeholder { color: var(--muted); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    background: var(--table-header-bg);
+  }
+  td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--hover); }
+
+  .table-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+  .table-status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .table-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .table-user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  /* ════════════════════════════════════════
+     THEME A: Neutral Dark (shadcn/ui style)
+     ════════════════════════════════════════ */
+  .theme-neutral {
+    --accent: #fafafa;
+    --accent-text: #0a0a0a;
+    --sidebar-bg: #0c0c0c;
+    --content-bg: #0a0a0a;
+    --card-bg: #141414;
+    --column-bg: #111111;
+    --border: #262626;
+    --hover: rgba(255,255,255,0.04);
+    --active-bg: rgba(255,255,255,0.08);
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --muted: #52525b;
+    --badge-bg: rgba(255,255,255,0.1);
+    --badge-text: #a1a1aa;
+    --table-header-bg: rgba(255,255,255,0.02);
+    --tag-dev: #1e1e2e;
+    --tag-dev-text: #818cf8;
+    --tag-design: #1e2e1e;
+    --tag-design-text: #86efac;
+    --tag-bug: #2e1e1e;
+    --tag-bug-text: #fca5a5;
+    --tag-feature: #1e2a2e;
+    --tag-feature-text: #67e8f9;
+    --tag-support: #2e2a1e;
+    --tag-support-text: #fde68a;
+  }
+  .theme-neutral .btn-primary { background: #fafafa; color: #0a0a0a; border-color: #fafafa; }
+  .theme-neutral .sidebar-logo .logo-icon { background: #fafafa; color: #0a0a0a; }
+  .theme-neutral .tab.active { border-bottom-color: #fafafa; }
+  .theme-neutral .table-status.active { background: rgba(34,197,94,0.1); color: #4ade80; }
+  .theme-neutral .table-status.active .table-status-dot { background: #4ade80; }
+  .theme-neutral .table-status.review { background: rgba(250,204,21,0.1); color: #facc15; }
+  .theme-neutral .table-status.review .table-status-dot { background: #facc15; }
+  .theme-neutral .table-status.blocked { background: rgba(239,68,68,0.1); color: #f87171; }
+  .theme-neutral .table-status.blocked .table-status-dot { background: #f87171; }
+
+  /* ════════════════════════════════════════
+     THEME B: Blue Accent (Linear style)
+     ════════════════════════════════════════ */
+  .theme-blue {
+    --accent: #5b6ef5;
+    --accent-text: #fff;
+    --sidebar-bg: #0d0d12;
+    --content-bg: #111118;
+    --card-bg: #18181f;
+    --column-bg: #14141b;
+    --border: #25252e;
+    --hover: rgba(91,110,245,0.06);
+    --active-bg: rgba(91,110,245,0.12);
+    --text-primary: #ededf0;
+    --text-secondary: #8f8fa3;
+    --muted: #55556a;
+    --badge-bg: rgba(91,110,245,0.15);
+    --badge-text: #8b9cf7;
+    --table-header-bg: rgba(91,110,245,0.03);
+    --tag-dev: #1a1a30;
+    --tag-dev-text: #818cf8;
+    --tag-design: #1a2a1a;
+    --tag-design-text: #86efac;
+    --tag-bug: #2a1a1a;
+    --tag-bug-text: #fca5a5;
+    --tag-feature: #1a2530;
+    --tag-feature-text: #67e8f9;
+    --tag-support: #2a251a;
+    --tag-support-text: #fde68a;
+  }
+  .theme-blue .btn-primary { background: #5b6ef5; color: #fff; border-color: #5b6ef5; }
+  .theme-blue .sidebar-logo .logo-icon { background: #5b6ef5; }
+  .theme-blue .tab.active { border-bottom-color: #5b6ef5; }
+  .theme-blue .kanban-card:hover { border-color: #5b6ef5; }
+  .theme-blue .table-status.active { background: rgba(34,197,94,0.1); color: #4ade80; }
+  .theme-blue .table-status.active .table-status-dot { background: #4ade80; }
+  .theme-blue .table-status.review { background: rgba(250,204,21,0.1); color: #facc15; }
+  .theme-blue .table-status.review .table-status-dot { background: #facc15; }
+  .theme-blue .table-status.blocked { background: rgba(239,68,68,0.1); color: #f87171; }
+  .theme-blue .table-status.blocked .table-status-dot { background: #f87171; }
+
+  /* ════════════════════════════════════════
+     THEME C: Emerald (Vercel/Supabase style)
+     ════════════════════════════════════════ */
+  .theme-emerald {
+    --accent: #10b981;
+    --accent-text: #fff;
+    --sidebar-bg: #080f0d;
+    --content-bg: #0a0f0d;
+    --card-bg: #111916;
+    --column-bg: #0e1512;
+    --border: #1a2d24;
+    --hover: rgba(16,185,129,0.06);
+    --active-bg: rgba(16,185,129,0.12);
+    --text-primary: #e8f5f0;
+    --text-secondary: #7faa97;
+    --muted: #4a7565;
+    --badge-bg: rgba(16,185,129,0.15);
+    --badge-text: #34d399;
+    --table-header-bg: rgba(16,185,129,0.03);
+    --tag-dev: #0f1a2a;
+    --tag-dev-text: #818cf8;
+    --tag-design: #0f2a1a;
+    --tag-design-text: #86efac;
+    --tag-bug: #2a0f0f;
+    --tag-bug-text: #fca5a5;
+    --tag-feature: #0f252a;
+    --tag-feature-text: #67e8f9;
+    --tag-support: #2a250f;
+    --tag-support-text: #fde68a;
+  }
+  .theme-emerald .btn-primary { background: #10b981; color: #fff; border-color: #10b981; }
+  .theme-emerald .sidebar-logo .logo-icon { background: #10b981; }
+  .theme-emerald .tab.active { border-bottom-color: #10b981; }
+  .theme-emerald .kanban-card:hover { border-color: #10b981; }
+  .theme-emerald .table-status.active { background: rgba(16,185,129,0.12); color: #34d399; }
+  .theme-emerald .table-status.active .table-status-dot { background: #34d399; }
+  .theme-emerald .table-status.review { background: rgba(250,204,21,0.1); color: #facc15; }
+  .theme-emerald .table-status.review .table-status-dot { background: #facc15; }
+  .theme-emerald .table-status.blocked { background: rgba(239,68,68,0.1); color: #f87171; }
+  .theme-emerald .table-status.blocked .table-status-dot { background: #f87171; }
+
+  /* ════════════════════════════════════════
+     THEME D: Light Mode (Clean corporate)
+     ════════════════════════════════════════ */
+  .theme-light {
+    --accent: #2563eb;
+    --accent-text: #fff;
+    --sidebar-bg: #f8fafc;
+    --content-bg: #ffffff;
+    --card-bg: #ffffff;
+    --column-bg: #f1f5f9;
+    --border: #e2e8f0;
+    --hover: rgba(37,99,235,0.04);
+    --active-bg: rgba(37,99,235,0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --muted: #94a3b8;
+    --badge-bg: rgba(37,99,235,0.1);
+    --badge-text: #3b82f6;
+    --table-header-bg: #f8fafc;
+    --tag-dev: #eef2ff;
+    --tag-dev-text: #6366f1;
+    --tag-design: #ecfdf5;
+    --tag-design-text: #059669;
+    --tag-bug: #fef2f2;
+    --tag-bug-text: #dc2626;
+    --tag-feature: #ecfeff;
+    --tag-feature-text: #0891b2;
+    --tag-support: #fefce8;
+    --tag-support-text: #ca8a04;
+  }
+  .theme-light .btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .theme-light .sidebar-logo .logo-icon { background: #2563eb; }
+  .theme-light .tab.active { border-bottom-color: #2563eb; }
+  .theme-light .kanban-card:hover { border-color: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,0.1); }
+  .theme-light .kanban-card { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .theme-light .table-status.active { background: #ecfdf5; color: #059669; }
+  .theme-light .table-status.active .table-status-dot { background: #059669; }
+  .theme-light .table-status.review { background: #fefce8; color: #ca8a04; }
+  .theme-light .table-status.review .table-status-dot { background: #ca8a04; }
+  .theme-light .table-status.blocked { background: #fef2f2; color: #dc2626; }
+  .theme-light .table-status.blocked .table-status-dot { background: #dc2626; }
+
+  .theme-light body, .theme-light { background: #f1f5f9; color: #0f172a; }
+  .theme-light .theme-switcher { background: rgba(255,255,255,0.95); border-bottom-color: #e2e8f0; }
+  .theme-light .theme-switcher h1 { color: #0f172a; }
+  .theme-light .theme-btn { border-color: #d1d5db; color: #6b7280; }
+  .theme-light .theme-btn:hover { color: #111; border-color: #999; }
+  .theme-light .theme-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .theme-light .section-label { color: #94a3b8; }
+  .theme-light .data-table-search { color: #0f172a; border-color: #e2e8f0; }
+  .theme-light .stat-card .stat-value { color: #0f172a; }
+
+  /* ════════════════════════════════════════
+     THEME E: Violet (Modern SaaS)
+     ════════════════════════════════════════ */
+  .theme-violet {
+    --accent: #8b5cf6;
+    --accent-text: #fff;
+    --sidebar-bg: #0c0a14;
+    --content-bg: #0e0c16;
+    --card-bg: #171422;
+    --column-bg: #13111d;
+    --border: #271f3a;
+    --hover: rgba(139,92,246,0.06);
+    --active-bg: rgba(139,92,246,0.12);
+    --text-primary: #ede9fe;
+    --text-secondary: #9a8ec0;
+    --muted: #5b4f80;
+    --badge-bg: rgba(139,92,246,0.15);
+    --badge-text: #a78bfa;
+    --table-header-bg: rgba(139,92,246,0.03);
+    --tag-dev: #1a1530;
+    --tag-dev-text: #a78bfa;
+    --tag-design: #152a1a;
+    --tag-design-text: #86efac;
+    --tag-bug: #2a1515;
+    --tag-bug-text: #fca5a5;
+    --tag-feature: #15252a;
+    --tag-feature-text: #67e8f9;
+    --tag-support: #2a2515;
+    --tag-support-text: #fde68a;
+  }
+  .theme-violet .btn-primary { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
+  .theme-violet .sidebar-logo .logo-icon { background: #8b5cf6; }
+  .theme-violet .tab.active { border-bottom-color: #8b5cf6; }
+  .theme-violet .kanban-card:hover { border-color: #8b5cf6; }
+  .theme-violet .table-status.active { background: rgba(34,197,94,0.1); color: #4ade80; }
+  .theme-violet .table-status.active .table-status-dot { background: #4ade80; }
+  .theme-violet .table-status.review { background: rgba(250,204,21,0.1); color: #facc15; }
+  .theme-violet .table-status.review .table-status-dot { background: #facc15; }
+  .theme-violet .table-status.blocked { background: rgba(239,68,68,0.1); color: #f87171; }
+  .theme-violet .table-status.blocked .table-status-dot { background: #f87171; }
+
+  /* SVG Icons inline */
+  .icon { display: inline-flex; }
+</style>
+</head>
+<body>
+
+<div id="app" class="theme-neutral">
+
+  <!-- Theme Switcher -->
+  <div class="theme-switcher">
+    <h1>ONEmonday</h1>
+    <button class="theme-btn active" onclick="setTheme('neutral')">A. Neutral Dark</button>
+    <button class="theme-btn" onclick="setTheme('blue')">B. Blue Linear</button>
+    <button class="theme-btn" onclick="setTheme('emerald')">C. Emerald</button>
+    <button class="theme-btn" onclick="setTheme('violet')">D. Violet SaaS</button>
+    <button class="theme-btn" onclick="setTheme('light')">E. Light Corp</button>
+    <div class="theme-desc" id="theme-desc">shadcn/ui padrao. Neutro, minimalista, foco no conteudo.</div>
+  </div>
+
+  <div class="main">
+
+    <!-- Full App Layout -->
+    <div class="app-layout">
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-icon">O</div>
+          <span>ONEmonday</span>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Geral</div>
+          <div class="sidebar-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Dashboard
+          </div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Boards
+            <span class="sidebar-badge">12</span>
+          </div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Projetos
+          </div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            Timeline
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Setores</div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+            Desenvolvimento
+            <span class="sidebar-badge">8</span>
+          </div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Suporte
+            <span class="sidebar-badge">23</span>
+          </div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Comercial
+          </div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            RH
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Sistema</div>
+          <div class="sidebar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Configuracoes
+          </div>
+        </div>
+
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar">LN</div>
+          <div class="sidebar-user-info">
+            <div class="name">Lucas Nobre</div>
+            <div class="role">Administrador</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <div class="page-header">
+          <h2>Desenvolvimento</h2>
+          <div class="page-header-actions">
+            <button class="btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              Filtrar
+            </button>
+            <button class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Card
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <div class="tab active">Kanban</div>
+          <div class="tab">Lista</div>
+          <div class="tab">Timeline</div>
+          <div class="tab">Dashboard</div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">Total de Cards</div>
+            <div class="stat-value">47</div>
+            <div class="stat-change up">+12 esta semana</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Em Progresso</div>
+            <div class="stat-value">13</div>
+            <div class="stat-change up">+3 desde ontem</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Concluidos (mes)</div>
+            <div class="stat-value">28</div>
+            <div class="stat-change up">+18% vs anterior</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bloqueados</div>
+            <div class="stat-value">2</div>
+            <div class="stat-change down">Requer atencao</div>
+          </div>
+        </div>
+
+        <!-- Kanban -->
+        <div class="kanban">
+          <!-- Backlog -->
+          <div class="kanban-col">
+            <div class="kanban-col-header">
+              <div class="col-title">
+                <span class="col-dot" style="background:#71717a"></span>
+                Backlog
+              </div>
+              <span class="col-count">5</span>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-feature);color:var(--tag-feature-text)">Feature</span>
+              </div>
+              <div class="kanban-card-title">Modulo de notificacoes push para mobile</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#6366f1">RA</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#facc15"></span>
+                  Media
+                </div>
+              </div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-support);color:var(--tag-support-text)">Suporte</span>
+              </div>
+              <div class="kanban-card-title">Cliente reporta erro ao exportar relatorio PDF</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#f59e0b">MC</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#ef4444"></span>
+                  Alta
+                </div>
+              </div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-dev);color:var(--tag-dev-text)">Dev</span>
+              </div>
+              <div class="kanban-card-title">Refatorar autenticacao para suportar SSO</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#8b5cf6">LN</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#71717a"></span>
+                  Baixa
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Em Progresso -->
+          <div class="kanban-col">
+            <div class="kanban-col-header">
+              <div class="col-title">
+                <span class="col-dot" style="background:#3b82f6"></span>
+                Em Progresso
+              </div>
+              <span class="col-count">3</span>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-bug);color:var(--tag-bug-text)">Bug</span>
+                <span class="kanban-tag" style="background:var(--tag-dev);color:var(--tag-dev-text)">Dev</span>
+              </div>
+              <div class="kanban-card-title">Fix: vazamento de memoria no WebSocket listener</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#8b5cf6">LN</div>
+                  <div class="kanban-assignee" style="background:#ec4899">AS</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#ef4444"></span>
+                  Critica
+                </div>
+              </div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-feature);color:var(--tag-feature-text)">Feature</span>
+              </div>
+              <div class="kanban-card-title">Dashboard de metricas do setor comercial</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#10b981">JP</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#facc15"></span>
+                  Media
+                </div>
+              </div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-design);color:var(--tag-design-text)">Design</span>
+              </div>
+              <div class="kanban-card-title">Redesign da tela de configuracoes do usuario</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#f59e0b">MC</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#71717a"></span>
+                  Baixa
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review -->
+          <div class="kanban-col">
+            <div class="kanban-col-header">
+              <div class="col-title">
+                <span class="col-dot" style="background:#f59e0b"></span>
+                Review
+              </div>
+              <span class="col-count">2</span>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-dev);color:var(--tag-dev-text)">Dev</span>
+              </div>
+              <div class="kanban-card-title">API de integracao com sistema de pagamentos</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#6366f1">RA</div>
+                  <div class="kanban-assignee" style="background:#8b5cf6">LN</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#ef4444"></span>
+                  Alta
+                </div>
+              </div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-support);color:var(--tag-support-text)">Suporte</span>
+              </div>
+              <div class="kanban-card-title">Documentacao de onboarding para novos clientes</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#ec4899">AS</div>
+                </div>
+                <div class="kanban-card-meta">
+                  <span class="kanban-card-priority" style="background:#facc15"></span>
+                  Media
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Concluido -->
+          <div class="kanban-col">
+            <div class="kanban-col-header">
+              <div class="col-title">
+                <span class="col-dot" style="background:#22c55e"></span>
+                Concluido
+              </div>
+              <span class="col-count">4</span>
+            </div>
+            <div class="kanban-card" style="opacity: 0.7;">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-bug);color:var(--tag-bug-text)">Bug</span>
+              </div>
+              <div class="kanban-card-title">Corrigir timezone em agendamentos</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#10b981">JP</div>
+                </div>
+                <div class="kanban-card-meta">Concluido</div>
+              </div>
+            </div>
+            <div class="kanban-card" style="opacity: 0.7;">
+              <div class="kanban-card-tags">
+                <span class="kanban-tag" style="background:var(--tag-feature);color:var(--tag-feature-text)">Feature</span>
+              </div>
+              <div class="kanban-card-title">Filtro avancado na listagem de OS</div>
+              <div class="kanban-card-footer">
+                <div class="kanban-card-assignees">
+                  <div class="kanban-assignee" style="background:#8b5cf6">LN</div>
+                </div>
+                <div class="kanban-card-meta">Concluido</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div style="margin-top:32px">
+          <div class="section-label">Visao de Lista</div>
+          <div class="data-table-container">
+            <div class="data-table-toolbar">
+              <input type="text" class="data-table-search" placeholder="Buscar cards...">
+              <button class="btn" style="margin-left:auto">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Exportar
+              </button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Card</th>
+                  <th>Setor</th>
+                  <th>Responsavel</th>
+                  <th>Status</th>
+                  <th>Prioridade</th>
+                  <th>Criado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:500;color:var(--text-primary)">Fix: vazamento de memoria no WebSocket</td>
+                  <td><span class="kanban-tag" style="background:var(--tag-dev);color:var(--tag-dev-text)">Dev</span></td>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background:#8b5cf6">LN</div>
+                      Lucas Nobre
+                    </div>
+                  </td>
+                  <td><span class="table-status active"><span class="table-status-dot"></span>Em progresso</span></td>
+                  <td><span style="color:#ef4444;font-weight:500">Critica</span></td>
+                  <td>10 Mai 2026</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:var(--text-primary)">API integracao pagamentos</td>
+                  <td><span class="kanban-tag" style="background:var(--tag-dev);color:var(--tag-dev-text)">Dev</span></td>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background:#6366f1">RA</div>
+                      Rafael Alves
+                    </div>
+                  </td>
+                  <td><span class="table-status review"><span class="table-status-dot"></span>Review</span></td>
+                  <td><span style="color:#f59e0b;font-weight:500">Alta</span></td>
+                  <td>08 Mai 2026</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:var(--text-primary)">Erro ao exportar relatorio PDF</td>
+                  <td><span class="kanban-tag" style="background:var(--tag-support);color:var(--tag-support-text)">Suporte</span></td>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background:#f59e0b">MC</div>
+                      Maria Costa
+                    </div>
+                  </td>
+                  <td><span class="table-status blocked"><span class="table-status-dot"></span>Bloqueado</span></td>
+                  <td><span style="color:#ef4444;font-weight:500">Alta</span></td>
+                  <td>07 Mai 2026</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:var(--text-primary)">Dashboard metricas comercial</td>
+                  <td><span class="kanban-tag" style="background:var(--tag-feature);color:var(--tag-feature-text)">Feature</span></td>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background:#10b981">JP</div>
+                      Joao Pedro
+                    </div>
+                  </td>
+                  <td><span class="table-status active"><span class="table-status-dot"></span>Em progresso</span></td>
+                  <td><span style="color:#f59e0b;font-weight:500">Media</span></td>
+                  <td>05 Mai 2026</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:var(--text-primary)">Onboarding novos clientes</td>
+                  <td><span class="kanban-tag" style="background:var(--tag-support);color:var(--tag-support-text)">Suporte</span></td>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background:#ec4899">AS</div>
+                      Ana Silva
+                    </div>
+                  </td>
+                  <td><span class="table-status review"><span class="table-status-dot"></span>Review</span></td>
+                  <td><span style="color:#71717a;font-weight:500">Baixa</span></td>
+                  <td>03 Mai 2026</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const descriptions = {
+    neutral: 'shadcn/ui padrao. Neutro, minimalista, foco no conteudo. Botoes brancos, sem cor dominante.',
+    blue: 'Inspirado no Linear. Accent azul-indigo, sensacao premium e focada. Ideal para ferramentas de dev.',
+    emerald: 'Inspirado em Vercel/Supabase. Accent verde, estetica tech moderna. Combina com a stack.',
+    violet: 'SaaS moderno. Accent roxo, visual bold e diferenciado. Forte identidade de marca.',
+    light: 'Modo claro corporativo. Limpo, acessivel, familiar. Melhor para usuarios nao-tech (RH, Comercial).'
+  };
+
+  function setTheme(theme) {
+    const app = document.getElementById('app');
+    app.className = 'theme-' + theme;
+    document.getElementById('theme-desc').textContent = descriptions[theme];
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

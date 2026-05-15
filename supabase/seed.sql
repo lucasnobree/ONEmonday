@@ -5,12 +5,16 @@ INSERT INTO roles (name, slug, level, scope, is_system) VALUES
   ('Analista', 'analyst', 50, 'sector', true),
   ('Estagiario', 'intern', 20, 'sector', true);
 
--- Default sectors
+-- Default sectors (Desenvolvimento uses fixed UUID referenced by migrations)
+INSERT INTO sectors (id, name, slug, icon, color) VALUES
+  ('3826e880-b077-4930-a676-7c5b96d10f63', 'Desenvolvimento', 'dev', 'Code', '#818cf8')
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO sectors (name, slug, icon, color) VALUES
-  ('Desenvolvimento', 'dev', 'Code', '#818cf8'),
   ('Suporte', 'suporte', 'MessageSquare', '#fbbf24'),
   ('Comercial', 'comercial', 'Layers', '#34d399'),
-  ('RH', 'rh', 'Users', '#f472b6');
+  ('RH', 'rh', 'Users', '#f472b6')
+ON CONFLICT (slug) DO NOTHING;
 
 -- Modules
 INSERT INTO modules (slug, name, description, icon, status, category) VALUES
@@ -19,7 +23,8 @@ INSERT INTO modules (slug, name, description, icon, status, category) VALUES
   ('crm', 'CRM', 'Gestao de relacionamento com clientes', 'Users', 'coming_soon', 'hub'),
   ('support-desk', 'Support Desk', 'Central de atendimento', 'Headphones', 'coming_soon', 'hub'),
   ('dev-tools', 'Dev Tools', 'Ferramentas para desenvolvimento', 'Terminal', 'coming_soon', 'hub'),
-  ('hr-portal', 'RH Portal', 'Gestao de pessoas', 'UserCog', 'coming_soon', 'hub');
+  ('hr-portal', 'RH Portal', 'Gestao de pessoas', 'UserCog', 'coming_soon', 'hub')
+ON CONFLICT (slug) DO NOTHING;
 
 -- Enable ONEmonday for all sectors
 INSERT INTO sector_modules (sector_id, module_id, is_enabled)
