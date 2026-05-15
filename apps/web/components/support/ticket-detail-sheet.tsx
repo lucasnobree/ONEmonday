@@ -12,6 +12,7 @@ import {
 import { addTicketComment } from "@/lib/actions/support/comments";
 import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
 import { TicketTagEditor } from "@/components/support/ticket-tag-editor";
+import { TicketAssigneePicker } from "@/components/support/ticket-assignee-picker";
 import {
   Sheet,
   SheetContent,
@@ -342,29 +343,21 @@ function DetailsTab({
       </div>
 
       {/* Assignees */}
-      {card?.card_assignees && card.card_assignees.length > 0 && (
-        <>
-          <Separator />
-          <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">
-              Responsaveis
-            </h4>
-            <div className="space-y-1">
-              {card.card_assignees.map((a) => (
-                <div
-                  key={a.user_id}
-                  className="flex items-center gap-2 text-sm"
-                >
-                  <div className="size-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                    {(a.users?.full_name || "?").charAt(0).toUpperCase()}
-                  </div>
-                  <span>{a.users?.full_name || a.users?.email || "---"}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      <Separator />
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">
+          Responsaveis
+        </h4>
+        <TicketAssigneePicker
+          ticketId={ticket.id}
+          ticketCardId={ticket.card_id}
+          sectorId={ticket.sector_id}
+          assignees={(card?.card_assignees ?? []).map((a) => ({
+            user_id: a.user_id,
+            name: a.users?.full_name || a.users?.email || "---",
+          }))}
+        />
+      </div>
 
       {/* Escalation Info */}
       {ticket.escalated_to_sector_id && (

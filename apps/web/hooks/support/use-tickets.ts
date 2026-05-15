@@ -3,11 +3,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
+export interface TicketAssignee {
+  user_id: string;
+  users: { full_name: string } | null;
+}
+
 export interface TicketCard {
   id: string;
   title: string | null;
   description: string | null;
   priority: string | null;
+  card_assignees: TicketAssignee[];
 }
 
 export interface TicketListItem {
@@ -34,7 +40,9 @@ export function useTickets(sectorId: string | undefined) {
       const supabase = createClient();
       const { data } = await supabase
         .from("support_tickets")
-        .select("*, card:cards(*)")
+        .select(
+          "*, card:cards(*, card_assignees(user_id, users(full_name)))"
+        )
         .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });

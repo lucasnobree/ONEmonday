@@ -309,6 +309,7 @@ export default function TicketsPage() {
                       <th className="pb-2 font-medium">Prioridade</th>
                       <th className="pb-2 font-medium">Status</th>
                       <th className="pb-2 font-medium">Categoria</th>
+                      <th className="pb-2 font-medium">Responsavel</th>
                       <th className="pb-2 font-medium">Canal</th>
                       <th className="pb-2 font-medium">SLA</th>
                       <th className="pb-2 font-medium">Criado em</th>
@@ -381,6 +382,16 @@ export default function TicketsPage() {
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground">
                           {ticket.category || "—"}
+                        </td>
+                        <td className="py-3 pr-4 text-muted-foreground">
+                          {(() => {
+                            const assignees = ticket.card?.card_assignees ?? [];
+                            if (!assignees.length) return "—";
+                            const names = assignees
+                              .map((a) => a.users?.full_name)
+                              .filter(Boolean);
+                            return names.length ? names.join(", ") : "—";
+                          })()}
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground capitalize">
                           {ticket.channel || "—"}
