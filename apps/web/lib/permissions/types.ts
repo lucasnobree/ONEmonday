@@ -33,7 +33,11 @@ export type Resource =
   | "invoice"
   | "expense"
   | "budget"
-  | "transaction";
+  | "transaction"
+  // Legal (Juridico)
+  | "contract"
+  | "legal_matter"
+  | "clause";
 
 export type Action =
   | "create"
