@@ -26,8 +26,9 @@ export async function createCard(formData: unknown) {
     return { error: "Sem permissao" };
   }
 
-  // Enforce the column WIP limit (the UI displays it but the limit is
-  // only meaningful if creation is actually blocked).
+  // Fast-path WIP-limit check for a friendly message in the common case.
+  // The race-free guarantee is the `enforce_card_wip_limit` BEFORE INSERT
+  // trigger (migration 00017); this check just avoids the raw DB error.
   const { data: column } = await supabase
     .from("board_columns")
     .select("wip_limit")
@@ -73,7 +74,13 @@ export async function createCard(formData: unknown) {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    // The WIP-limit trigger fires when a concurrent insert won the race.
+    if (error.message.includes("WIP_LIMIT_EXCEEDED")) {
+      return { error: "Limite de cards desta coluna atingido" };
+    }
+    return { error: error.message };
+  }
 
   if (parsed.data.assigneeIds?.length) {
     const assignees = parsed.data.assigneeIds.map((userId) => ({

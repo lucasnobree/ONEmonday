@@ -42,6 +42,11 @@ export async function uploadDocument(formData: FormData) {
     expiry = expiryParsed.data;
   }
 
+  // Document management is deliberately gated on `employee:update`: anyone
+  // who may edit an employee's record may also manage that employee's
+  // documents. This is the intended permission bar (no separate
+  // `employee_document` resource), and it is a real server-side check, not
+  // RLS-only.
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, sectorId, "employee", "update")) {
     return { error: "Sem permissao" };
