@@ -19,8 +19,10 @@ import {
   Calendar,
   StickyNote,
   CheckSquare,
+  Download,
 } from "lucide-react";
 import { ActivityCreateDialog } from "@/components/crm/activity-create-dialog";
+import { exportToCSV } from "@/lib/utils/export-csv";
 
 const activityIcons: Record<string, React.ElementType> = {
   call: Phone,
@@ -116,7 +118,44 @@ export default function ActivitiesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Atividades Recentes</h2>
-        <ActivityCreateDialog sectorId={currentSector.id} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!filtered.length}
+            onClick={() =>
+              exportToCSV(
+                filtered.map((a) => ({
+                  tipo: activityLabels[a.type] ?? a.type,
+                  assunto: a.subject,
+                  descricao: a.description ?? "",
+                  responsavel: a.user?.full_name ?? "",
+                  deal: a.deal?.cards?.title ?? "",
+                  contato: a.contact?.full_name ?? "",
+                  empresa: a.company?.name ?? "",
+                  duracao_min: a.duration_min ?? "",
+                  data: new Date(a.created_at).toLocaleString("pt-BR"),
+                })),
+                `atividades-${new Date().toISOString().split("T")[0]}`,
+                [
+                  { key: "tipo", label: "Tipo" },
+                  { key: "assunto", label: "Assunto" },
+                  { key: "descricao", label: "Descricao" },
+                  { key: "responsavel", label: "Responsavel" },
+                  { key: "deal", label: "Deal" },
+                  { key: "contato", label: "Contato" },
+                  { key: "empresa", label: "Empresa" },
+                  { key: "duracao_min", label: "Duracao (min)" },
+                  { key: "data", label: "Data" },
+                ]
+              )
+            }
+          >
+            <Download className="size-4 mr-1" />
+            Exportar
+          </Button>
+          <ActivityCreateDialog sectorId={currentSector.id} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">

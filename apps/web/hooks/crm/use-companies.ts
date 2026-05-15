@@ -50,11 +50,13 @@ export function useCompanies(sectorId: string | undefined) {
 
       if (error) throw error;
 
-      return (data || []).map((c: any) => ({
+      return ((data ?? []) as Record<string, unknown>[]).map((c) => ({
         ...c,
-        contacts_count: c.crm_contacts?.length ?? 0,
+        contacts_count: Array.isArray(c.crm_contacts)
+          ? c.crm_contacts.length
+          : 0,
         crm_contacts: undefined,
-      })) as Company[];
+      })) as unknown as Company[];
     },
     enabled: !!sectorId,
   });

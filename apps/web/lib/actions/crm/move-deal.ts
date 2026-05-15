@@ -36,6 +36,16 @@ export async function moveDealToColumn(input: {
     return { error: "Sem permissao" };
   }
 
+  // Capture the current stage name before the move, for the history log.
+  const { data: currentCard } = await supabase
+    .from("cards")
+    .select("column_id, board_columns (name)")
+    .eq("id", deal.card_id)
+    .single();
+  const fromStageName =
+    (currentCard?.board_columns as unknown as { name: string } | null)?.name ??
+    null;
+
   const { data: maxPos } = await supabase
     .from("cards")
     .select("position")
@@ -71,7 +81,12 @@ export async function moveDealToColumn(input: {
     },
   });
 
-  // Auto-update probability if not locked
+  // Stamp the rotting clock: the deal just (re)entered a stage.
+  const dealUpdate: Record<string, unknown> = {
+    last_stage_change_at: new Date().toISOString(),
+  };
+
+  // Auto-update probability if not locked.
   if (!deal.probability_locked && column?.name) {
     const { data: stageDefault } = await supabase
       .from("crm_pipeline_stage_defaults")
@@ -81,11 +96,24 @@ export async function moveDealToColumn(input: {
       .single();
 
     if (stageDefault) {
-      await supabase
-        .from("crm_deals")
-        .update({ win_probability: stageDefault.default_probability })
-        .eq("id", parsed.data.dealId);
+      dealUpdate.win_probability = stageDefault.default_probability;
     }
+  }
+
+  await supabase
+    .from("crm_deals")
+    .update(dealUpdate)
+    .eq("id", parsed.data.dealId);
+
+  // Append to the immutable stage-history audit log.
+  if (column?.name) {
+    await supabase.from("crm_deal_stage_history").insert({
+      deal_id: parsed.data.dealId,
+      sector_id: deal.sector_id,
+      from_stage_name: fromStageName,
+      to_stage_name: column.name,
+      changed_by: user.id,
+    });
   }
 
   revalidatePath("/");

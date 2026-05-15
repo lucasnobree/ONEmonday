@@ -68,13 +68,13 @@ export function useActivities({
 
       if (error) throw error;
 
-      return (data || []).map((a: any) => ({
+      return ((data ?? []) as Record<string, unknown>[]).map((a) => ({
         ...a,
         deal: a.crm_deals,
         contact: a.crm_contacts,
         company: a.crm_companies,
         user: a.users,
-      })) as Activity[];
+      })) as unknown as Activity[];
     },
     enabled: !!sectorId,
   });

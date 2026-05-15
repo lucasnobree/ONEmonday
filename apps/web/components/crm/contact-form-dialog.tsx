@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCreateContact, useUpdateContact } from "@/hooks/crm/use-contacts";
 import { useCompanies } from "@/hooks/crm/use-companies";
 import type { Contact } from "@/hooks/crm/use-contacts";
@@ -52,25 +52,20 @@ export function ContactFormDialog({
   const [isPrimary, setIsPrimary] = useState(false);
   const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    if (contact) {
-      setFullName(contact.full_name);
-      setEmail(contact.email ?? "");
-      setPhone(contact.phone ?? "");
-      setPosition(contact.position ?? "");
-      setCompanyId(contact.company_id ?? "");
-      setIsPrimary(contact.is_primary);
-      setNotes(contact.notes ?? "");
-    } else {
-      setFullName("");
-      setEmail("");
-      setPhone("");
-      setPosition("");
-      setCompanyId("");
-      setIsPrimary(false);
-      setNotes("");
-    }
-  }, [contact, open]);
+  // Re-seed form fields when the dialog (re)opens, by adjusting state during
+  // render — the React-recommended alternative to a syncing effect.
+  const formKey = `${open}:${contact?.id ?? "new"}`;
+  const [seededKey, setSeededKey] = useState<string | null>(null);
+  if (open && seededKey !== formKey) {
+    setSeededKey(formKey);
+    setFullName(contact?.full_name ?? "");
+    setEmail(contact?.email ?? "");
+    setPhone(contact?.phone ?? "");
+    setPosition(contact?.position ?? "");
+    setCompanyId(contact?.company_id ?? "");
+    setIsPrimary(contact?.is_primary ?? false);
+    setNotes(contact?.notes ?? "");
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
