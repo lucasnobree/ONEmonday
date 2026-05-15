@@ -37,7 +37,12 @@ export type Resource =
   // Legal (Juridico)
   | "contract"
   | "legal_matter"
-  | "clause";
+  | "clause"
+  // Dev-Tools
+  | "service"
+  | "incident"
+  | "deployment"
+  | "feature_flag";
 
 export type Action =
   | "create"
