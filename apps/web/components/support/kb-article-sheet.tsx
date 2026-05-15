@@ -26,6 +26,17 @@ interface KBArticleSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface KBArticleDetail {
+  id: string;
+  title: string;
+  content: string | null;
+  category: string | null;
+  tags: string[] | null;
+  is_published: boolean;
+  created_at: string;
+  users: { full_name: string } | null;
+}
+
 export function KBArticleSheet({
   articleId,
   open,
@@ -33,7 +44,7 @@ export function KBArticleSheet({
 }: KBArticleSheetProps) {
   const supabase = createClient();
 
-  const { data: article, isLoading } = useQuery({
+  const { data: article, isLoading } = useQuery<KBArticleDetail | null>({
     queryKey: ["kb-article-detail", articleId],
     queryFn: async () => {
       if (!articleId) return null;
@@ -42,8 +53,8 @@ export function KBArticleSheet({
         .select("*, users(full_name)")
         .eq("id", articleId)
         .single();
-      if (error) return null;
-      return data;
+      if (error || !data) return null;
+      return data as unknown as KBArticleDetail;
     },
     enabled: !!articleId,
   });
@@ -92,7 +103,7 @@ export function KBArticleSheet({
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <User className="h-3 w-3" />
-                  {(article as any).users?.full_name ?? "Autor desconhecido"}
+                  {article.users?.full_name ?? "Autor desconhecido"}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />

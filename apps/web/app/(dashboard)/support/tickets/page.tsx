@@ -96,14 +96,14 @@ export default function TicketsPage() {
   const categories = useMemo(() => {
     if (!tickets) return [];
     const cats = new Set(
-      tickets.map((t: any) => t.category).filter(Boolean)
+      tickets.map((t) => t.category).filter(Boolean)
     );
     return Array.from(cats) as string[];
   }, [tickets]);
 
   const filtered = useMemo(() => {
     if (!tickets) return [];
-    return tickets.filter((t: any) => {
+    return tickets.filter((t) => {
       if (statusFilter === "open" && t.resolved_at) return false;
       if (statusFilter === "resolved" && !t.resolved_at) return false;
       if (priorityFilter !== "all" && t.card?.priority !== priorityFilter)
@@ -194,9 +194,11 @@ export default function TicketsPage() {
               size="sm"
               onClick={() =>
                 exportToCSV(
-                  filtered.map((t: any) => ({
+                  filtered.map((t) => ({
                     titulo: t.card?.title ?? "",
-                    prioridade: priorityLabels[t.card?.priority] ?? t.card?.priority ?? "",
+                    prioridade: t.card?.priority
+                      ? (priorityLabels[t.card.priority] ?? t.card.priority)
+                      : "",
                     status: t.resolved_at ? "Resolvido" : "Aberto",
                     categoria: t.category ?? "",
                     canal: t.channel ?? "",
@@ -281,7 +283,7 @@ export default function TicketsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((ticket: any) => (
+                    {filtered.map((ticket) => (
                       <tr
                         key={ticket.id}
                         className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
@@ -294,10 +296,10 @@ export default function TicketsPage() {
                           <Badge
                             variant="secondary"
                             className={
-                              priorityColors[ticket.card?.priority] || ""
+                              priorityColors[ticket.card?.priority ?? ""] || ""
                             }
                           >
-                            {priorityLabels[ticket.card?.priority] ||
+                            {priorityLabels[ticket.card?.priority ?? ""] ||
                               ticket.card?.priority}
                           </Badge>
                         </td>

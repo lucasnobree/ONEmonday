@@ -151,9 +151,18 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 // -- Escalation History --
+interface EscalationLogEntry {
+  id: string;
+  reason: string;
+  created_at: string;
+  from_sector: { name: string } | null;
+  to_sector: { name: string } | null;
+  user: { full_name: string } | null;
+}
+
 function EscalationHistory({ ticketId }: { ticketId: string }) {
   const supabase = createClient();
-  const { data: logs } = useQuery({
+  const { data: logs } = useQuery<EscalationLogEntry[]>({
     queryKey: ["escalation-log", ticketId],
     queryFn: async () => {
       const { data } = await supabase
@@ -161,7 +170,7 @@ function EscalationHistory({ ticketId }: { ticketId: string }) {
         .select("*, from_sector:sectors!ticket_escalation_log_from_sector_id_fkey(name), to_sector:sectors!ticket_escalation_log_to_sector_id_fkey(name), user:users!ticket_escalation_log_escalated_by_fkey(full_name)")
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: false });
-      return data || [];
+      return (data || []) as unknown as EscalationLogEntry[];
     },
     enabled: !!ticketId,
   });
@@ -178,18 +187,18 @@ function EscalationHistory({ ticketId }: { ticketId: string }) {
         <div className="relative">
           <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
           <div className="space-y-3">
-            {logs.map((log: any) => (
+            {logs.map((log) => (
               <div key={log.id} className="relative pl-6">
                 <div className="absolute left-0 top-1 size-[14px] rounded-full border-2 border-background bg-orange-500" />
                 <div className="space-y-0.5">
                   <p className="text-sm">
-                    <span className="font-medium">{(log.from_sector as any)?.name}</span>
+                    <span className="font-medium">{log.from_sector?.name}</span>
                     {" -> "}
-                    <span className="font-medium">{(log.to_sector as any)?.name}</span>
+                    <span className="font-medium">{log.to_sector?.name}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">{log.reason}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{(log.user as any)?.full_name || "---"}</span>
+                    <span>{log.user?.full_name || "---"}</span>
                     <span>-</span>
                     <span>{formatRelativeTime(log.created_at)}</span>
                   </div>
@@ -328,7 +337,7 @@ function DetailsTab({
       )}
 
       {/* Escalation Info */}
-      {(ticket as any).escalated_to_sector_id && (
+      {ticket.escalated_to_sector_id && (
         <>
           <Separator />
           <div>
@@ -347,13 +356,13 @@ function DetailsTab({
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="text-muted-foreground text-xs">Motivo</span>
-                <p className="text-sm">{(ticket as any).escalation_reason || "---"}</p>
+                <p className="text-sm">{ticket.escalation_reason || "---"}</p>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs">Data</span>
                 <p className="text-sm">
-                  {(ticket as any).escalated_at
-                    ? new Date((ticket as any).escalated_at).toLocaleDateString("pt-BR", {
+                  {ticket.escalated_at
+                    ? new Date(ticket.escalated_at).toLocaleDateString("pt-BR", {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",
@@ -513,15 +522,23 @@ function ActivityTab({
                   <span>{formatRelativeTime(activity.created_at)}</span>
                 </div>
                 {activity.metadata &&
-                  Object.keys(activity.metadata).length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {activity.metadata.from && activity.metadata.to
-                        ? `${activity.metadata.from} -> ${activity.metadata.to}`
-                        : activity.metadata.title
-                          ? activity.metadata.title
-                          : null}
-                    </p>
-                  )}
+                  Object.keys(activity.metadata).length > 0 &&
+                  (() => {
+                    const meta = activity.metadata;
+                    const from =
+                      typeof meta.from === "string" ? meta.from : null;
+                    const to = typeof meta.to === "string" ? meta.to : null;
+                    const metaTitle =
+                      typeof meta.title === "string" ? meta.title : null;
+                    const text =
+                      from && to ? `${from} -> ${to}` : metaTitle;
+                    if (!text) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {text}
+                      </p>
+                    );
+                  })()}
               </div>
             </div>
           );
@@ -611,7 +628,7 @@ export function TicketDetailSheet({
                 ) : (
                   <Badge variant="secondary">Aberto</Badge>
                 )}
-                {(ticket as any).escalated_to_sector_id && (
+                {ticket.escalated_to_sector_id && (
                   <Badge
                     variant="secondary"
                     className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"

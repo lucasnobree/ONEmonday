@@ -7,10 +7,16 @@ import {
   useDeleteKBArticle,
   useToggleKBArticlePublished,
 } from "@/hooks/support/use-kb-articles";
-import type { PublishedFilter } from "@/hooks/support/use-kb-articles";
+import type {
+  PublishedFilter,
+  KBArticle,
+} from "@/hooks/support/use-kb-articles";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { KBArticleSheet } from "@/components/support/kb-article-sheet";
-import { KBArticleFormSheet } from "@/components/support/kb-article-form-sheet";
+import {
+  KBArticleFormSheet,
+  type KBArticleFormValues,
+} from "@/components/support/kb-article-form-sheet";
 import {
   Card,
   CardContent,
@@ -45,12 +51,14 @@ export default function KnowledgeBasePage() {
     null
   );
   const [formOpen, setFormOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<any>(undefined);
+  const [editingArticle, setEditingArticle] = useState<
+    KBArticleFormValues | undefined
+  >(undefined);
 
   const categories = useMemo(() => {
     if (!articles) return [];
     const cats = new Set(
-      articles.map((a: any) => a.category).filter(Boolean)
+      articles.map((a) => a.category).filter(Boolean)
     );
     return Array.from(cats) as string[];
   }, [articles]);
@@ -60,7 +68,7 @@ export default function KnowledgeBasePage() {
     if (!search.trim()) return articles;
     const q = search.toLowerCase();
     return articles.filter(
-      (a: any) =>
+      (a) =>
         a.title?.toLowerCase().includes(q) ||
         a.category?.toLowerCase().includes(q) ||
         a.content?.toLowerCase().includes(q)
@@ -80,8 +88,15 @@ export default function KnowledgeBasePage() {
     setFormOpen(true);
   }
 
-  function handleEdit(article: any) {
-    setEditingArticle(article);
+  function handleEdit(article: KBArticle) {
+    setEditingArticle({
+      id: article.id,
+      title: article.title,
+      content: article.content,
+      category: article.category,
+      tags: article.tags ?? [],
+      is_published: article.is_published,
+    });
     setFormOpen(true);
   }
 
@@ -108,9 +123,8 @@ export default function KnowledgeBasePage() {
       );
       return;
     }
-    toast.success(
-      (result as any).is_published ? "Artigo publicado" : "Artigo despublicado"
-    );
+    const published = "is_published" in result && result.is_published;
+    toast.success(published ? "Artigo publicado" : "Artigo despublicado");
   }
 
   return (
@@ -179,7 +193,7 @@ export default function KnowledgeBasePage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((article: any) => (
+            {filtered.map((article) => (
               <Card
                 key={article.id}
                 className="hover:shadow-md transition-shadow cursor-pointer group"

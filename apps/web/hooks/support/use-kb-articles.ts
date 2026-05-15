@@ -11,11 +11,26 @@ import {
 
 export type PublishedFilter = "all" | "published" | "draft";
 
+export interface KBArticle {
+  id: string;
+  sector_id: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  author_id: string;
+  is_published: boolean;
+  view_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export function useKBArticles(
   sectorId: string | undefined,
   publishedFilter: PublishedFilter = "all"
 ) {
-  return useQuery({
+  return useQuery<KBArticle[]>({
     queryKey: ["kb-articles", sectorId, publishedFilter],
     queryFn: async () => {
       if (!sectorId) return [];
@@ -34,7 +49,7 @@ export function useKBArticles(
       }
 
       const { data } = await query;
-      return data || [];
+      return (data || []) as KBArticle[];
     },
     enabled: !!sectorId,
   });

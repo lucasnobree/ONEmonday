@@ -22,6 +22,10 @@ export interface TicketDetail {
   csat_rating: number | null;
   csat_comment: string | null;
   created_at: string;
+  escalated_to_sector_id: string | null;
+  escalated_at: string | null;
+  escalated_by: string | null;
+  escalation_reason: string | null;
   card: {
     id: string;
     title: string;
@@ -44,7 +48,7 @@ export interface TicketDetail {
     card_activity_log: {
       id: string;
       action: string;
-      metadata: Record<string, any>;
+      metadata: Record<string, unknown>;
       created_at: string;
       user_id: string;
       users: { full_name: string } | null;

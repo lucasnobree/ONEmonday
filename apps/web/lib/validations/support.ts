@@ -35,6 +35,7 @@ export const createSLARuleSchema = z.object({
   responseTimeHours: z.number().int().min(1),
   resolveTimeHours: z.number().int().min(1),
   businessHoursOnly: z.boolean().default(true),
+  isActive: z.boolean().default(true),
 });
 
 export const createArticleSchema = z.object({
@@ -43,12 +44,30 @@ export const createArticleSchema = z.object({
   content: z.string().min(1, "Conteúdo é obrigatório"),
   category: z.string().min(1, "Categoria é obrigatória"),
   tags: z.array(z.string()).default([]),
+  isPublished: z.boolean().default(false),
 });
 
 export const createCannedResponseSchema = z.object({
   sectorId: z.string().uuid(),
-  title: z.string().min(1, "Título é obrigatório"),
+  title: z.string().min(1, "Título é obrigatório").max(200),
   content: z.string().min(1, "Conteúdo é obrigatório"),
   category: z.string().optional(),
   shortcut: z.string().optional(),
+});
+
+export const createTagSchema = z.object({
+  sectorId: z.string().uuid(),
+  name: z
+    .string()
+    .min(1, "Nome é obrigatório")
+    .max(40, "Nome muito longo")
+    .transform((v) => v.trim().toLowerCase()),
+  color: z
+    .enum(["gray", "red", "orange", "yellow", "green", "blue", "purple"])
+    .default("gray"),
+});
+
+export const tagAssignmentSchema = z.object({
+  ticketId: z.string().uuid(),
+  tagId: z.string().uuid(),
 });
