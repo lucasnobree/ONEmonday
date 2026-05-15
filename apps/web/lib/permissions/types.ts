@@ -37,7 +37,9 @@ export type Resource =
   // Legal (Juridico)
   | "contract"
   | "legal_matter"
-  | "clause";
+  | "clause"
+  // Analytics
+  | "analytics_report";
 
 export type Action =
   | "create"
