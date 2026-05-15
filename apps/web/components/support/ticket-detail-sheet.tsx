@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/support/tickets";
 import { addTicketComment } from "@/lib/actions/support/comments";
 import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
+import { TicketTagEditor } from "@/components/support/ticket-tag-editor";
 import {
   Sheet,
   SheetContent,
@@ -245,6 +246,14 @@ function DetailsTab({
           <p className="text-sm whitespace-pre-wrap">{card.description}</p>
         </div>
       )}
+
+      <Separator />
+
+      {/* Tags */}
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">Tags</h4>
+        <TicketTagEditor ticketId={ticket.id} sectorId={ticket.sector_id} />
+      </div>
 
       <Separator />
 

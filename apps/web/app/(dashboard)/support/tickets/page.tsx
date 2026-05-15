@@ -30,6 +30,11 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { TicketDetailSheet } from "@/components/support/ticket-detail-sheet";
 import { useSlaStatus } from "@/hooks/support/use-sla-status";
 import type { SlaStatusEntry } from "@/hooks/support/use-sla-status";
+import {
+  useSectorTags,
+  useSectorTicketTags,
+  TAG_COLOR_CLASSES,
+} from "@/hooks/support/use-ticket-tags";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -77,10 +82,13 @@ export default function TicketsPage() {
   const { currentSector } = useCurrentSector();
   const { data: tickets, isLoading } = useTickets(currentSector?.id);
   const { data: slaEntries } = useSlaStatus();
+  const { data: sectorTags } = useSectorTags(currentSector?.id);
+  const { data: ticketTagsMap } = useSectorTicketTags(currentSector?.id);
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const slaMap = useMemo(() => {
@@ -110,9 +118,20 @@ export default function TicketsPage() {
         return false;
       if (categoryFilter !== "all" && t.category !== categoryFilter)
         return false;
+      if (tagFilter !== "all") {
+        const tags = ticketTagsMap?.get(t.id) ?? [];
+        if (!tags.some((tag) => tag.id === tagFilter)) return false;
+      }
       return true;
     });
-  }, [tickets, statusFilter, priorityFilter, categoryFilter]);
+  }, [
+    tickets,
+    statusFilter,
+    priorityFilter,
+    categoryFilter,
+    tagFilter,
+    ticketTagsMap,
+  ]);
 
   async function handleResolve(ticketId: string) {
     const result = await resolveTicket(ticketId);
@@ -183,6 +202,20 @@ export default function TicketsPage() {
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={tagFilter} onValueChange={(v) => setTagFilter(v ?? "all")}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as tags</SelectItem>
+              {(sectorTags ?? []).map((tag) => (
+                <SelectItem key={tag.id} value={tag.id}>
+                  {tag.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -290,7 +323,28 @@ export default function TicketsPage() {
                         onClick={() => setSelectedTicketId(ticket.card?.id || null)}
                       >
                         <td className="py-3 pr-4 font-medium">
-                          {ticket.card?.title || "—"}
+                          <div className="space-y-1">
+                            <span>{ticket.card?.title || "—"}</span>
+                            {(() => {
+                              const tags = ticketTagsMap?.get(ticket.id) ?? [];
+                              if (!tags.length) return null;
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {tags.map((tag) => (
+                                    <Badge
+                                      key={tag.id}
+                                      variant="secondary"
+                                      className={`text-[10px] px-1.5 py-0 font-normal ${
+                                        TAG_COLOR_CLASSES[tag.color]
+                                      }`}
+                                    >
+                                      {tag.name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td className="py-3 pr-4">
                           <Badge
