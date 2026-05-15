@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
-import { createDealSchema } from "@/lib/validations/crm";
+import { createDealSchema, closeDealLostSchema } from "@/lib/validations/crm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -135,12 +135,15 @@ export async function closeDealWon(dealId: string) {
   return { success: true };
 }
 
-export async function closeDealLost(dealId: string, reason: string) {
-  const parsedId = z.string().uuid().safeParse(dealId);
-  if (!parsedId.success) return { error: "ID invalido" };
-
-  const parsedReason = z.string().min(1).safeParse(reason);
-  if (!parsedReason.success) return { error: "Motivo é obrigatório" };
+export async function closeDealLost(input: {
+  dealId: string;
+  category: string;
+  reason: string;
+}) {
+  const parsed = closeDealLostSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados invalidos" };
+  }
 
   const supabase = await createClient();
   const {
@@ -151,7 +154,7 @@ export async function closeDealLost(dealId: string, reason: string) {
   const { data: deal } = await supabase
     .from("crm_deals")
     .select("sector_id")
-    .eq("id", dealId)
+    .eq("id", parsed.data.dealId)
     .single();
 
   if (!deal) return { error: "Deal nao encontrado" };
@@ -164,10 +167,11 @@ export async function closeDealLost(dealId: string, reason: string) {
   const { error } = await supabase
     .from("crm_deals")
     .update({
-      lost_reason: reason,
+      lost_reason: parsed.data.reason,
+      lost_reason_category: parsed.data.category,
       actual_close_date: new Date().toISOString().split("T")[0],
     })
-    .eq("id", dealId);
+    .eq("id", parsed.data.dealId);
 
   if (error) return { error: error.message };
 

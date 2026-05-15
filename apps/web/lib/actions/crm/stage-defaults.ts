@@ -2,18 +2,20 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
+import { stageDefaultSchema } from "@/lib/validations/crm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-const stageDefaultSchema = z.object({
-  stage_name: z.string().min(1),
-  default_probability: z.number().int().min(0).max(100),
-  position: z.number().int().min(0),
-});
+export interface StageDefaultInput {
+  stage_name: string;
+  default_probability: number;
+  position: number;
+  rotting_days?: number;
+}
 
 export async function updateStageDefaults(
   sectorId: string,
-  stages: { stage_name: string; default_probability: number; position: number }[]
+  stages: StageDefaultInput[]
 ) {
   const sectorParsed = z.string().uuid().safeParse(sectorId);
   if (!sectorParsed.success) return { error: "Sector ID invalido" };
@@ -48,6 +50,7 @@ export async function updateStageDefaults(
           stage_name: s.stage_name,
           default_probability: s.default_probability,
           position: s.position,
+          rotting_days: s.rotting_days,
         }))
       );
 

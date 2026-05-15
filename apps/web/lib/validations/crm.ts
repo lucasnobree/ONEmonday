@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LOST_REASON_CATEGORIES } from "@/lib/crm/lost-reasons";
 
 export const createCompanySchema = z.object({
   sectorId: z.string().uuid(),
@@ -62,4 +63,17 @@ export const createProposalSchema = z.object({
   content: z.string().optional(),
   value: z.number().min(0).optional(),
   expiresAt: z.string().optional(),
+});
+
+export const closeDealLostSchema = z.object({
+  dealId: z.string().uuid(),
+  category: z.enum(LOST_REASON_CATEGORIES),
+  reason: z.string().min(1, "Motivo é obrigatório").max(1000),
+});
+
+export const stageDefaultSchema = z.object({
+  stage_name: z.string().min(1),
+  default_probability: z.number().int().min(0).max(100),
+  position: z.number().int().min(0),
+  rotting_days: z.number().int().min(0).max(365).default(0),
 });

@@ -14,6 +14,8 @@ export interface DealDetail {
   win_probability: number | null;
   probability_locked: boolean;
   lost_reason: string | null;
+  lost_reason_category: string | null;
+  last_stage_change_at: string | null;
   source: string | null;
   created_at: string;
   card: {
@@ -52,7 +54,8 @@ export function useDealDetail(dealId: string | null) {
           `
           id, card_id, sector_id, value, currency,
           expected_close_date, actual_close_date,
-          win_probability, probability_locked, lost_reason, source, created_at,
+          win_probability, probability_locked, lost_reason,
+          lost_reason_category, last_stage_change_at, source, created_at,
           cards!inner (
             id, title, description, priority, due_date, created_at,
             board_columns (name, color),
@@ -68,13 +71,17 @@ export function useDealDetail(dealId: string | null) {
 
       if (error) throw error;
 
-      const cards = data.cards as any;
+      const cards = data.cards as unknown as Record<string, unknown>;
+      const cardAssignees = (cards.card_assignees ?? []) as {
+        user_id: string;
+        users: { full_name: string; email: string };
+      }[];
       return {
         ...data,
         card: {
           ...cards,
           column: cards.board_columns,
-          assignees: (cards.card_assignees || []).map((a: any) => ({
+          assignees: cardAssignees.map((a) => ({
             user_id: a.user_id,
             user: a.users,
           })),

@@ -16,6 +16,7 @@ export interface Deal {
   actual_close_date: string | null;
   win_probability: number | null;
   lost_reason: string | null;
+  last_stage_change_at: string | null;
   source: string | null;
   created_at: string;
   card: {
@@ -26,12 +27,14 @@ export interface Deal {
     column_id: string;
     board_id: string;
     is_active: boolean;
+    created_by: string | null;
     board_columns: {
       id: string;
       name: string;
       color: string;
       is_done_column: boolean;
     };
+    users: { id: string; full_name: string } | null;
   };
   company: {
     id: string;
@@ -57,10 +60,12 @@ export function useDeals(sectorId: string | undefined) {
           `
           id, card_id, sector_id, company_id, contact_id,
           value, currency, expected_close_date, actual_close_date,
-          win_probability, lost_reason, source, created_at,
+          win_probability, lost_reason, last_stage_change_at, source, created_at,
           cards!inner (
             id, title, description, priority, column_id, board_id, is_active,
-            board_columns!inner (id, name, color, is_done_column)
+            created_by,
+            board_columns!inner (id, name, color, is_done_column),
+            users (id, full_name)
           ),
           crm_companies (id, name),
           crm_contacts (id, full_name)
@@ -72,12 +77,12 @@ export function useDeals(sectorId: string | undefined) {
 
       if (error) throw error;
 
-      return (data || []).map((d: any) => ({
+      return ((data ?? []) as Record<string, unknown>[]).map((d) => ({
         ...d,
         card: d.cards,
         company: d.crm_companies,
         contact: d.crm_contacts,
-      })) as Deal[];
+      })) as unknown as Deal[];
     },
     enabled: !!sectorId,
   });
@@ -111,8 +116,11 @@ export function useCloseDealLost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ dealId, reason }: { dealId: string; reason: string }) =>
-      closeDealLost(dealId, reason),
+    mutationFn: (input: {
+      dealId: string;
+      category: string;
+      reason: string;
+    }) => closeDealLost(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-deals"] });
       queryClient.invalidateQueries({ queryKey: ["crm-stats"] });

@@ -64,15 +64,19 @@ export function useCompanyDetail(companyId: string | null) {
 
       if (error) throw error;
 
+      const rawDeals = (data.crm_deals ?? []) as {
+        cards?: { board_columns?: unknown };
+        [key: string]: unknown;
+      }[];
       return {
         ...data,
         contacts: data.crm_contacts || [],
-        deals: (data.crm_deals || []).map((d: any) => ({
+        deals: rawDeals.map((d) => ({
           ...d,
           card: d.cards,
           column: d.cards?.board_columns,
         })),
-      } as CompanyDetail;
+      } as unknown as CompanyDetail;
     },
     enabled: !!companyId,
   });

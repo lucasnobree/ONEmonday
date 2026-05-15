@@ -38,6 +38,42 @@ export interface ProposalDetail extends Proposal {
   items: ProposalItem[];
 }
 
+/** Shape of a crm_proposals row with the joined deal/card relation. */
+interface ProposalRow {
+  id: string;
+  deal_id: string;
+  sector_id: string;
+  title: string;
+  content: string | null;
+  value: number;
+  status: string;
+  sent_at: string | null;
+  expires_at: string | null;
+  created_by: string;
+  is_active: boolean;
+  created_at: string;
+  crm_deals?: { id: string; card_id: string; cards?: { title: string } | null } | null;
+}
+
+/** Map a raw proposal row to the flat Proposal view model. */
+function mapProposalRow(p: ProposalRow): Proposal {
+  return {
+    id: p.id,
+    deal_id: p.deal_id,
+    sector_id: p.sector_id,
+    title: p.title,
+    content: p.content,
+    value: p.value,
+    status: p.status,
+    sent_at: p.sent_at,
+    expires_at: p.expires_at,
+    created_by: p.created_by,
+    is_active: p.is_active,
+    created_at: p.created_at,
+    deal_title: p.crm_deals?.cards?.title ?? null,
+  };
+}
+
 export function useProposals(
   sectorId: string | undefined,
   statusFilter?: string
@@ -69,21 +105,7 @@ export function useProposals(
       const { data, error } = await query;
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
-        id: p.id,
-        deal_id: p.deal_id,
-        sector_id: p.sector_id,
-        title: p.title,
-        content: p.content,
-        value: p.value,
-        status: p.status,
-        sent_at: p.sent_at,
-        expires_at: p.expires_at,
-        created_by: p.created_by,
-        is_active: p.is_active,
-        created_at: p.created_at,
-        deal_title: p.crm_deals?.cards?.title ?? null,
-      })) as Proposal[];
+      return ((data ?? []) as unknown as ProposalRow[]).map(mapProposalRow);
     },
     enabled: !!sectorId,
   });
@@ -144,23 +166,10 @@ export function useProposalDetail(proposalId: string | null) {
         .eq("proposal_id", proposalId)
         .order("position", { ascending: true });
 
-      const p = proposal as any;
       return {
-        id: p.id,
-        deal_id: p.deal_id,
-        sector_id: p.sector_id,
-        title: p.title,
-        content: p.content,
-        value: p.value,
-        status: p.status,
-        sent_at: p.sent_at,
-        expires_at: p.expires_at,
-        created_by: p.created_by,
-        is_active: p.is_active,
-        created_at: p.created_at,
-        deal_title: p.crm_deals?.cards?.title ?? null,
+        ...mapProposalRow(proposal as unknown as ProposalRow),
         items: (items || []) as ProposalItem[],
-      } as ProposalDetail;
+      } satisfies ProposalDetail;
     },
     enabled: !!proposalId,
   });

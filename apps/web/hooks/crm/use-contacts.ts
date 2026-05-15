@@ -49,11 +49,11 @@ export function useContacts(sectorId: string | undefined) {
 
       if (error) throw error;
 
-      return (data || []).map((c: any) => ({
+      return ((data ?? []) as Record<string, unknown>[]).map((c) => ({
         ...c,
         company: c.crm_companies,
         crm_companies: undefined,
-      })) as Contact[];
+      })) as unknown as Contact[];
     },
     enabled: !!sectorId,
   });
