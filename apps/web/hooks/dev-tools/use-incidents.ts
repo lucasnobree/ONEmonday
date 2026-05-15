@@ -1,7 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  createIncident,
+  updateIncident,
+  deleteIncident,
+} from "@/lib/actions/dev-tools/incidents";
 
 export interface DevIncident {
   id: string;
@@ -39,5 +44,37 @@ export function useIncidents(sectorId: string | undefined) {
       return (data as DevIncident[]) ?? [];
     },
     enabled: !!sectorId,
+  });
+}
+
+function useIncidentInvalidation() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["dev-incidents"] });
+    queryClient.invalidateQueries({ queryKey: ["dev-tools-stats"] });
+  };
+}
+
+export function useCreateIncident() {
+  const invalidate = useIncidentInvalidation();
+  return useMutation({
+    mutationFn: (input: unknown) => createIncident(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateIncident() {
+  const invalidate = useIncidentInvalidation();
+  return useMutation({
+    mutationFn: (input: unknown) => updateIncident(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteIncident() {
+  const invalidate = useIncidentInvalidation();
+  return useMutation({
+    mutationFn: (id: string) => deleteIncident(id),
+    onSuccess: invalidate,
   });
 }

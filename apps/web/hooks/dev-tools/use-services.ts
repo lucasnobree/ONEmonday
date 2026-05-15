@@ -1,7 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  createService,
+  updateService,
+  deleteService,
+} from "@/lib/actions/dev-tools/services";
 
 export interface DevService {
   id: string;
@@ -38,5 +43,37 @@ export function useServices(sectorId: string | undefined) {
       return (data as DevService[]) ?? [];
     },
     enabled: !!sectorId,
+  });
+}
+
+function useServiceInvalidation() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["dev-services"] });
+    queryClient.invalidateQueries({ queryKey: ["dev-tools-stats"] });
+  };
+}
+
+export function useCreateService() {
+  const invalidate = useServiceInvalidation();
+  return useMutation({
+    mutationFn: (input: unknown) => createService(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateService() {
+  const invalidate = useServiceInvalidation();
+  return useMutation({
+    mutationFn: (input: unknown) => updateService(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteService() {
+  const invalidate = useServiceInvalidation();
+  return useMutation({
+    mutationFn: (id: string) => deleteService(id),
+    onSuccess: invalidate,
   });
 }

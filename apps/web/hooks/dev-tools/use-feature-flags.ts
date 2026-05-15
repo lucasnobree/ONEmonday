@@ -1,7 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  createFeatureFlag,
+  updateFeatureFlag,
+  toggleFeatureFlag,
+  deleteFeatureFlag,
+} from "@/lib/actions/dev-tools/feature-flags";
 
 export interface DevFeatureFlag {
   id: string;
@@ -38,5 +44,46 @@ export function useFeatureFlags(sectorId: string | undefined) {
       return (data as DevFeatureFlag[]) ?? [];
     },
     enabled: !!sectorId,
+  });
+}
+
+function useFlagInvalidation() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["dev-feature-flags"] });
+    queryClient.invalidateQueries({ queryKey: ["dev-tools-stats"] });
+  };
+}
+
+export function useCreateFeatureFlag() {
+  const invalidate = useFlagInvalidation();
+  return useMutation({
+    mutationFn: (input: unknown) => createFeatureFlag(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateFeatureFlag() {
+  const invalidate = useFlagInvalidation();
+  return useMutation({
+    mutationFn: (input: unknown) => updateFeatureFlag(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useToggleFeatureFlag() {
+  const invalidate = useFlagInvalidation();
+  return useMutation({
+    mutationFn: ({ id, isEnabled }: { id: string; isEnabled: boolean }) =>
+      toggleFeatureFlag(id, isEnabled),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteFeatureFlag() {
+  const invalidate = useFlagInvalidation();
+  return useMutation({
+    mutationFn: (id: string) => deleteFeatureFlag(id),
+    onSuccess: invalidate,
   });
 }
