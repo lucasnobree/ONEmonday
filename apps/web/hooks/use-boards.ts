@@ -3,12 +3,27 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { createBoard, updateBoard, deleteBoard } from "@/lib/actions/boards";
-import type { CreateBoardInput } from "@/lib/validations/boards";
+import type {
+  CreateBoardInput,
+  UpdateBoardInput,
+} from "@/lib/validations/boards";
+
+export interface BoardSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  visibility: string;
+  is_default: boolean | null;
+  created_by: string | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string | null;
+}
 
 export function useBoards(sectorId: string | undefined) {
   const supabase = createClient();
 
-  return useQuery({
+  return useQuery<BoardSummary[]>({
     queryKey: ["boards", sectorId],
     queryFn: async () => {
       if (!sectorId) return [];
@@ -27,7 +42,11 @@ export function useBoards(sectorId: string | undefined) {
         .eq("boards.is_active", true);
 
       if (error) throw error;
-      return data?.map((bs) => bs.boards).flat() ?? [];
+      return (
+        (data ?? []).flatMap((bs) =>
+          bs.boards ? [bs.boards as unknown as BoardSummary] : []
+        )
+      );
     },
     enabled: !!sectorId,
   });
@@ -38,6 +57,17 @@ export function useCreateBoard() {
 
   return useMutation({
     mutationFn: (input: CreateBoardInput) => createBoard(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+    },
+  });
+}
+
+export function useUpdateBoard() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateBoardInput) => updateBoard(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
     },

@@ -7,12 +7,28 @@ import {
   updateProject,
   deleteProject,
 } from "@/lib/actions/projects";
-import type { CreateProjectInput } from "@/lib/validations/projects";
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+} from "@/lib/validations/projects";
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  start_date: string | null;
+  target_date: string | null;
+  created_by: string;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string | null;
+}
 
 export function useProjects(sectorId: string | undefined) {
   const supabase = createClient();
 
-  return useQuery({
+  return useQuery<ProjectSummary[]>({
     queryKey: ["projects", sectorId],
     queryFn: async () => {
       if (!sectorId) return [];
@@ -31,7 +47,11 @@ export function useProjects(sectorId: string | undefined) {
         .eq("projects.is_active", true);
 
       if (error) throw error;
-      return data?.map((ps) => ps.projects).flat() ?? [];
+      return (
+        (data ?? []).flatMap((ps) =>
+          ps.projects ? [ps.projects as unknown as ProjectSummary] : []
+        )
+      );
     },
     enabled: !!sectorId,
   });
@@ -42,6 +62,17 @@ export function useCreateProject() {
 
   return useMutation({
     mutationFn: (input: CreateProjectInput) => createProject(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateProjectInput) => updateProject(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },

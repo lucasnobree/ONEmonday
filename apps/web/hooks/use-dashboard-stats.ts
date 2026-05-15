@@ -99,10 +99,18 @@ async function fetchDashboardStats(
     string,
     { column_name: string; column_color: string; count: number }
   >();
-  for (const card of columnRes.data || []) {
-    const col = card.board_columns as any;
-    const name = col.name as string;
-    const color = (col.color as string) || "#6b7280";
+  type ColumnJoin = { name: string; color: string | null };
+  for (const card of columnRes.data ?? []) {
+    // A `!inner` join yields a single related row; Supabase types it as
+    // either an object or a single-element array depending on inference.
+    const joined = card.board_columns as unknown as
+      | ColumnJoin
+      | ColumnJoin[]
+      | null;
+    const col = Array.isArray(joined) ? joined[0] : joined;
+    if (!col) continue;
+    const name = col.name;
+    const color = col.color || "#6b7280";
     if (columnMap.has(name)) {
       columnMap.get(name)!.count++;
     } else {

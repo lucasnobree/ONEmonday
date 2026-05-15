@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -28,6 +28,13 @@ import { BoardCard } from "./board-card";
 import { BoardCardDetail } from "./board-card-detail";
 import { BoardListView } from "./board-list-view";
 import { BoardTimelineView } from "./board-timeline-view";
+import {
+  BoardFilters,
+  EMPTY_BOARD_FILTERS,
+  applyBoardFilters,
+  countBoardCards,
+  type BoardFilterState,
+} from "./board-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface BoardViewProps {
@@ -41,6 +48,17 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   const queryClient = useQueryClient();
   const [activeCard, setActiveCard] = useState<BoardCardType | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<BoardFilterState>(
+    EMPTY_BOARD_FILTERS
+  );
+
+  const isFiltered =
+    filters.search.trim() !== "" || filters.priority !== "all";
+
+  const filteredBoard = useMemo(
+    () => (board ? applyBoardFilters(board, filters) : board),
+    [board, filters]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -70,7 +88,9 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
     async (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveCard(null);
-      if (!over || !board) return;
+      // Reordering is disabled while a filter is active so positions are
+      // never recomputed from a partial (filtered) card set.
+      if (!over || !board || isFiltered) return;
 
       const activeId = active.id as string;
       const overId = over.id as string;
@@ -177,7 +197,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
         queryClient.invalidateQueries({ queryKey: ["board", boardId] });
       }
     },
-    [board, boardId, queryClient]
+    [board, boardId, queryClient, isFiltered]
   );
 
   if (isLoading) {
@@ -198,6 +218,8 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
     );
   }
 
+  const viewBoard = filteredBoard ?? board;
+
   return (
     <div>
       <div className="mb-4">
@@ -216,7 +238,18 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
           <TabsTrigger value={2}>Timeline</TabsTrigger>
         </TabsList>
 
+        <BoardFilters
+          filters={filters}
+          onChange={setFilters}
+          resultCount={countBoardCards(viewBoard)}
+        />
+
         <TabsContent value={0}>
+          {isFiltered && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              Reordenar cards esta desativado enquanto um filtro esta ativo.
+            </p>
+          )}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -224,12 +257,13 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
             onDragEnd={handleDragEnd}
           >
             <div className="flex gap-4 overflow-x-auto pb-4">
-              {board.columns.map((column) => (
+              {viewBoard.columns.map((column) => (
                 <BoardColumn
                   key={column.id}
                   column={column}
                   boardId={boardId}
                   sectorId={sectorId}
+                  dragDisabled={isFiltered}
                   onCardClick={(cardId) => setSelectedCardId(cardId)}
                   onCardCreated={() =>
                     queryClient.invalidateQueries({
@@ -252,14 +286,14 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
 
         <TabsContent value={1}>
           <BoardListView
-            board={board}
+            board={viewBoard}
             onCardClick={(cardId) => setSelectedCardId(cardId)}
           />
         </TabsContent>
 
         <TabsContent value={2}>
           <BoardTimelineView
-            board={board}
+            board={viewBoard}
             onCardClick={(cardId) => setSelectedCardId(cardId)}
           />
         </TabsContent>

@@ -15,6 +15,21 @@ const createChecklistItemSchema = z.object({
   content: z.string().min(1).max(500),
 });
 
+/** Shape of the nested join used to resolve a checklist's owning sector. */
+type ChecklistWithCard = {
+  card_id: string;
+  cards: { sector_id: string } | null;
+};
+
+/** Shape of the nested join used to resolve a checklist item's sector. */
+type ItemWithChecklist = {
+  checklist_id: string;
+  card_checklists: {
+    card_id: string;
+    cards: { sector_id: string } | null;
+  } | null;
+};
+
 export async function createChecklist(formData: unknown) {
   const supabase = await createClient();
   const {
@@ -73,10 +88,11 @@ export async function createChecklistItem(formData: unknown) {
     .from("card_checklists")
     .select("card_id, cards(sector_id)")
     .eq("id", parsed.data.checklistId)
-    .single();
+    .single<ChecklistWithCard>();
   if (!checklist) return { error: "Checklist nao encontrada" };
 
-  const sectorId = (checklist as any).cards?.sector_id;
+  const sectorId = checklist.cards?.sector_id;
+  if (!sectorId) return { error: "Card nao encontrado" };
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, sectorId, "card_checklist", "update"))
     return { error: "Sem permissao" };
@@ -121,10 +137,11 @@ export async function toggleChecklistItem(
     .from("checklist_items")
     .select("checklist_id, card_checklists(card_id, cards(sector_id))")
     .eq("id", itemId)
-    .single();
+    .single<ItemWithChecklist>();
   if (!item) return { error: "Item nao encontrado" };
 
-  const sectorId = (item as any).card_checklists?.cards?.sector_id;
+  const sectorId = item.card_checklists?.cards?.sector_id;
+  if (!sectorId) return { error: "Card nao encontrado" };
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, sectorId, "card_checklist", "update"))
     return { error: "Sem permissao" };
@@ -156,10 +173,11 @@ export async function deleteChecklist(checklistId: string) {
     .from("card_checklists")
     .select("card_id, cards(sector_id)")
     .eq("id", checklistId)
-    .single();
+    .single<ChecklistWithCard>();
   if (!checklist) return { error: "Checklist nao encontrada" };
 
-  const sectorId = (checklist as any).cards?.sector_id;
+  const sectorId = checklist.cards?.sector_id;
+  if (!sectorId) return { error: "Card nao encontrado" };
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, sectorId, "card_checklist", "delete"))
     return { error: "Sem permissao" };
@@ -168,6 +186,39 @@ export async function deleteChecklist(checklistId: string) {
     .from("card_checklists")
     .delete()
     .eq("id", checklistId);
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+/** Deletes a single checklist item. Requires card_checklist:update. */
+export async function deleteChecklistItem(itemId: string) {
+  const parsedId = z.string().uuid().safeParse(itemId);
+  if (!parsedId.success) return { error: "ID invalido" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: item } = await supabase
+    .from("checklist_items")
+    .select("checklist_id, card_checklists(card_id, cards(sector_id))")
+    .eq("id", itemId)
+    .single<ItemWithChecklist>();
+  if (!item) return { error: "Item nao encontrado" };
+
+  const sectorId = item.card_checklists?.cards?.sector_id;
+  if (!sectorId) return { error: "Card nao encontrado" };
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, sectorId, "card_checklist", "update"))
+    return { error: "Sem permissao" };
+
+  const { error } = await supabase
+    .from("checklist_items")
+    .delete()
+    .eq("id", itemId);
   if (error) return { error: error.message };
   revalidatePath("/");
   return { success: true };

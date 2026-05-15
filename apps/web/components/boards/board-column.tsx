@@ -22,6 +22,8 @@ interface BoardColumnProps {
   column: BoardColumnType & { cards: BoardCardType[] };
   boardId: string;
   sectorId: string;
+  /** Disables card dragging (used while a board filter is active). */
+  dragDisabled?: boolean;
   onCardClick?: (cardId: string) => void;
   onCardCreated?: () => void;
 }
@@ -30,6 +32,7 @@ export function BoardColumn({
   column,
   boardId,
   sectorId,
+  dragDisabled = false,
   onCardClick,
   onCardCreated,
 }: BoardColumnProps) {
@@ -108,6 +111,7 @@ export function BoardColumn({
             <BoardCard
               key={card.id}
               card={card}
+              dragDisabled={dragDisabled}
               onClick={() => onCardClick?.(card.id)}
             />
           ))}

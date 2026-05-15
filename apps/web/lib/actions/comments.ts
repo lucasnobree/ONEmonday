@@ -10,6 +10,13 @@ const createCommentSchema = z.object({
   content: z.string().min(1, "Comentario obrigatorio").max(5000),
 });
 
+/** Shape of the comment + nested card join used for permission checks. */
+type CommentWithCard = {
+  user_id: string;
+  card_id: string;
+  cards: { sector_id: string } | null;
+};
+
 export async function createComment(formData: unknown) {
   const supabase = await createClient();
   const {
@@ -69,11 +76,12 @@ export async function deleteComment(commentId: string) {
     .from("card_comments")
     .select("user_id, card_id, cards(sector_id)")
     .eq("id", commentId)
-    .single();
+    .single<CommentWithCard>();
   if (!comment) return { error: "Comentario nao encontrado" };
 
   const isAuthor = comment.user_id === user.id;
-  const sectorId = (comment as any).cards?.sector_id;
+  const sectorId = comment.cards?.sector_id;
+  if (!sectorId) return { error: "Card nao encontrado" };
   const perms = await getUserPermissions(user.id);
   const hasDeletePerm = hasPermission(
     perms,

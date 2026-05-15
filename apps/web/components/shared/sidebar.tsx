@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -158,10 +158,13 @@ function SidebarContent({ user }: SidebarProps) {
 export function Sidebar({ user }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Close the mobile sheet whenever navigation lands on a new route.
+  // Tracking the rendered pathname avoids a setState-in-effect cascade.
+  const [sheetPathname, setSheetPathname] = useState(pathname);
+  if (sheetPathname !== pathname) {
+    setSheetPathname(pathname);
+    if (open) setOpen(false);
+  }
 
   return (
     <>
