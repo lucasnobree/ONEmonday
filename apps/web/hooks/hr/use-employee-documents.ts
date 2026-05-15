@@ -14,6 +14,7 @@ export interface EmployeeDocument {
   file_url: string;
   file_size: number | null;
   category: string;
+  expiry_date: string | null;
   uploaded_by: string;
   sector_id: string;
   created_at: string;
@@ -49,17 +50,20 @@ export function useUploadDocument() {
       sectorId,
       file,
       category,
+      expiryDate,
     }: {
       employeeId: string;
       sectorId: string;
       file: File;
       category: string;
+      expiryDate?: string;
     }) => {
       const formData = new FormData();
       formData.set("employeeId", employeeId);
       formData.set("sectorId", sectorId);
       formData.set("file", file);
       formData.set("category", category);
+      if (expiryDate) formData.set("expiryDate", expiryDate);
       return uploadDocument(formData);
     },
     onSuccess: () => {

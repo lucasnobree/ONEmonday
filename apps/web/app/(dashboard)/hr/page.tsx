@@ -5,10 +5,10 @@ import { useHRStats } from "@/hooks/hr/use-hr-stats";
 import { useTimeOffRequests } from "@/hooks/hr/use-time-off-requests";
 import { useOnboardingInstances } from "@/hooks/hr/use-onboarding";
 import { useEmployees } from "@/hooks/hr/use-employees";
+import { useExpiringDocuments } from "@/hooks/hr/use-expiring-documents";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -22,17 +22,16 @@ import {
   BarChart3,
   CalendarCheck,
   UserCog,
+  FileWarning,
 } from "lucide-react";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
-const STATUS_MAP: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
-> = {
-  pending: { label: "Pendente", variant: "outline" },
-  approved: { label: "Aprovado", variant: "default" },
-  rejected: { label: "Rejeitado", variant: "destructive" },
+const DOCUMENT_CATEGORY_MAP: Record<string, string> = {
+  contract: "Contrato",
+  id: "Documento",
+  certificate: "Certificado",
+  other: "Outro",
 };
 
 export default function HRDashboardPage() {
@@ -47,6 +46,8 @@ export default function HRDashboardPage() {
   const { data: employees, isLoading: employeesLoading } = useEmployees(
     currentSector?.id
   );
+  const { data: expiringDocs, isLoading: expiringDocsLoading } =
+    useExpiringDocuments(currentSector?.id);
 
   if (!currentSector) {
     return (
@@ -106,8 +107,11 @@ export default function HRDashboardPage() {
     ([, a], [, b]) => b - a
   );
 
+  // Single "now" reference reused across the dashboard's date math.
+  const now = new Date();
+
   // Birthdays this month
-  const currentMonth = new Date().getMonth() + 1;
+  const currentMonth = now.getMonth() + 1;
   const birthdaysThisMonth = activeEmployees.filter((e) => {
     if (!e.birth_date) return false;
     const month = new Date(e.birth_date).getMonth() + 1;
@@ -131,8 +135,7 @@ export default function HRDashboardPage() {
   );
 
   // Upcoming time-off (next 7 days)
-  const now = new Date();
-  const weekFromNow = new Date();
+  const weekFromNow = new Date(now);
   weekFromNow.setDate(weekFromNow.getDate() + 7);
   const upcomingTimeOff = (timeOffRequests ?? [])
     .filter((r) => {
@@ -293,7 +296,7 @@ export default function HRDashboardPage() {
                   const pct =
                     total > 0 ? Math.round((completed / total) * 100) : 0;
                   const daysSince = Math.floor(
-                    (Date.now() - new Date(ob.start_date).getTime()) /
+                    (now.getTime() - new Date(ob.start_date).getTime()) /
                       (1000 * 60 * 60 * 24)
                   );
 
@@ -371,6 +374,60 @@ export default function HRDashboardPage() {
                     </Badge>
                   </div>
                 ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Expiring Documents */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileWarning className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Documentos Vencendo</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {expiringDocsLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-8 rounded bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : (expiringDocs ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum documento vencendo nos proximos 30 dias.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(expiringDocs ?? []).slice(0, 6).map((doc) => {
+                  const expired = doc.days_until_expiry < 0;
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <div className="min-w-0">
+                        <span className="font-medium truncate block">
+                          {doc.employee_name}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {DOCUMENT_CATEGORY_MAP[doc.category] ?? doc.category}
+                          {" - "}
+                          {dateFormat.format(new Date(doc.expiry_date))}
+                        </span>
+                      </div>
+                      <Badge
+                        variant={expired ? "destructive" : "outline"}
+                        className="shrink-0 text-xs"
+                      >
+                        {expired
+                          ? "Vencido"
+                          : `${doc.days_until_expiry}d`}
+                      </Badge>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
