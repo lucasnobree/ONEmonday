@@ -36,7 +36,7 @@ export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 
 const isoDateSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data invalida");
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
 
 /**
  * Monetary amount in integer cents. The UI parses user input to cents via
@@ -45,22 +45,22 @@ const isoDateSchema = z
  */
 const amountCentsSchema = z
   .number()
-  .int("Valor deve ser um numero inteiro de centavos")
-  .min(0, "Valor nao pode ser negativo")
+  .int("Valor deve ser um número inteiro de centavos")
+  .min(0, "Valor não pode ser negativo")
   .max(99_999_999_999, "Valor muito alto");
 
 /** Non-negative integer counter (impressions, leads, conversions, audience). */
 const countSchema = z
   .number()
-  .int("Deve ser um numero inteiro")
-  .min(0, "Nao pode ser negativo")
+  .int("Deve ser um número inteiro")
+  .min(0, "Não pode ser negativo")
   .max(9_999_999_999, "Valor muito alto");
 
 // =============================================
 // Campaigns
 // =============================================
 const campaignFields = {
-  name: z.string().min(1, "Nome e obrigatorio").max(200),
+  name: z.string().min(1, "Nome é obrigatório").max(200),
   description: z.string().max(2000).optional(),
   channel: z.enum(MARKETING_CHANNELS),
   status: z.enum(CAMPAIGN_STATUSES),
@@ -79,7 +79,7 @@ export const createCampaignSchema = z
     ...campaignFields,
   })
   .refine((v) => !v.endDate || v.endDate >= v.startDate, {
-    message: "Fim nao pode ser anterior ao inicio",
+    message: "Fim não pode ser anterior ao início",
     path: ["endDate"],
   });
 
@@ -89,7 +89,7 @@ export const updateCampaignSchema = z
     ...campaignFields,
   })
   .refine((v) => !v.endDate || v.endDate >= v.startDate, {
-    message: "Fim nao pode ser anterior ao inicio",
+    message: "Fim não pode ser anterior ao início",
     path: ["endDate"],
   });
 
@@ -97,7 +97,7 @@ export const updateCampaignSchema = z
 // Content calendar items
 // =============================================
 const contentFields = {
-  title: z.string().min(1, "Titulo e obrigatorio").max(200),
+  title: z.string().min(1, "Título é obrigatório").max(200),
   notes: z.string().max(2000).optional(),
   channel: z.enum(MARKETING_CHANNELS),
   status: z.enum(CONTENT_STATUSES),
@@ -119,7 +119,7 @@ export const updateContentItemSchema = z.object({
 // Audience segments
 // =============================================
 const segmentFields = {
-  name: z.string().min(1, "Nome e obrigatorio").max(200),
+  name: z.string().min(1, "Nome é obrigatório").max(200),
   description: z.string().max(2000).optional(),
   channel: z.enum(MARKETING_CHANNELS),
   estimatedSize: countSchema,

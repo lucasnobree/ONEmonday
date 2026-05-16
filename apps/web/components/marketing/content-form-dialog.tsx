@@ -103,12 +103,12 @@ export function ContentFormDialog({
       toast.error(
         typeof result.error === "string"
           ? result.error
-          : `Erro ao ${isEdit ? "atualizar" : "criar"} conteudo`
+          : `Erro ao ${isEdit ? "atualizar" : "criar"} conteúdo`
       );
       return;
     }
 
-    toast.success(isEdit ? "Conteudo atualizado" : "Conteudo criado");
+    toast.success(isEdit ? "Conteúdo atualizado" : "Conteúdo criado");
     onOpenChange(false);
   };
 
@@ -120,35 +120,35 @@ export function ContentFormDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEdit ? "Editar Conteudo" : "Novo Conteudo"}
+              {isEdit ? "Editar Conteúdo" : "Novo Conteúdo"}
             </DialogTitle>
             <DialogDescription>
               {isEdit
-                ? "Atualize o item do calendario editorial"
-                : "Agende um item no calendario editorial"}
+                ? "Atualize o item do calendário editorial"
+                : "Agende um item no calendário editorial"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="content-title">Titulo</Label>
+              <Label htmlFor="content-title">Título</Label>
               <Input
                 id="content-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Post sobre o lancamento"
+                placeholder="Post sobre o lançamento"
                 required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Canal</Label>
+                <Label htmlFor="content-channel">Canal</Label>
                 <Select
                   value={channel}
                   onValueChange={(v) => setChannel(v as MarketingChannel)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="content-channel" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -161,12 +161,12 @@ export function ContentFormDialog({
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Status</Label>
+                <Label htmlFor="content-status">Status</Label>
                 <Select
                   value={status}
                   onValueChange={(v) => setStatus(v as ContentStatus)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="content-status" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -192,12 +192,12 @@ export function ContentFormDialog({
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Campanha</Label>
+                <Label htmlFor="content-campaign">Campanha</Label>
                 <Select
                   value={campaignId}
                   onValueChange={(v) => v && setCampaignId(v)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="content-campaign" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -236,7 +236,7 @@ export function ContentFormDialog({
                 ? "Salvando..."
                 : isEdit
                   ? "Salvar"
-                  : "Criar Conteudo"}
+                  : "Criar Conteúdo"}
             </Button>
           </DialogFooter>
         </form>

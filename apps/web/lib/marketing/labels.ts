@@ -8,8 +8,8 @@ import type {
 export const CHANNEL_LABELS: Record<MarketingChannel, string> = {
   email: "E-mail",
   social: "Redes Sociais",
-  paid_ads: "Midia Paga",
-  content: "Conteudo",
+  paid_ads: "Mídia Paga",
+  content: "Conteúdo",
   event: "Eventos",
   seo: "SEO",
   other: "Outros",
@@ -31,7 +31,7 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   scheduled: "Agendada",
   active: "Ativa",
   paused: "Pausada",
-  completed: "Concluida",
+  completed: "Concluída",
   cancelled: "Cancelada",
 };
 

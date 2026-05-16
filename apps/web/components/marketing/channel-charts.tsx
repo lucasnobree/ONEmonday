@@ -73,13 +73,13 @@ export function LeadsByChannelChart({ data }: ChannelChartsProps) {
     .map((d) => ({
       channel: CHANNEL_LABELS[d.channel],
       Leads: d.leads,
-      Conversoes: d.conversions,
+      "Conversões": d.conversions,
     }));
 
   if (chartData.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        Sem leads ou conversoes registrados.
+        Sem leads ou conversões registrados.
       </p>
     );
   }
@@ -93,7 +93,7 @@ export function LeadsByChannelChart({ data }: ChannelChartsProps) {
         <Tooltip />
         <Legend />
         <Bar dataKey="Leads" fill="#6366f1" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="Conversoes" fill="#10b981" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="Conversões" fill="#10b981" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

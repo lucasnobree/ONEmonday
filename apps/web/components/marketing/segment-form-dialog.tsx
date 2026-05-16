@@ -67,7 +67,7 @@ export function SegmentFormDialog({
 
     const size = Number(estimatedSize);
     if (!Number.isInteger(size) || size < 0) {
-      toast.error("Tamanho deve ser um numero inteiro nao negativo");
+      toast.error("Tamanho deve ser um número inteiro não negativo");
       return;
     }
 
@@ -90,12 +90,12 @@ export function SegmentFormDialog({
       toast.error(
         typeof result.error === "string"
           ? result.error
-          : `Erro ao ${isEdit ? "atualizar" : "criar"} audiencia`
+          : `Erro ao ${isEdit ? "atualizar" : "criar"} audiência`
       );
       return;
     }
 
-    toast.success(isEdit ? "Audiencia atualizada" : "Audiencia criada");
+    toast.success(isEdit ? "Audiência atualizada" : "Audiência criada");
     onOpenChange(false);
   };
 
@@ -107,12 +107,12 @@ export function SegmentFormDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEdit ? "Editar Audiencia" : "Nova Audiencia"}
+              {isEdit ? "Editar Audiência" : "Nova Audiência"}
             </DialogTitle>
             <DialogDescription>
               {isEdit
-                ? "Atualize os dados da audiencia"
-                : "Defina um segmento de audiencia reutilizavel"}
+                ? "Atualize os dados da audiência"
+                : "Defina um segmento de audiência reutilizável"}
             </DialogDescription>
           </DialogHeader>
 
@@ -130,12 +130,12 @@ export function SegmentFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Canal</Label>
+                <Label htmlFor="segment-channel">Canal</Label>
                 <Select
                   value={channel}
                   onValueChange={(v) => setChannel(v as MarketingChannel)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="segment-channel" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -161,12 +161,12 @@ export function SegmentFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="segment-description">Descricao</Label>
+              <Label htmlFor="segment-description">Descrição</Label>
               <Textarea
                 id="segment-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Criterios e detalhes do segmento"
+                placeholder="Critérios e detalhes do segmento"
               />
             </div>
           </div>
@@ -184,7 +184,7 @@ export function SegmentFormDialog({
                 ? "Salvando..."
                 : isEdit
                   ? "Salvar"
-                  : "Criar Audiencia"}
+                  : "Criar Audiência"}
             </Button>
           </DialogFooter>
         </form>

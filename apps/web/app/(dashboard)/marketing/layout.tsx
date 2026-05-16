@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const marketingNav = [
-  { label: "Visao Geral", href: "/marketing" },
+  { label: "Visão Geral", href: "/marketing" },
   { label: "Campanhas", href: "/marketing/campaigns" },
-  { label: "Calendario", href: "/marketing/calendar" },
-  { label: "Audiencias", href: "/marketing/audiences" },
+  { label: "Calendário", href: "/marketing/calendar" },
+  { label: "Audiências", href: "/marketing/audiences" },
 ];
 
 export default function MarketingLayout({
@@ -23,7 +23,7 @@ export default function MarketingLayout({
       <div>
         <h1 className="text-2xl font-bold">Marketing</h1>
         <p className="text-muted-foreground text-sm">
-          Campanhas, calendario editorial, audiencias e metricas
+          Campanhas, calendário editorial, audiências e métricas
         </p>
       </div>
 
