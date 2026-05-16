@@ -8,7 +8,7 @@ import {
   type AnalyticsReport,
 } from "@/hooks/analytics/use-reports";
 import { METRIC_LIST } from "@/lib/analytics/metrics";
-import { CHART_TYPES, GROUP_BY_OPTIONS } from "@/lib/validations/analytics";
+import { CHART_TYPES } from "@/lib/validations/analytics";
 import {
   Dialog,
   DialogContent,
@@ -36,13 +36,13 @@ const CHART_LABELS: Record<string, string> = {
   kpi: "Indicador (KPI)",
 };
 
-const GROUP_BY_LABELS: Record<string, string> = {
-  day: "Dia",
-  week: "Semana",
-  month: "Mes",
-  status: "Status",
-  priority: "Prioridade",
-};
+/**
+ * Chart types offered in the form. "pie" is intentionally excluded: reports
+ * render a monthly time-series, and a pie of 12 monthly buckets is not a
+ * meaningful "parts of a whole" visualization. The enum still accepts "pie"
+ * so older reports created with it keep validating.
+ */
+const SELECTABLE_CHART_TYPES = CHART_TYPES.filter((c) => c !== "pie");
 
 interface ReportFormDialogProps {
   open: boolean;
@@ -65,7 +65,6 @@ export function ReportFormDialog({
   const [description, setDescription] = useState("");
   const [metric, setMetric] = useState<string>(METRIC_LIST[0].key);
   const [chartType, setChartType] = useState<string>("bar");
-  const [groupBy, setGroupBy] = useState<string>("month");
   const [dateRangeDays, setDateRangeDays] = useState("30");
 
   // Re-seed fields when the dialog (re)opens — adjust state during render.
@@ -76,8 +75,12 @@ export function ReportFormDialog({
     setName(report?.name ?? "");
     setDescription(report?.description ?? "");
     setMetric(report?.metric ?? METRIC_LIST[0].key);
-    setChartType(report?.chart_type ?? "bar");
-    setGroupBy(report?.group_by ?? "month");
+    // A legacy "pie" report falls back to "bar" in the editable form.
+    setChartType(
+      report?.chart_type && report.chart_type !== "pie"
+        ? report.chart_type
+        : "bar"
+    );
     setDateRangeDays(String(report?.date_range_days ?? 30));
   }
 
@@ -89,7 +92,6 @@ export function ReportFormDialog({
       description: description || undefined,
       metric,
       chartType,
-      groupBy,
       dateRangeDays: Number(dateRangeDays) || 30,
       ...(isEdit ? { id: report.id } : { sectorId }),
     };
@@ -102,12 +104,12 @@ export function ReportFormDialog({
       toast.error(
         typeof result.error === "string"
           ? result.error
-          : `Erro ao ${isEdit ? "atualizar" : "criar"} relatorio`
+          : `Erro ao ${isEdit ? "atualizar" : "criar"} relatório`
       );
       return;
     }
 
-    toast.success(isEdit ? "Relatorio atualizado" : "Relatorio criado");
+    toast.success(isEdit ? "Relatório atualizado" : "Relatório criado");
     onOpenChange(false);
   };
 
@@ -119,12 +121,12 @@ export function ReportFormDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEdit ? "Editar Relatorio" : "Novo Relatorio"}
+              {isEdit ? "Editar Relatório" : "Novo Relatório"}
             </DialogTitle>
             <DialogDescription>
               {isEdit
-                ? "Atualize a configuracao do relatorio"
-                : "Crie um relatorio salvo para este setor"}
+                ? "Atualize a configuração do relatório"
+                : "Crie um relatório salvo para este setor"}
             </DialogDescription>
           </DialogHeader>
 
@@ -135,13 +137,13 @@ export function ReportFormDialog({
                 id="report-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex.: Negocios ganhos por mes"
+                placeholder="Ex.: Negócios ganhos por mês"
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="report-description">Descricao</Label>
+              <Label htmlFor="report-description">Descrição</Label>
               <Textarea
                 id="report-description"
                 value={description}
@@ -151,7 +153,7 @@ export function ReportFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label>Metrica</Label>
+              <Label>Métrica</Label>
               <Select
                 value={metric}
                 onValueChange={(v) => v && setMetric(v)}
@@ -169,48 +171,27 @@ export function ReportFormDialog({
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Tipo de grafico</Label>
-                <Select
-                  value={chartType}
-                  onValueChange={(v) => v && setChartType(v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CHART_TYPES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {CHART_LABELS[c]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Agrupar por</Label>
-                <Select
-                  value={groupBy}
-                  onValueChange={(v) => v && setGroupBy(v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GROUP_BY_OPTIONS.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {GROUP_BY_LABELS[g]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label>Tipo de gráfico</Label>
+              <Select
+                value={chartType}
+                onValueChange={(v) => v && setChartType(v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SELECTABLE_CHART_TYPES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {CHART_LABELS[c]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="report-range">Periodo (dias)</Label>
+              <Label htmlFor="report-range">Período (dias)</Label>
               <Input
                 id="report-range"
                 type="number"
@@ -235,7 +216,7 @@ export function ReportFormDialog({
                 ? "Salvando..."
                 : isEdit
                   ? "Salvar"
-                  : "Criar Relatorio"}
+                  : "Criar Relatório"}
             </Button>
           </DialogFooter>
         </form>

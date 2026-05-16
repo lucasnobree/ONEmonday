@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ReportChart } from "./report-chart";
 
 interface ReportCardProps {
@@ -44,7 +45,7 @@ export function ReportCard({ report, sectorId, onEdit }: ReportCardProps) {
       );
       return;
     }
-    toast.success("Relatorio excluido");
+    toast.success("Relatório excluído");
   };
 
   return (
@@ -60,20 +61,25 @@ export function ReportCard({ report, sectorId, onEdit }: ReportCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Editar relatorio"
+            aria-label="Editar relatório"
             onClick={() => onEdit(report)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Excluir relatorio"
-            disabled={deleteReport.isPending}
-            onClick={handleDelete}
+          <ConfirmDialog
+            title="Excluir relatório?"
+            description={`O relatório "${report.name}" será removido. Esta ação não pode ser desfeita.`}
+            onConfirm={handleDelete}
           >
-            <Trash2 className="h-4 w-4 text-red-500" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Excluir relatório"
+              disabled={deleteReport.isPending}
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          </ConfirmDialog>
         </div>
       </CardHeader>
       <CardContent>

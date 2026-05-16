@@ -123,9 +123,9 @@ export default function AdminSettingsPage() {
   if (!currentSector) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Administracao</h1>
+        <h1 className="text-2xl font-bold">Administração</h1>
         <p className="text-muted-foreground">
-          Selecione um setor para acessar as configuracoes de administracao.
+          Selecione um setor para acessar as configurações de administração.
         </p>
       </div>
     );
@@ -134,7 +134,7 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Administracao</h1>
+        <h1 className="text-2xl font-bold">Administração</h1>
         <div className="animate-pulse space-y-4">
           <div className="h-48 rounded-xl bg-muted" />
           <div className="h-48 rounded-xl bg-muted" />
@@ -150,21 +150,21 @@ export default function AdminSettingsPage() {
       action="manage"
       fallback={
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold">Administracao</h1>
+          <h1 className="text-2xl font-bold">Administração</h1>
           <p className="text-muted-foreground">
-            Voce nao tem permissao para gerenciar as configuracoes deste setor.
+            Você não tem permissão para gerenciar as configurações deste setor.
           </p>
         </div>
       }
     >
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Administracao</h1>
+        <h1 className="text-2xl font-bold">Administração</h1>
 
         <Card>
           <CardHeader>
             <CardTitle>Membros do Setor</CardTitle>
             <CardDescription>
-              Usuarios com acesso ao setor {currentSector.name}
+              Usuários com acesso ao setor {currentSector.name}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -201,7 +201,7 @@ export default function AdminSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Convidar Usuario</CardTitle>
+            <CardTitle>Convidar Usuário</CardTitle>
             <CardDescription>
               Envie um convite para adicionar um novo membro ao setor
             </CardDescription>

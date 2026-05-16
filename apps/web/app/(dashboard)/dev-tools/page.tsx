@@ -17,11 +17,13 @@ import {
 } from "@/hooks/dev-tools/use-services";
 import {
   useDeployments,
+  useDeleteDeployment,
   type DevDeployment,
 } from "@/hooks/dev-tools/use-deployments";
 import {
   useFeatureFlags,
   useToggleFeatureFlag,
+  useDeleteFeatureFlag,
   type DevFeatureFlag,
 } from "@/hooks/dev-tools/use-feature-flags";
 import {
@@ -41,6 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ServiceFormDialog } from "@/components/dev-tools/service-form-dialog";
 import { IncidentFormDialog } from "@/components/dev-tools/incident-form-dialog";
 import { DeploymentFormDialog } from "@/components/dev-tools/deployment-form-dialog";
@@ -68,6 +71,8 @@ export default function DevToolsPage() {
 
   const deleteIncident = useDeleteIncident();
   const deleteService = useDeleteService();
+  const deleteDeployment = useDeleteDeployment();
+  const deleteFlag = useDeleteFeatureFlag();
   const toggleFlag = useToggleFeatureFlag();
 
   const [serviceDialog, setServiceDialog] = useState(false);
@@ -123,9 +128,9 @@ export default function DevToolsPage() {
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Visao Geral</TabsTrigger>
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="incidents">Incidentes</TabsTrigger>
-          <TabsTrigger value="services">Servicos</TabsTrigger>
+          <TabsTrigger value="services">Serviços</TabsTrigger>
           <TabsTrigger value="deployments">Deploys</TabsTrigger>
           <TabsTrigger value="flags">Flags</TabsTrigger>
         </TabsList>
@@ -147,7 +152,7 @@ export default function DevToolsPage() {
             <StatCard
               icon={Server}
               color="text-amber-500"
-              label="Servicos com Falha"
+              label="Serviços com Falha"
               value={stats?.servicesDown ?? 0}
             />
             <StatCard
@@ -167,13 +172,13 @@ export default function DevToolsPage() {
             <StatCard
               icon={AlertTriangle}
               color="text-violet-500"
-              label="MTTA medio"
+              label="MTTA médio"
               value={formatDuration(metrics.mttaMinutes)}
             />
             <StatCard
               icon={AlertTriangle}
               color="text-indigo-500"
-              label="MTTR medio"
+              label="MTTR médio"
               value={formatDuration(metrics.mttrMinutes)}
             />
           </div>
@@ -198,8 +203,8 @@ export default function DevToolsPage() {
                       <p className="truncate font-medium">{inc.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {inc.service_id
-                          ? (serviceName.get(inc.service_id) ?? "Servico")
-                          : "Sem servico"}{" "}
+                          ? (serviceName.get(inc.service_id) ?? "Serviço")
+                          : "Sem serviço"}{" "}
                         · {fmtDate(inc.created_at)}
                       </p>
                     </div>
@@ -212,6 +217,8 @@ export default function DevToolsPage() {
                       {INCIDENT_STATUS_LABELS[inc.status]?.label ?? inc.status}
                     </Badge>
                     <RowActions
+                      confirmTitle="Excluir incidente?"
+                      confirmDescription={`O incidente "${inc.title}" será removido. Esta ação não pode ser desfeita.`}
                       onEdit={() => {
                         setEditIncident(inc);
                         setIncidentDialog(true);
@@ -219,6 +226,7 @@ export default function DevToolsPage() {
                       onDelete={async () => {
                         const r = await deleteIncident.mutateAsync(inc.id);
                         if (r.error) toast.error("Erro ao excluir");
+                        else toast.success("Incidente excluído");
                       }}
                     />
                   </Row>
@@ -230,7 +238,7 @@ export default function DevToolsPage() {
 
         <TabsContent value="services" className="space-y-3">
           <SectionHeader
-            title="Servicos"
+            title="Serviços"
             onNew={() => {
               setEditService(undefined);
               setServiceDialog(true);
@@ -239,7 +247,7 @@ export default function DevToolsPage() {
           <Card>
             <CardContent className="p-0">
               {(services ?? []).length === 0 ? (
-                <Empty label="Nenhum servico registrado" />
+                <Empty label="Nenhum serviço registrado" />
               ) : (
                 (services ?? []).map((svc) => (
                   <Row key={svc.id}>
@@ -259,6 +267,8 @@ export default function DevToolsPage() {
                       {HEALTH_LABELS[svc.health]?.label ?? svc.health}
                     </Badge>
                     <RowActions
+                      confirmTitle="Excluir serviço?"
+                      confirmDescription={`O serviço "${svc.name}" será removido. Esta ação não pode ser desfeita.`}
                       onEdit={() => {
                         setEditService(svc);
                         setServiceDialog(true);
@@ -266,6 +276,7 @@ export default function DevToolsPage() {
                       onDelete={async () => {
                         const r = await deleteService.mutateAsync(svc.id);
                         if (r.error) toast.error("Erro ao excluir");
+                        else toast.success("Serviço excluído");
                       }}
                     />
                   </Row>
@@ -292,7 +303,7 @@ export default function DevToolsPage() {
                   <Row key={dep.id}>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">
-                        {serviceName.get(dep.service_id) ?? "Servico"}{" "}
+                        {serviceName.get(dep.service_id) ?? "Serviço"}{" "}
                         <span className="text-muted-foreground">
                           {dep.version}
                         </span>
@@ -308,16 +319,19 @@ export default function DevToolsPage() {
                       {DEPLOYMENT_STATUS_LABELS[dep.status]?.label ??
                         dep.status}
                     </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
+                    <RowActions
+                      confirmTitle="Excluir deploy?"
+                      confirmDescription={`O deploy ${dep.version} será removido. Esta ação não pode ser desfeita.`}
+                      onEdit={() => {
                         setEditDeploy(dep);
                         setDeployDialog(true);
                       }}
-                    >
-                      Editar
-                    </Button>
+                      onDelete={async () => {
+                        const r = await deleteDeployment.mutateAsync(dep.id);
+                        if (r.error) toast.error("Erro ao excluir");
+                        else toast.success("Deploy excluído");
+                      }}
+                    />
                   </Row>
                 ))
               )}
@@ -352,16 +366,19 @@ export default function DevToolsPage() {
                       onCheckedChange={() => handleToggleFlag(flag)}
                       aria-label={`Alternar ${flag.key}`}
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
+                    <RowActions
+                      confirmTitle="Excluir flag?"
+                      confirmDescription={`A flag "${flag.key}" será removida. Esta ação não pode ser desfeita.`}
+                      onEdit={() => {
                         setEditFlag(flag);
                         setFlagDialog(true);
                       }}
-                    >
-                      Editar
-                    </Button>
+                      onDelete={async () => {
+                        const r = await deleteFlag.mutateAsync(flag.id);
+                        if (r.error) toast.error("Erro ao excluir");
+                        else toast.success("Flag excluída");
+                      }}
+                    />
                   </Row>
                 ))
               )}
@@ -445,23 +462,28 @@ function Empty({ label }: { label: string }) {
 function RowActions({
   onEdit,
   onDelete,
+  confirmTitle,
+  confirmDescription,
 }: {
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
+  confirmTitle: string;
+  confirmDescription: string;
 }) {
   return (
     <div className="flex shrink-0 gap-1">
       <Button variant="ghost" size="sm" onClick={onEdit}>
         Editar
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-red-500"
-        onClick={onDelete}
+      <ConfirmDialog
+        title={confirmTitle}
+        description={confirmDescription}
+        onConfirm={onDelete}
       >
-        Excluir
-      </Button>
+        <Button variant="ghost" size="sm" className="text-red-500">
+          Excluir
+        </Button>
+      </ConfirmDialog>
     </div>
   );
 }

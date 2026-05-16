@@ -62,7 +62,7 @@ export default function ProfilePage() {
 
   function handleProfileSubmit() {
     if (!fullName.trim()) {
-      toast.error("O nome e obrigatorio");
+      toast.error("O nome é obrigatório");
       return;
     }
 
@@ -87,11 +87,11 @@ export default function ProfilePage() {
 
   function handlePasswordSubmit() {
     if (newPassword.length < 8) {
-      toast.error("A senha deve ter no minimo 8 caracteres");
+      toast.error("A senha deve ter no mínimo 8 caracteres");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("As senhas nao coincidem");
+      toast.error("As senhas não coincidem");
       return;
     }
 
@@ -128,9 +128,9 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Informacoes Pessoais</CardTitle>
+          <CardTitle>Informações Pessoais</CardTitle>
           <CardDescription>
-            Atualize suas informacoes de perfil
+            Atualize suas informações de perfil
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -169,7 +169,7 @@ export default function ProfilePage() {
             {profilePending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Salvar Alteracoes
+            Salvar Alterações
           </Button>
         </CardContent>
       </Card>
@@ -191,7 +191,7 @@ export default function ProfilePage() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Minimo 8 caracteres"
+              placeholder="Mínimo 8 caracteres"
             />
           </div>
           <div className="space-y-2">
