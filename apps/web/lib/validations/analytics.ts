@@ -10,6 +10,12 @@ export const CHART_TYPES = ["bar", "line", "pie", "kpi"] as const;
 /**
  * Grouping dimensions — must mirror the `group_by` CHECK constraint in
  * migration 00050.
+ *
+ * NOTE: `get_analytics_trend` only ever produces a monthly time-series, so
+ * `group_by` has no effect on what a report renders. The report form no
+ * longer exposes it (the control silently did nothing); the column keeps
+ * its `month` default and the enum is retained so existing rows with any of
+ * these values still validate.
  */
 export const GROUP_BY_OPTIONS = [
   "day",
@@ -51,7 +57,7 @@ export const updateReportSchema = z.object({
   description: z.string().max(500).optional(),
   metric: metricSchema,
   chartType: z.enum(CHART_TYPES),
-  groupBy: z.enum(GROUP_BY_OPTIONS),
+  groupBy: z.enum(GROUP_BY_OPTIONS).default("month"),
   dateRangeDays: dateRangeDaysSchema,
 });
 

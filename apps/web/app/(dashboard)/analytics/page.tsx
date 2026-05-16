@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
       <div>
         <h1 className="text-2xl font-bold">Analytics</h1>
         <p className="mt-1 text-muted-foreground">
-          Selecione um setor no menu lateral para visualizar as metricas.
+          Selecione um setor no menu lateral para visualizar as métricas.
         </p>
       </div>
     );
@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard
-              label="Cards Concluidos"
+              label="Cards Concluídos"
               value={count(overview.cards_completed_current)}
               icon={CheckCircle2}
               iconColor="text-emerald-500"
@@ -88,7 +88,7 @@ export default function AnalyticsPage() {
               previous={overview.cards_completed_previous}
             />
             <KpiCard
-              label="Valor de Negocios Ganhos"
+              label="Valor de Negócios Ganhos"
               value={currency(overview.deals_won_value_cents_current)}
               icon={DollarSign}
               iconColor="text-green-500"
@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
               iconColor="text-indigo-500"
             />
             <KpiCard
-              label="Negocios Abertos"
+              label="Negócios Abertos"
               value={count(overview.deals_open)}
               icon={Target}
               iconColor="text-violet-500"
@@ -140,16 +140,16 @@ export default function AnalyticsPage() {
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Nao foi possivel carregar as metricas deste setor.
+          Não foi possível carregar as métricas deste setor.
         </p>
       )}
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Relatorios Salvos</h2>
+          <h2 className="text-lg font-semibold">Relatórios Salvos</h2>
           <Button size="sm" onClick={() => openReportDialog()}>
             <Plus className="mr-1 h-4 w-4" />
-            Novo Relatorio
+            Novo Relatório
           </Button>
         </div>
 
@@ -173,8 +173,8 @@ export default function AnalyticsPage() {
           <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
             <BarChart3 className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Nenhum relatorio salvo. Crie o primeiro para acompanhar uma
-              metrica ao longo do tempo.
+              Nenhum relatório salvo. Crie o primeiro para acompanhar uma
+              métrica ao longo do tempo.
             </p>
           </div>
         )}

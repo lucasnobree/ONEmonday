@@ -4,11 +4,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,15 +15,6 @@ import type { TrendPoint } from "@/hooks/analytics/use-analytics-trend";
 import type { ChartType } from "@/lib/validations/analytics";
 import { type MetricDefinition } from "@/lib/analytics/metrics";
 import { formatMetricValue } from "@/lib/analytics/kpi";
-
-const PIE_COLORS = [
-  "#0ea5e9",
-  "#8b5cf6",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#ec4899",
-];
 
 interface ReportChartProps {
   data: TrendPoint[];
@@ -39,7 +27,7 @@ export function ReportChart({ data, chartType, metric }: ReportChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-        Sem dados no periodo
+        Sem dados no período
       </div>
     );
   }
@@ -58,21 +46,6 @@ export function ReportChart({ data, chartType, metric }: ReportChartProps) {
           {data[data.length - 1]?.bucket}
         </span>
       </div>
-    );
-  }
-
-  if (chartType === "pie") {
-    return (
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="bucket" outerRadius={80}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip formatter={tooltipFormatter} />
-        </PieChart>
-      </ResponsiveContainer>
     );
   }
 
@@ -96,6 +69,8 @@ export function ReportChart({ data, chartType, metric }: ReportChartProps) {
     );
   }
 
+  // Default — bar chart. A legacy "pie" report also lands here: a pie of a
+  // monthly time-series is misleading, so it is rendered as bars instead.
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data}>
