@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const hrNav = [
   { label: "Dashboard", href: "/hr" },
   { label: "Colaboradores", href: "/hr/employees" },
-  { label: "Ferias e Ausencias", href: "/hr/time-off" },
+  { label: "Férias e Ausências", href: "/hr/time-off" },
   { label: "Recrutamento", href: "/hr/recruitment" },
   { label: "Onboarding", href: "/hr/onboarding" },
   { label: "Organograma", href: "/hr/org-chart" },
@@ -21,7 +21,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       <div>
         <h1 className="text-2xl font-bold">RH</h1>
         <p className="text-muted-foreground text-sm">
-          Gestao de pessoas, ferias e recrutamento
+          Gestão de pessoas, férias e recrutamento
         </p>
       </div>
 

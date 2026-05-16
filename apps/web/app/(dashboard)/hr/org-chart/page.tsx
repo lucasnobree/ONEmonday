@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useOrgChart, useDepartments, type OrgNode } from "@/hooks/hr/use-org-chart";
+import {
+  useOrgChart,
+  useDepartments,
+  topLevelIds,
+  type OrgNode,
+} from "@/hooks/hr/use-org-chart";
 import { EmployeeProfileSheet } from "@/components/hr/employee-profile-sheet";
 import {
   Select,
@@ -118,10 +123,31 @@ export default function OrgChartPage() {
     deptFilter || undefined
   );
   const { data: departments } = useDepartments(currentSector?.id);
-  const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
     null
   );
+
+  // Ids of the top two levels of the current tree — expanded by default so the
+  // chart never loads as a single collapsed row.
+  const defaultExpandedIds = useMemo(() => topLevelIds(tree ?? []), [tree]);
+  // A stable signature so we can detect when the tree (sector / department
+  // filter) changes and re-seed the default expansion.
+  const defaultSignature = useMemo(
+    () => [...defaultExpandedIds].sort().join(","),
+    [defaultExpandedIds]
+  );
+
+  const [expandedSet, setExpandedSet] = useState<Set<string>>(
+    () => new Set(defaultExpandedIds)
+  );
+  const [seededSignature, setSeededSignature] = useState(defaultSignature);
+
+  // Re-seed expansion during render when the underlying tree changes — the
+  // React-recommended "adjust state while rendering" pattern (no effect).
+  if (seededSignature !== defaultSignature) {
+    setSeededSignature(defaultSignature);
+    setExpandedSet(new Set(defaultExpandedIds));
+  }
 
   function toggleExpand(id: string) {
     setExpandedSet((prev) => {
@@ -174,7 +200,7 @@ export default function OrgChartPage() {
         <EmptyState
           icon={Users}
           title="Nenhum colaborador cadastrado"
-          description="Adicione colaboradores na pagina de colaboradores para visualizar o organograma."
+          description="Adicione colaboradores na página de colaboradores para visualizar o organograma."
         />
       ) : (
         <div className="space-y-1">

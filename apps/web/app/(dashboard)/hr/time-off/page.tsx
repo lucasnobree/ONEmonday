@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import {
   useTimeOffRequests,
@@ -23,8 +24,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Check, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +45,13 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   pending: { label: "Pendente", variant: "outline" },
   approved: { label: "Aprovado", variant: "default" },
   rejected: { label: "Rejeitado", variant: "destructive" },
+};
+
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  all: "Todos",
+  pending: "Pendentes",
+  approved: "Aprovados",
+  rejected: "Rejeitados",
 };
 
 function BalanceCell({ employeeId, policyId }: { employeeId: string; policyId: string }) {
@@ -63,7 +81,15 @@ export default function TimeOffPage() {
   const { currentSector } = useCurrentSector();
   const { data: requests, isLoading } = useTimeOffRequests(currentSector?.id);
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState("all");
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get("status");
+  const [statusFilter, setStatusFilter] = useState(
+    initialStatus && initialStatus in STATUS_FILTER_LABELS
+      ? initialStatus
+      : "all"
+  );
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const filtered = useMemo(() => {
     if (!requests) return [];
@@ -80,7 +106,7 @@ export default function TimeOffPage() {
         );
         return;
       }
-      toast.success("Solicitacao aprovada");
+      toast.success("Solicitação aprovada");
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
       queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-balance"] });
@@ -88,11 +114,8 @@ export default function TimeOffPage() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => {
-      const reason = prompt("Motivo da rejeicao:");
-      if (!reason) throw new Error("cancelled");
-      return rejectTimeOff(id, reason);
-    },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      rejectTimeOff(id, reason),
     onSuccess: (result) => {
       if (result.error) {
         toast.error(
@@ -100,22 +123,31 @@ export default function TimeOffPage() {
         );
         return;
       }
-      toast.success("Solicitacao rejeitada");
+      toast.success("Solicitação rejeitada");
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
       queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-balance"] });
+      closeRejectDialog();
     },
-    onError: (err) => {
-      if (err.message !== "cancelled") {
-        toast.error("Erro ao rejeitar solicitacao");
-      }
+    onError: () => {
+      toast.error("Erro ao rejeitar solicitação");
     },
   });
+
+  function closeRejectDialog() {
+    setRejectId(null);
+    setRejectReason("");
+  }
+
+  function handleRejectSubmit() {
+    if (!rejectId || !rejectReason.trim()) return;
+    rejectMutation.mutate({ id: rejectId, reason: rejectReason.trim() });
+  }
 
   if (!currentSector) {
     return (
       <p className="text-muted-foreground">
-        Selecione um setor para ver as solicitacoes.
+        Selecione um setor para ver as solicitações.
       </p>
     );
   }
@@ -125,7 +157,9 @@ export default function TimeOffPage() {
       <div className="flex items-center justify-between">
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Status">
+              {(value) => STATUS_FILTER_LABELS[value as string] ?? "Status"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
@@ -140,7 +174,7 @@ export default function TimeOffPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Solicitacoes de Ferias e Ausencias
+            Solicitações de Férias e Ausências
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -153,8 +187,8 @@ export default function TimeOffPage() {
           ) : !filtered.length ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {statusFilter === "all"
-                ? "Nenhuma solicitacao encontrada."
-                : "Nenhuma solicitacao com o filtro selecionado."}
+                ? "Nenhuma solicitação encontrada."
+                : "Nenhuma solicitação com o filtro selecionado."}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -162,11 +196,11 @@ export default function TimeOffPage() {
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 font-medium">Colaborador</th>
-                    <th className="pb-2 font-medium">Periodo</th>
+                    <th className="pb-2 font-medium">Período</th>
                     <th className="pb-2 font-medium">Dias</th>
                     <th className="pb-2 font-medium">Saldo</th>
                     <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Acoes</th>
+                    <th className="pb-2 font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -217,7 +251,10 @@ export default function TimeOffPage() {
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() => rejectMutation.mutate(req.id)}
+                                onClick={() => {
+                                  setRejectReason("");
+                                  setRejectId(req.id);
+                                }}
                                 disabled={rejectMutation.isPending}
                               >
                                 <X className="h-4 w-4 text-red-600" />
@@ -234,6 +271,43 @@ export default function TimeOffPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={rejectId !== null}
+        onOpenChange={(o) => {
+          if (!o) closeRejectDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rejeitar Solicitação</DialogTitle>
+            <DialogDescription>
+              Informe o motivo da rejeição. O colaborador poderá visualizá-lo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Label htmlFor="rejectReason">Motivo</Label>
+            <Textarea
+              id="rejectReason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Descreva o motivo da rejeição"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeRejectDialog}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectSubmit}
+              disabled={rejectMutation.isPending || !rejectReason.trim()}
+            >
+              {rejectMutation.isPending ? "Rejeitando..." : "Rejeitar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

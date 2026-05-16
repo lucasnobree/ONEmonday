@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useEmployees, type Employee } from "@/hooks/hr/use-employees";
 import { EmployeeFormDialog } from "@/components/hr/employee-form-dialog";
@@ -29,21 +30,34 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   active: { label: "Ativo", variant: "default" },
-  on_leave: { label: "Licenca", variant: "secondary" },
+  on_leave: { label: "Licença", variant: "secondary" },
   terminated: { label: "Desligado", variant: "destructive" },
 };
 
 const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
   full_time: "CLT",
-  part_time: "Meio periodo",
+  part_time: "Meio período",
   contractor: "PJ",
-  intern: "Estagiario",
+  intern: "Estagiário",
+};
+
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  all: "Todos os status",
+  active: "Ativo",
+  on_leave: "Licença",
+  terminated: "Desligado",
 };
 
 export default function EmployeesPage() {
   const { currentSector } = useCurrentSector();
   const { data: employees, isLoading } = useEmployees(currentSector?.id);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get("status");
+  const [statusFilter, setStatusFilter] = useState(
+    initialStatus && initialStatus in STATUS_FILTER_LABELS
+      ? initialStatus
+      : "all"
+  );
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -94,19 +108,27 @@ export default function EmployeesPage() {
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Status">
+                {(value) => STATUS_FILTER_LABELS[value as string] ?? "Status"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="active">Ativo</SelectItem>
-              <SelectItem value="on_leave">Licenca</SelectItem>
+              <SelectItem value="on_leave">Licença</SelectItem>
               <SelectItem value="terminated">Desligado</SelectItem>
             </SelectContent>
           </Select>
           <Select value={departmentFilter} onValueChange={(v) => setDepartmentFilter(v ?? "all")}>
-            <SelectTrigger>
-              <SelectValue placeholder="Departamento" />
+            <SelectTrigger className="w-[190px]">
+              <SelectValue placeholder="Departamento">
+                {(value) =>
+                  value === "all"
+                    ? "Todos os departamentos"
+                    : (value as string)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os departamentos</SelectItem>
@@ -169,7 +191,7 @@ export default function EmployeesPage() {
             <EmptyState
               icon={Users}
               title="Nenhum colaborador cadastrado"
-              description="Adicione seu primeiro colaborador para comecar a gerenciar sua equipe."
+              description="Adicione seu primeiro colaborador para começar a gerenciar sua equipe."
               action={<EmployeeFormDialog />}
             />
           ) : filtered.length === 0 ? (
@@ -184,7 +206,7 @@ export default function EmployeesPage() {
                     <th className="pb-2 font-medium">Nome</th>
                     <th className="pb-2 font-medium">Cargo</th>
                     <th className="pb-2 font-medium">Departamento</th>
-                    <th className="pb-2 font-medium">Admissao</th>
+                    <th className="pb-2 font-medium">Admissão</th>
                     <th className="pb-2 font-medium">Tipo</th>
                     <th className="pb-2 font-medium">Status</th>
                   </tr>

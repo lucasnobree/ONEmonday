@@ -9,7 +9,7 @@ export interface OrgNode {
   children: OrgNode[];
 }
 
-function buildTree(employees: Employee[]): OrgNode[] {
+export function buildTree(employees: Employee[]): OrgNode[] {
   const map = new Map<string, OrgNode>();
   employees.forEach((emp) => {
     map.set(emp.id, { employee: emp, children: [] });
@@ -27,6 +27,19 @@ function buildTree(employees: Employee[]): OrgNode[] {
   });
 
   return roots;
+}
+
+/**
+ * Ids of the top two levels of an org tree. The chart expands these by default
+ * so it never renders as a single collapsed row.
+ */
+export function topLevelIds(tree: OrgNode[]): Set<string> {
+  const ids = new Set<string>();
+  tree.forEach((root) => {
+    ids.add(root.employee.id);
+    root.children.forEach((child) => ids.add(child.employee.id));
+  });
+  return ids;
 }
 
 export function useOrgChart(

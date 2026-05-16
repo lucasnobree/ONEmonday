@@ -29,10 +29,14 @@ import { toast } from "sonner";
 
 const EMPLOYMENT_TYPES = [
   { value: "full_time", label: "CLT" },
-  { value: "part_time", label: "Meio periodo" },
+  { value: "part_time", label: "Meio período" },
   { value: "contractor", label: "PJ" },
-  { value: "intern", label: "Estagiario" },
+  { value: "intern", label: "Estagiário" },
 ];
+
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  EMPLOYMENT_TYPES.map((t) => [t.value, t.label])
+);
 
 export function JobOpeningFormDialog() {
   const { currentSector } = useCurrentSector();
@@ -104,7 +108,7 @@ export function JobOpeningFormDialog() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Titulo da vaga</Label>
+              <Label htmlFor="title">Título da vaga</Label>
               <Input
                 id="title"
                 value={title}
@@ -130,7 +134,11 @@ export function JobOpeningFormDialog() {
                   onValueChange={(v) => setEmploymentType(v ?? "full_time")}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value) =>
+                        EMPLOYMENT_TYPE_LABELS[value as string] ?? "CLT"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {EMPLOYMENT_TYPES.map((t) => (
@@ -143,16 +151,16 @@ export function JobOpeningFormDialog() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="location">Localizacao</Label>
+              <Label htmlFor="location">Localização</Label>
               <Input
                 id="location"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="Ex: Remoto, Sao Paulo"
+                placeholder="Ex: Remoto, São Paulo"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Descricao</Label>
+              <Label htmlFor="description">Descrição</Label>
               <Textarea
                 id="description"
                 value={description}

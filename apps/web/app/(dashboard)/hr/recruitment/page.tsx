@@ -26,9 +26,9 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
 
 const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
   full_time: "CLT",
-  part_time: "Meio periodo",
+  part_time: "Meio período",
   contractor: "PJ",
-  intern: "Estagiario",
+  intern: "Estagiário",
 };
 
 export default function RecruitmentPage() {
@@ -66,7 +66,7 @@ export default function RecruitmentPage() {
             <EmptyState
               icon={Briefcase}
               title="Nenhuma vaga aberta"
-              description="Crie sua primeira vaga para comecar o processo de recrutamento."
+              description="Crie sua primeira vaga para começar o processo de recrutamento."
               action={<JobOpeningFormDialog />}
             />
           ) : (
@@ -74,10 +74,10 @@ export default function RecruitmentPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Titulo</th>
+                    <th className="pb-2 font-medium">Título</th>
                     <th className="pb-2 font-medium">Departamento</th>
                     <th className="pb-2 font-medium">Tipo</th>
-                    <th className="pb-2 font-medium">Localizacao</th>
+                    <th className="pb-2 font-medium">Localização</th>
                     <th className="pb-2 font-medium">Candidatos</th>
                     <th className="pb-2 font-medium">Data</th>
                     <th className="pb-2 font-medium">Status</th>
