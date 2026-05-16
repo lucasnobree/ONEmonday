@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { ContentItem } from "@/hooks/marketing/use-content-items";
 import {
   buildMonthGrid,
+  currentMonth,
   groupByDate,
   monthLabel,
   nextMonth,
@@ -13,7 +14,7 @@ import { CHANNEL_COLORS } from "@/lib/marketing/labels";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
-const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 interface ContentCalendarProps {
   /** `YYYY-MM` anchor for the displayed month. */
@@ -35,18 +36,17 @@ export function ContentCalendar({
   const cells = useMemo(() => buildMonthGrid(month), [month]);
   const byDate = useMemo(() => groupByDate(items), [items]);
   const today = new Date().toISOString().slice(0, 10);
+  const isCurrentMonth = month === currentMonth();
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold capitalize">
-          {monthLabel(month)}
-        </h2>
+        <h2 className="text-lg font-semibold">{monthLabel(month)}</h2>
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
-            aria-label="Mes anterior"
+            aria-label="Mês anterior"
             onClick={() => onMonthChange(previousMonth(month))}
           >
             <ChevronLeft className="size-4" />
@@ -54,7 +54,15 @@ export function ContentCalendar({
           <Button
             variant="outline"
             size="sm"
-            aria-label="Proximo mes"
+            disabled={isCurrentMonth}
+            onClick={() => onMonthChange(currentMonth())}
+          >
+            Hoje
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Próximo mês"
             onClick={() => onMonthChange(nextMonth(month))}
           >
             <ChevronRight className="size-4" />
@@ -93,7 +101,7 @@ export function ContentCalendar({
                 {cell.inMonth && (
                   <button
                     type="button"
-                    aria-label={`Adicionar conteudo em ${cell.date}`}
+                    aria-label={`Adicionar conteúdo em ${cell.date}`}
                     onClick={() => onAddOnDate(cell.date)}
                     className="text-muted-foreground/60 hover:text-foreground"
                   >

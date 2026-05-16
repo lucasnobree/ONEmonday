@@ -14,7 +14,7 @@ export async function createCampaign(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createCampaignSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -55,7 +55,7 @@ export async function updateCampaign(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = updateCampaignSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -65,7 +65,7 @@ export async function updateCampaign(formData: unknown) {
     .select("sector_id")
     .eq("id", parsed.data.id)
     .single();
-  if (!existing) return { error: "Campanha nao encontrada" };
+  if (!existing) return { error: "Campanha não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "campaign", "update")) {
@@ -97,20 +97,20 @@ export async function updateCampaign(formData: unknown) {
 
 export async function deleteCampaign(campaignId: string) {
   const parsed = z.string().uuid().safeParse(campaignId);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: campaign } = await supabase
     .from("marketing_campaigns")
     .select("sector_id")
     .eq("id", campaignId)
     .single();
-  if (!campaign) return { error: "Campanha nao encontrada" };
+  if (!campaign) return { error: "Campanha não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, campaign.sector_id, "campaign", "delete")) {

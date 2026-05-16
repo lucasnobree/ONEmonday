@@ -78,13 +78,18 @@ export function currentMonth(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 
-/** Human label for a `YYYY-MM` anchor, e.g. "Maio 2026". */
+/**
+ * Human label for a `YYYY-MM` anchor, e.g. "maio de 2026".
+ * The pt-BR `long` format yields the preposition "de"; only the first
+ * letter is capitalized so it does not become "Maio De 2026".
+ */
 export function monthLabel(anchor: string): string {
   const [y, m] = anchor.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
+  const raw = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 /**

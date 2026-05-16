@@ -14,7 +14,7 @@ export async function createContentItem(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createContentItemSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -50,7 +50,7 @@ export async function updateContentItem(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = updateContentItemSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -60,7 +60,7 @@ export async function updateContentItem(formData: unknown) {
     .select("sector_id")
     .eq("id", parsed.data.id)
     .single();
-  if (!existing) return { error: "Conteudo nao encontrado" };
+  if (!existing) return { error: "Conteúdo não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "content_item", "update")) {
@@ -87,20 +87,20 @@ export async function updateContentItem(formData: unknown) {
 
 export async function deleteContentItem(itemId: string) {
   const parsed = z.string().uuid().safeParse(itemId);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: item } = await supabase
     .from("marketing_content_items")
     .select("sector_id")
     .eq("id", itemId)
     .single();
-  if (!item) return { error: "Conteudo nao encontrado" };
+  if (!item) return { error: "Conteúdo não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, item.sector_id, "content_item", "delete")) {

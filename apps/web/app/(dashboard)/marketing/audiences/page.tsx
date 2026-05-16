@@ -10,15 +10,22 @@ import {
   type AudienceSegment,
 } from "@/hooks/marketing/use-segments";
 import { SegmentFormDialog } from "@/components/marketing/segment-form-dialog";
+import { MarketingError } from "@/components/marketing/marketing-error";
 import { CHANNEL_LABELS } from "@/lib/marketing/labels";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 export default function MarketingAudiencesPage() {
   const { currentSector } = useCurrentSector();
-  const { data: segments, isLoading } = useSegments(currentSector?.id);
+  const {
+    data: segments,
+    isLoading,
+    isError,
+    refetch,
+  } = useSegments(currentSector?.id);
   const deleteSegment = useDeleteSegment();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -27,7 +34,7 @@ export default function MarketingAudiencesPage() {
   if (!currentSector) {
     return (
       <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver as audiencias.
+        Selecione um setor no menu lateral para ver as audiências.
       </p>
     );
   }
@@ -40,13 +47,13 @@ export default function MarketingAudiencesPage() {
       );
       return;
     }
-    toast.success("Audiencia excluida");
+    toast.success("Audiência excluída");
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Audiencias</h2>
+        <h2 className="text-lg font-semibold">Audiências</h2>
         <Button
           size="sm"
           onClick={() => {
@@ -55,12 +62,14 @@ export default function MarketingAudiencesPage() {
           }}
         >
           <Plus className="mr-1 h-4 w-4" />
-          Nova Audiencia
+          Nova Audiência
         </Button>
       </div>
 
       {isLoading ? (
         <Skeleton className="h-40 w-full" />
+      ) : isError ? (
+        <MarketingError subject="as audiências" onRetry={() => refetch()} />
       ) : segments && segments.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {segments.map((s) => (
@@ -92,15 +101,20 @@ export default function MarketingAudiencesPage() {
                   >
                     Editar
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-500"
-                    disabled={deleteSegment.isPending}
-                    onClick={() => handleDelete(s.id)}
+                  <ConfirmDialog
+                    title="Excluir audiência"
+                    description={`Excluir a audiência "${s.name}"? Esta ação não pode ser desfeita.`}
+                    onConfirm={() => handleDelete(s.id)}
                   >
-                    Excluir
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500"
+                      disabled={deleteSegment.isPending}
+                    >
+                      Excluir
+                    </Button>
+                  </ConfirmDialog>
                 </div>
               </CardContent>
             </Card>
@@ -110,7 +124,7 @@ export default function MarketingAudiencesPage() {
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
           <Users className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Nenhuma audiencia cadastrada. Crie segmentos para planejar o
+            Nenhuma audiência cadastrada. Crie segmentos para planejar o
             alcance das campanhas.
           </p>
         </div>

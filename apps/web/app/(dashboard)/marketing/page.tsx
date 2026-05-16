@@ -8,10 +8,14 @@ import {
   SpendByChannelChart,
   LeadsByChannelChart,
 } from "@/components/marketing/channel-charts";
+import { MarketingError } from "@/components/marketing/marketing-error";
 import { formatCents } from "@/lib/finance/money";
 import {
   conversionRate,
   budgetUsagePercent,
+  costPerLead,
+  costPerConversion,
+  isOverBudget,
 } from "@/lib/marketing/metrics";
 import {
   CAMPAIGN_STATUS_LABELS,
@@ -26,16 +30,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Wallet, Users, Target } from "lucide-react";
+import {
+  Megaphone,
+  Wallet,
+  Users,
+  Target,
+  Coins,
+  Receipt,
+  AlertTriangle,
+} from "lucide-react";
 
 export default function MarketingDashboardPage() {
   const { currentSector } = useCurrentSector();
-  const { data: summary, isLoading: summaryLoading } = useMarketingSummary(
-    currentSector?.id
-  );
-  const { data: campaigns, isLoading: campaignsLoading } = useCampaigns(
-    currentSector?.id
-  );
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useMarketingSummary(currentSector?.id);
+  const {
+    data: campaigns,
+    isLoading: campaignsLoading,
+    isError: campaignsError,
+  } = useCampaigns(currentSector?.id);
 
   const convRate = useMemo(() => {
     if (!summary) return 0;
@@ -48,6 +65,24 @@ export default function MarketingDashboardPage() {
       summary.total_spend_cents,
       summary.total_budget_cents
     );
+  }, [summary]);
+
+  const cpl = useMemo(() => {
+    if (!summary) return 0;
+    return costPerLead(summary.total_spend_cents, summary.total_leads);
+  }, [summary]);
+
+  const cpa = useMemo(() => {
+    if (!summary) return 0;
+    return costPerConversion(
+      summary.total_spend_cents,
+      summary.total_conversions
+    );
+  }, [summary]);
+
+  const overBudget = useMemo(() => {
+    if (!summary) return false;
+    return isOverBudget(summary.total_spend_cents, summary.total_budget_cents);
   }, [summary]);
 
   if (!currentSector) {
@@ -73,6 +108,15 @@ export default function MarketingDashboardPage() {
     );
   }
 
+  if (summaryError || campaignsError) {
+    return (
+      <MarketingError
+        subject="o painel de Marketing"
+        onRetry={() => refetchSummary()}
+      />
+    );
+  }
+
   const statCards = [
     {
       title: "Campanhas Ativas",
@@ -82,7 +126,7 @@ export default function MarketingDashboardPage() {
       hint: `${summary?.total_campaigns ?? 0} no total`,
     },
     {
-      title: "Gasto / Orcamento",
+      title: "Gasto / Orçamento",
       value: formatCents(summary?.total_spend_cents ?? 0),
       icon: Wallet,
       tone: budgetUsage > 100 ? "text-red-500" : "text-emerald-500",
@@ -97,13 +141,29 @@ export default function MarketingDashboardPage() {
       tone: "text-blue-500",
     },
     {
-      title: "Taxa de Conversao",
+      title: "Taxa de Conversão",
       value: `${convRate}%`,
       icon: Target,
       tone: "text-emerald-500",
       hint: `${(summary?.total_conversions ?? 0).toLocaleString(
         "pt-BR"
-      )} conversoes`,
+      )} conversões`,
+    },
+    {
+      title: "Custo por Lead",
+      value: formatCents(cpl),
+      icon: Coins,
+      tone: "text-amber-500",
+      hint: `${(summary?.total_leads ?? 0).toLocaleString("pt-BR")} leads`,
+    },
+    {
+      title: "Custo por Conversão",
+      value: formatCents(cpa),
+      icon: Receipt,
+      tone: "text-orange-500",
+      hint: `${(summary?.total_conversions ?? 0).toLocaleString(
+        "pt-BR"
+      )} conversões`,
     },
   ];
 
@@ -111,13 +171,27 @@ export default function MarketingDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {overBudget && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            O gasto total ({formatCents(summary?.total_spend_cents ?? 0)})
+            ultrapassou o orçamento planejado (
+            {formatCents(summary?.total_budget_cents ?? 0)}).
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
-                  <stat.icon className={`h-5 w-5 ${stat.tone}`} />
+                  <stat.icon
+                    className={`h-5 w-5 ${stat.tone}`}
+                    aria-hidden="true"
+                  />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
@@ -141,7 +215,7 @@ export default function MarketingDashboardPage() {
           <CardHeader>
             <CardTitle className="text-base">Gasto por Canal</CardTitle>
             <CardDescription>
-              Distribuicao do investimento de marketing
+              Distribuição do investimento de marketing
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -152,10 +226,10 @@ export default function MarketingDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              Leads e Conversoes por Canal
+              Leads e Conversões por Canal
             </CardTitle>
             <CardDescription>
-              Desempenho de geracao de demanda
+              Desempenho de geração de demanda
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -167,7 +241,7 @@ export default function MarketingDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Campanhas Recentes</CardTitle>
-          <CardDescription>Ultimas campanhas registradas</CardDescription>
+          <CardDescription>Últimas campanhas registradas</CardDescription>
         </CardHeader>
         <CardContent>
           {recentCampaigns.length === 0 ? (

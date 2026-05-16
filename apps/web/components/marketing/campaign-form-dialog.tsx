@@ -100,7 +100,7 @@ export function CampaignFormDialog({
       numLeads < 0 ||
       numConversions < 0
     ) {
-      toast.error("Metricas devem ser numeros inteiros nao negativos");
+      toast.error("Métricas devem ser números inteiros não negativos");
       return;
     }
 
@@ -163,19 +163,19 @@ export function CampaignFormDialog({
                 id="campaign-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Lancamento de produto"
+                placeholder="Lançamento de produto"
                 required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Canal</Label>
+                <Label htmlFor="campaign-channel">Canal</Label>
                 <Select
                   value={channel}
                   onValueChange={(v) => setChannel(v as MarketingChannel)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="campaign-channel" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -188,12 +188,12 @@ export function CampaignFormDialog({
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Status</Label>
+                <Label htmlFor="campaign-status">Status</Label>
                 <Select
                   value={status}
                   onValueChange={(v) => setStatus(v as CampaignStatus)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="campaign-status" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,7 +209,7 @@ export function CampaignFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="campaign-budget">Orcamento (R$)</Label>
+                <Label htmlFor="campaign-budget">Orçamento (R$)</Label>
                 <MoneyInput
                   id="campaign-budget"
                   valueCents={budgetCents}
@@ -228,7 +228,7 @@ export function CampaignFormDialog({
 
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="campaign-impressions">Impressoes</Label>
+                <Label htmlFor="campaign-impressions">Impressões</Label>
                 <Input
                   id="campaign-impressions"
                   type="number"
@@ -250,7 +250,7 @@ export function CampaignFormDialog({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="campaign-conversions">Conversoes</Label>
+                <Label htmlFor="campaign-conversions">Conversões</Label>
                 <Input
                   id="campaign-conversions"
                   type="number"
@@ -264,7 +264,7 @@ export function CampaignFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="campaign-start">Inicio</Label>
+                <Label htmlFor="campaign-start">Início</Label>
                 <Input
                   id="campaign-start"
                   type="date"
@@ -285,7 +285,7 @@ export function CampaignFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="campaign-description">Descricao</Label>
+              <Label htmlFor="campaign-description">Descrição</Label>
               <Textarea
                 id="campaign-description"
                 value={description}

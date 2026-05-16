@@ -14,7 +14,7 @@ export async function createSegment(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createSegmentSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -48,7 +48,7 @@ export async function updateSegment(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = updateSegmentSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -58,7 +58,7 @@ export async function updateSegment(formData: unknown) {
     .select("sector_id")
     .eq("id", parsed.data.id)
     .single();
-  if (!existing) return { error: "Audiencia nao encontrada" };
+  if (!existing) return { error: "Audiência não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "audience_segment", "update")) {
@@ -83,20 +83,20 @@ export async function updateSegment(formData: unknown) {
 
 export async function deleteSegment(segmentId: string) {
   const parsed = z.string().uuid().safeParse(segmentId);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: segment } = await supabase
     .from("marketing_audience_segments")
     .select("sector_id")
     .eq("id", segmentId)
     .single();
-  if (!segment) return { error: "Audiencia nao encontrada" };
+  if (!segment) return { error: "Audiência não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, segment.sector_id, "audience_segment", "delete")) {
