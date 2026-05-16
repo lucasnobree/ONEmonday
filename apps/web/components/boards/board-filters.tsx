@@ -62,11 +62,22 @@ export function countBoardCards(board: BoardData): number {
 
 const PRIORITY_OPTIONS: { value: Priority | "all"; label: string }[] = [
   { value: "all", label: "Todas prioridades" },
-  { value: "critical", label: "Critico" },
+  { value: "critical", label: "Crítico" },
   { value: "high", label: "Alta" },
-  { value: "medium", label: "Media" },
+  { value: "medium", label: "Média" },
   { value: "low", label: "Baixa" },
 ];
+
+/**
+ * Maps a priority filter value to its human label. Used by the `SelectValue`
+ * render so the trigger never shows the raw token (e.g. "all").
+ */
+export function priorityFilterLabel(value: BoardFilterState["priority"]): string {
+  return (
+    PRIORITY_OPTIONS.find((opt) => opt.value === value)?.label ??
+    "Todas prioridades"
+  );
+}
 
 interface BoardFiltersProps {
   filters: BoardFilterState;
@@ -89,7 +100,7 @@ export function BoardFilters({
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
-      <div className="relative flex-1 min-w-[200px]">
+      <div className="relative flex-1 min-w-50">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={filters.search}
@@ -110,7 +121,7 @@ export function BoardFilters({
         }
       >
         <SelectTrigger className="w-44" aria-label="Filtrar por prioridade">
-          <SelectValue />
+          <SelectValue>{priorityFilterLabel(filters.priority)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {PRIORITY_OPTIONS.map((opt) => (

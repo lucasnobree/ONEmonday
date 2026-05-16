@@ -3,6 +3,7 @@ import {
   cardMatchesFilters,
   applyBoardFilters,
   countBoardCards,
+  priorityFilterLabel,
   EMPTY_BOARD_FILTERS,
 } from "./board-filters";
 import type { BoardCard, BoardData } from "@/hooks/use-board-data";
@@ -131,6 +132,20 @@ describe("applyBoardFilters", () => {
     const board = makeBoard();
     applyBoardFilters(board, { search: "login", priority: "all" });
     expect(countBoardCards(board)).toBe(3);
+  });
+});
+
+describe("priorityFilterLabel", () => {
+  it("maps the 'all' token to a human label, not the raw value", () => {
+    // Regression: the priority Select showed the raw value "all".
+    expect(priorityFilterLabel("all")).toBe("Todas prioridades");
+  });
+
+  it("maps each priority to its accented pt-BR label", () => {
+    expect(priorityFilterLabel("critical")).toBe("Crítico");
+    expect(priorityFilterLabel("high")).toBe("Alta");
+    expect(priorityFilterLabel("medium")).toBe("Média");
+    expect(priorityFilterLabel("low")).toBe("Baixa");
   });
 });
 

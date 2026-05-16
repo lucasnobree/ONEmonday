@@ -83,10 +83,10 @@ export function BoardCreateDialog({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Descricao (opcional)</Label>
+            <Label htmlFor="description">Descrição (opcional)</Label>
             <Textarea
               id="description"
-              placeholder="Descreva o proposito deste board"
+              placeholder="Descreva o propósito deste board"
               {...register("description")}
             />
           </div>
