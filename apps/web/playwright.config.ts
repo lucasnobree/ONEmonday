@@ -2,10 +2,16 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * E2E config. The dashboard requires a running Supabase stack and a seeded
- * user — see ../../README or docs for local setup. Override the target with
+ * admin user — see ONBOARDING.md for local setup. Override the target with
  * E2E_BASE_URL when pointing at a non-default host.
+ *
+ * Projects:
+ *  - `setup`         logs in once and saves the admin session.
+ *  - `public`        runs the unauthenticated specs (auth.spec.ts).
+ *  - `authenticated` runs every module spec with the saved session.
  */
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const ADMIN_STATE = "e2e/.auth/admin.json";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -20,7 +26,18 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    {
+      name: "public",
+      testMatch: /auth\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "authenticated",
+      testIgnore: [/auth\.spec\.ts/, /auth\.setup\.ts/],
+      dependencies: ["setup"],
+      use: { ...devices["Desktop Chrome"], storageState: ADMIN_STATE },
+    },
   ],
   webServer: {
     command: "npm run dev",
