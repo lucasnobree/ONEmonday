@@ -47,7 +47,7 @@ export default function ClausesPage() {
   if (!currentSector) {
     return (
       <p className="text-muted-foreground">
-        Selecione um setor para ver a biblioteca de clausulas.
+        Selecione um setor para ver a biblioteca de cláusulas.
       </p>
     );
   }
@@ -61,7 +61,7 @@ export default function ClausesPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar clausula"
+              placeholder="Buscar cláusula"
               className="w-64 pl-8"
             />
           </div>
@@ -69,8 +69,14 @@ export default function ClausesPage() {
             value={categoryFilter}
             onValueChange={(v) => setCategoryFilter(v ?? "all")}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Categoria" />
+            <SelectTrigger aria-label="Filtrar por categoria">
+              <SelectValue placeholder="Categoria">
+                {(value: string) =>
+                  value === "all"
+                    ? "Todas as categorias"
+                    : (CLAUSE_CATEGORY_LABELS[value] ?? value)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as categorias</SelectItem>
@@ -96,15 +102,15 @@ export default function ClausesPage() {
           <CardContent className="py-8">
             <EmptyState
               icon={ScrollText}
-              title="Biblioteca de clausulas vazia"
-              description="Adicione modelos de clausulas pre-aprovadas para reutilizar nos contratos."
+              title="Biblioteca de cláusulas vazia"
+              description="Adicione modelos de cláusulas pré-aprovadas para reutilizar nos contratos."
               action={<ClauseFormDialog />}
             />
           </CardContent>
         </Card>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
-          Nenhuma clausula encontrada com os filtros selecionados.
+          Nenhuma cláusula encontrada com os filtros selecionados.
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">

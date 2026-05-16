@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useContracts, type Contract } from "@/hooks/legal/use-contracts";
+import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { ContractFormDialog } from "@/components/legal/contract-form-dialog";
 import {
   Card,
@@ -35,9 +36,16 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR");
 export default function ContractsPage() {
   const { currentSector } = useCurrentSector();
   const { data: contracts, isLoading } = useContracts(currentSector?.id);
+  const { data: members } = useSectorMembers(currentSector?.id);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<Contract | null>(null);
+
+  const memberNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of members ?? []) map.set(m.id, m.full_name);
+    return map;
+  }, [members]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -68,7 +76,7 @@ export default function ContractsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por titulo ou contraparte"
+              placeholder="Buscar por título ou contraparte"
               className="w-64 pl-8"
             />
           </div>
@@ -76,8 +84,14 @@ export default function ContractsPage() {
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v ?? "all")}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
+            <SelectTrigger aria-label="Filtrar por status">
+              <SelectValue placeholder="Status">
+                {(value: string) =>
+                  value === "all"
+                    ? "Todos os status"
+                    : (CONTRACT_STATUS_LABELS[value]?.label ?? value)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
@@ -109,7 +123,7 @@ export default function ContractsPage() {
             <EmptyState
               icon={FileText}
               title="Nenhum contrato cadastrado"
-              description="Adicione seu primeiro contrato para acompanhar prazos e renovacoes."
+              description="Adicione seu primeiro contrato para acompanhar prazos e renovações."
               action={<ContractFormDialog />}
             />
           ) : filtered.length === 0 ? (
@@ -121,13 +135,14 @@ export default function ContractsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Titulo</th>
+                    <th className="pb-2 font-medium">Título</th>
                     <th className="pb-2 font-medium">Contraparte</th>
                     <th className="pb-2 font-medium">Tipo</th>
+                    <th className="pb-2 font-medium">Responsável</th>
                     <th className="pb-2 font-medium">Valor</th>
                     <th className="pb-2 font-medium">Vencimento</th>
                     <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Renovacao</th>
+                    <th className="pb-2 font-medium">Renovação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,6 +168,11 @@ export default function ContractsPage() {
                         <td className="py-2">
                           {CONTRACT_TYPE_LABELS[contract.contract_type] ??
                             contract.contract_type}
+                        </td>
+                        <td className="py-2">
+                          {contract.owner_id
+                            ? (memberNames.get(contract.owner_id) ?? "-")
+                            : "-"}
                         </td>
                         <td className="py-2">
                           {formatCurrency(
