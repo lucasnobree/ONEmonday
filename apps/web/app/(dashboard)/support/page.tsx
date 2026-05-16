@@ -29,9 +29,9 @@ const priorityColors: Record<string, string> = {
 };
 
 const priorityLabels: Record<string, string> = {
-  critical: "Critica",
+  critical: "Crítica",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
 };
 
@@ -82,7 +82,7 @@ export default function SupportDashboardPage() {
       action="read"
       fallback={
         <p className="text-muted-foreground">
-          Voce nao tem permissao para acessar o Support Desk deste setor.
+          Você não tem permissão para acessar o Support Desk deste setor.
         </p>
       }
     >
@@ -115,7 +115,7 @@ export default function SupportDashboardPage() {
           <CardHeader>
             <CardTitle>Tickets Recentes</CardTitle>
             <CardDescription>
-              Ultimos tickets abertos neste setor
+              Últimos tickets abertos neste setor
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -134,7 +134,7 @@ export default function SupportDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Titulo</th>
+                      <th className="pb-2 font-medium">Título</th>
                       <th className="pb-2 font-medium">Prioridade</th>
                       <th className="pb-2 font-medium">Status</th>
                       <th className="pb-2 font-medium">Categoria</th>

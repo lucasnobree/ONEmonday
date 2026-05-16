@@ -98,7 +98,7 @@ function KBArticleForm({
         <SheetTitle>{isEdit ? "Editar Artigo" : "Novo Artigo"}</SheetTitle>
         <SheetDescription>
           {isEdit
-            ? "Atualize o conteudo do artigo"
+            ? "Atualize o conteúdo do artigo"
             : "Crie um novo artigo para a base de conhecimento"}
         </SheetDescription>
       </SheetHeader>
@@ -110,12 +110,12 @@ function KBArticleForm({
         className="flex-1 flex flex-col gap-4 overflow-y-auto px-4 pb-4"
       >
         <div className="grid gap-2">
-          <Label htmlFor="kb-title">Titulo</Label>
+          <Label htmlFor="kb-title">Título</Label>
           <Input
             id="kb-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Titulo do artigo"
+            placeholder="Título do artigo"
             required
           />
         </div>
@@ -145,7 +145,7 @@ function KBArticleForm({
 
         <div className="grid gap-2 flex-1">
           <div className="flex items-center justify-between">
-            <Label>Conteudo</Label>
+            <Label>Conteúdo</Label>
             <Button
               type="button"
               variant="ghost"
@@ -167,13 +167,13 @@ function KBArticleForm({
           </div>
           {previewMode ? (
             <div className="min-h-[200px] rounded-md border p-3 text-sm whitespace-pre-wrap leading-relaxed bg-muted/30">
-              {content || "Nenhum conteudo para visualizar."}
+              {content || "Nenhum conteúdo para visualizar."}
             </div>
           ) : (
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Escreva o conteudo do artigo..."
+              placeholder="Escreva o conteúdo do artigo..."
               className="min-h-[200px] resize-none"
               required
             />

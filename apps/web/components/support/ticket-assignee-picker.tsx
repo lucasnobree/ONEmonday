@@ -59,7 +59,7 @@ export function TicketAssigneePicker({
       );
       return;
     }
-    toast.success("Responsavel atribuido");
+    toast.success("Responsável atribuído");
     setOpen(false);
   }
 
@@ -69,11 +69,11 @@ export function TicketAssigneePicker({
       toast.error(
         typeof result.error === "string"
           ? result.error
-          : "Erro ao remover responsavel"
+          : "Erro ao remover responsável"
       );
       return;
     }
-    toast.success("Responsavel removido");
+    toast.success("Responsável removido");
   }
 
   return (
@@ -91,7 +91,7 @@ export function TicketAssigneePicker({
                 onClick={() => handleUnassign(a.user_id)}
                 disabled={busy}
                 className="text-muted-foreground hover:text-foreground"
-                title="Remover responsavel"
+                title="Remover responsável"
               >
                 <X className="size-3.5" />
               </button>
@@ -99,7 +99,7 @@ export function TicketAssigneePicker({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Ninguem atribuido.</p>
+        <p className="text-sm text-muted-foreground">Ninguém atribuído.</p>
       )}
 
       <Popover open={open} onOpenChange={setOpen}>

@@ -16,7 +16,7 @@ export async function escalateTicket(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = escalateSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -27,11 +27,11 @@ export async function escalateTicket(formData: unknown) {
     .eq("id", parsed.data.ticketId)
     .single();
 
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error: updateError } = await supabase
