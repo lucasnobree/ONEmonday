@@ -6,11 +6,18 @@ import { useContentItems, type ContentItem } from "@/hooks/marketing/use-content
 import { useCampaigns } from "@/hooks/marketing/use-campaigns";
 import { ContentCalendar } from "@/components/marketing/content-calendar";
 import { ContentFormDialog } from "@/components/marketing/content-form-dialog";
+import { MarketingError } from "@/components/marketing/marketing-error";
 import { currentMonth } from "@/lib/marketing/calendar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MarketingCalendarPage() {
   const { currentSector } = useCurrentSector();
-  const { data: items } = useContentItems(currentSector?.id);
+  const {
+    data: items,
+    isLoading,
+    isError,
+    refetch,
+  } = useContentItems(currentSector?.id);
   const { data: campaigns } = useCampaigns(currentSector?.id);
 
   const [month, setMonth] = useState(currentMonth());
@@ -21,7 +28,7 @@ export default function MarketingCalendarPage() {
   if (!currentSector) {
     return (
       <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver o calendario.
+        Selecione um setor no menu lateral para ver o calendário.
       </p>
     );
   }
@@ -40,15 +47,24 @@ export default function MarketingCalendarPage() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Calendario Editorial</h2>
+      <h2 className="text-lg font-semibold">Calendário Editorial</h2>
 
-      <ContentCalendar
-        month={month}
-        onMonthChange={setMonth}
-        items={items ?? []}
-        onSelectItem={openForItem}
-        onAddOnDate={openForDate}
-      />
+      {isLoading ? (
+        <Skeleton className="h-96 w-full" />
+      ) : isError ? (
+        <MarketingError
+          subject="o calendário editorial"
+          onRetry={() => refetch()}
+        />
+      ) : (
+        <ContentCalendar
+          month={month}
+          onMonthChange={setMonth}
+          items={items ?? []}
+          onSelectItem={openForItem}
+          onAddOnDate={openForDate}
+        />
+      )}
 
       <ContentFormDialog
         open={dialogOpen}
