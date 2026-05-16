@@ -13,6 +13,63 @@ export interface DashboardStats {
   cardsByColumn: { column_name: string; column_color: string; count: number }[];
 }
 
+export interface ColumnMeta {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+const DEFAULT_COLUMN_COLOR = "#6b7280";
+
+/**
+ * Builds the "cards by column" chart data from per-column card counts and a
+ * separately-fetched list of column metadata. Pure + exported for tests.
+ *
+ * Counts for columns missing from `columns` (e.g. a card whose column the
+ * caller cannot resolve) are folded into a single "Outros" bucket so the
+ * chart total always matches the real card count.
+ */
+export function buildCardsByColumn(
+  countByColumnId: Map<string, number>,
+  columns: ColumnMeta[]
+): DashboardStats["cardsByColumn"] {
+  const metaById = new Map(columns.map((c) => [c.id, c]));
+  const byName = new Map<
+    string,
+    { column_name: string; column_color: string; count: number }
+  >();
+  let unresolved = 0;
+
+  for (const [columnId, count] of countByColumnId) {
+    if (count <= 0) continue;
+    const meta = metaById.get(columnId);
+    if (!meta) {
+      unresolved += count;
+      continue;
+    }
+    const existing = byName.get(meta.name);
+    if (existing) {
+      existing.count += count;
+    } else {
+      byName.set(meta.name, {
+        column_name: meta.name,
+        column_color: meta.color || DEFAULT_COLUMN_COLOR,
+        count,
+      });
+    }
+  }
+
+  const result = Array.from(byName.values());
+  if (unresolved > 0) {
+    result.push({
+      column_name: "Outros",
+      column_color: DEFAULT_COLUMN_COLOR,
+      count: unresolved,
+    });
+  }
+  return result;
+}
+
 async function fetchDashboardStats(
   sectorId: string
 ): Promise<DashboardStats> {
@@ -46,10 +103,13 @@ async function fetchDashboardStats(
       .eq("sector_id", sectorId)
       .eq("is_active", true),
 
-    // Cards by column (need column name and color)
+    // Cards by column. We fetch only `column_id` here and resolve the column
+    // name/colour from a separate sector-scoped query below. A `board_columns`
+    // `!inner` join is filtered row-by-row by RLS and silently collapses to
+    // zero for sector managers, so the chart must not depend on the join.
     supabase
       .from("cards")
-      .select("column_id, board_columns!inner(name, color)")
+      .select("column_id")
       .eq("sector_id", sectorId)
       .eq("is_active", true),
 
@@ -104,30 +164,25 @@ async function fetchDashboardStats(
     ([priority, count]) => ({ priority, count })
   );
 
-  // Aggregate column counts
-  const columnMap = new Map<
-    string,
-    { column_name: string; column_color: string; count: number }
-  >();
-  type ColumnJoin = { name: string; color: string | null };
+  // Count cards per column id, then resolve names/colours from a separate
+  // sector-scoped board_columns query (see the comment on columnRes above).
+  const countByColumnId = new Map<string, number>();
   for (const card of columnRes.data ?? []) {
-    // A `!inner` join yields a single related row; Supabase types it as
-    // either an object or a single-element array depending on inference.
-    const joined = card.board_columns as unknown as
-      | ColumnJoin
-      | ColumnJoin[]
-      | null;
-    const col = Array.isArray(joined) ? joined[0] : joined;
-    if (!col) continue;
-    const name = col.name;
-    const color = col.color || "#6b7280";
-    if (columnMap.has(name)) {
-      columnMap.get(name)!.count++;
-    } else {
-      columnMap.set(name, { column_name: name, column_color: color, count: 1 });
-    }
+    const id = card.column_id as string | null;
+    if (!id) continue;
+    countByColumnId.set(id, (countByColumnId.get(id) ?? 0) + 1);
   }
-  const cardsByColumn = Array.from(columnMap.values());
+
+  let columnsMeta: ColumnMeta[] = [];
+  const columnIds = Array.from(countByColumnId.keys());
+  if (columnIds.length > 0) {
+    const { data: columnRows } = await supabase
+      .from("board_columns")
+      .select("id, name, color")
+      .in("id", columnIds);
+    columnsMeta = (columnRows ?? []) as ColumnMeta[];
+  }
+  const cardsByColumn = buildCardsByColumn(countByColumnId, columnsMeta);
 
   return {
     totalCards: totalRes.count ?? 0,
