@@ -50,15 +50,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document and onboarding actions lacked server-side permission checks.
 - Support: the response-SLA timer never stopped (first response was never
   recorded); KB publish and SLA active toggles were ignored on submit.
+- WIP column limits are now enforced race-free by a database trigger.
+- Wave 2 senior review: Analytics metric trends no longer collapse to a
+  single bucket; Dev-Tools incident edits no longer drop the assignee;
+  Marketing's campaigns/calendar/audiences pages were added (nav previously
+  linked to non-existent routes); Finance edit dialogs show the saved amount.
 
 ### Security
 - HR document/onboarding server actions now enforce permissions server-side
   rather than relying on RLS alone.
+- The Legal dashboard RPC now verifies sector access (it previously leaked
+  aggregate counts cross-tenant); rewritten Wave 2 RPCs pin `search_path`.
 
 ### Migrations
-- `00016` card completion tracking · `00020` CRM deal health ·
-  `00030` HR wave 1 · `00040` Support ticket tags · `00050` Analytics ·
-  `00060` Dev-Tools · `00070` Finance · `00080` Legal · `00090` Marketing.
+- `00016` card completion tracking · `00017` WIP-limit trigger ·
+  `00020` CRM deal health · `00030` HR wave 1 · `00040` Support ticket tags ·
+  `00050` Analytics · `00060` Dev-Tools · `00070` Finance · `00080` Legal ·
+  `00090` Marketing · `00100` Wave 2 review fixes.
 
 ## [0.1.0] - 2026-05-15
 
