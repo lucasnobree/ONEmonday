@@ -26,11 +26,15 @@ import {
 import type { Priority } from "@/lib/constants";
 
 const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
-  { value: "critical", label: "Critico" },
+  { value: "critical", label: "Crítico" },
   { value: "high", label: "Alta" },
-  { value: "medium", label: "Media" },
+  { value: "medium", label: "Média" },
   { value: "low", label: "Baixa" },
 ];
+
+function priorityLabel(value: Priority): string {
+  return PRIORITY_OPTIONS.find((opt) => opt.value === value)?.label ?? "Média";
+}
 
 interface CardEditDialogProps {
   open: boolean;
@@ -79,7 +83,7 @@ export function CardEditDialog({
       const titleIssue = parsed.error.issues.find((i) =>
         i.path.includes("title")
       );
-      setTitleError(titleIssue?.message ?? "Dados invalidos");
+      setTitleError(titleIssue?.message ?? "Dados inválidos");
       return;
     }
     setTitleError(null);
@@ -111,7 +115,7 @@ export function CardEditDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="card-title">Titulo</Label>
+            <Label htmlFor="card-title">Título</Label>
             <Input
               id="card-title"
               value={title}
@@ -123,13 +127,13 @@ export function CardEditDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="card-description">Descricao</Label>
+            <Label htmlFor="card-description">Descrição</Label>
             <Textarea
               id="card-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descreva o card"
-              className="min-h-[100px]"
+              className="min-h-25"
             />
           </div>
 
@@ -141,7 +145,7 @@ export function CardEditDialog({
                 onValueChange={(v) => setPriority((v as Priority) ?? "medium")}
               >
                 <SelectTrigger id="card-priority" className="w-full">
-                  <SelectValue />
+                  <SelectValue>{priorityLabel(priority)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITY_OPTIONS.map((opt) => (

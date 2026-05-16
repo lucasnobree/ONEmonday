@@ -1,14 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { useCreateProject } from "@/hooks/use-projects";
-import { useCurrentSector } from "@/hooks/use-current-sector";
-import {
-  createProjectSchema,
-  type CreateProjectInput,
-} from "@/lib/validations/projects";
+import { useUpdateProject } from "@/hooks/use-projects";
+import type { ProjectSummary } from "@/hooks/use-projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,25 +25,42 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { z } from "zod";
 
-interface ProjectCreateDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-const STATUS_OPTIONS = [
+const PROJECT_STATUS_OPTIONS = [
   { value: "active", label: "Ativo" },
   { value: "paused", label: "Pausado" },
   { value: "completed", label: "Concluído" },
   { value: "archived", label: "Arquivado" },
 ] as const;
 
-export function ProjectCreateDialog({
+const editProjectSchema = z.object({
+  name: z.string().min(1, "Nome obrigatório").max(100),
+  description: z.string().max(2000).optional(),
+  status: z.enum(["active", "paused", "completed", "archived"]),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+type EditProjectFormInput = z.infer<typeof editProjectSchema>;
+
+interface ProjectEditDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  project: ProjectSummary;
+}
+
+/**
+ * Edits a project's name, description, status and dates. The
+ * `useUpdateProject` mutation already existed but had no UI entry point,
+ * so a project could never legitimately move from "Ativo" to "Concluído".
+ */
+export function ProjectEditDialog({
   open,
   onOpenChange,
-}: ProjectCreateDialogProps) {
-  const { currentSector } = useCurrentSector();
-  const createProject = useCreateProject();
+  project,
+}: ProjectEditDialogProps) {
+  const updateProject = useUpdateProject();
 
   const {
     register,
@@ -54,28 +68,57 @@ export function ProjectCreateDialog({
     reset,
     control,
     formState: { errors },
-  } = useForm<CreateProjectInput>({
-    resolver: zodResolver(createProjectSchema),
+  } = useForm<EditProjectFormInput>({
+    resolver: zodResolver(editProjectSchema),
     defaultValues: {
-      status: "active",
-      sectorIds: currentSector ? [currentSector.id] : [],
+      name: project.name,
+      description: project.description ?? "",
+      status: project.status as EditProjectFormInput["status"],
+      startDate: project.start_date ?? "",
+      endDate: project.target_date ?? "",
     },
   });
 
-  async function onSubmit(data: CreateProjectInput) {
-    if (!currentSector) return;
-    const input = { ...data, sectorIds: [currentSector.id] };
-    const result = await createProject.mutateAsync(input);
+  // Re-seed the form whenever a different project is opened.
+  useEffect(() => {
+    if (open) {
+      reset({
+        name: project.name,
+        description: project.description ?? "",
+        status: project.status as EditProjectFormInput["status"],
+        startDate: project.start_date ?? "",
+        endDate: project.target_date ?? "",
+      });
+    }
+  }, [
+    open,
+    project.id,
+    project.name,
+    project.description,
+    project.status,
+    project.start_date,
+    project.target_date,
+    reset,
+  ]);
+
+  async function onSubmit(data: EditProjectFormInput) {
+    const result = await updateProject.mutateAsync({
+      id: project.id,
+      name: data.name,
+      description: data.description || undefined,
+      status: data.status,
+      startDate: data.startDate || undefined,
+      endDate: data.endDate || undefined,
+    });
 
     if (result.error) {
-      toast.error("Erro ao criar projeto", {
+      toast.error("Erro ao atualizar projeto", {
         description: String(result.error),
       });
       return;
     }
 
-    toast.success("Projeto criado");
-    reset();
+    toast.success("Projeto atualizado");
     onOpenChange(false);
   }
 
@@ -83,13 +126,13 @@ export function ProjectCreateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo Projeto</DialogTitle>
+          <DialogTitle>Editar Projeto</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
+            <Label htmlFor="edit-project-name">Nome</Label>
             <Input
-              id="name"
+              id="edit-project-name"
               placeholder="Ex: Redesign do portal"
               {...register("name")}
             />
@@ -98,9 +141,11 @@ export function ProjectCreateDialog({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição (opcional)</Label>
+            <Label htmlFor="edit-project-description">
+              Descrição (opcional)
+            </Label>
             <Textarea
-              id="description"
+              id="edit-project-description"
               placeholder="Descreva o objetivo deste projeto"
               {...register("description")}
             />
@@ -121,7 +166,7 @@ export function ProjectCreateDialog({
                     <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUS_OPTIONS.map((opt) => (
+                    {PROJECT_STATUS_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>
@@ -138,20 +183,28 @@ export function ProjectCreateDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Data de início</Label>
-              <Input id="startDate" type="date" {...register("startDate")} />
+              <Label htmlFor="edit-project-start">Data de início</Label>
+              <Input
+                id="edit-project-start"
+                type="date"
+                {...register("startDate")}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endDate">Data alvo</Label>
-              <Input id="endDate" type="date" {...register("endDate")} />
+              <Label htmlFor="edit-project-end">Data alvo</Label>
+              <Input
+                id="edit-project-end"
+                type="date"
+                {...register("endDate")}
+              />
             </div>
           </div>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               Cancelar
             </DialogClose>
-            <Button type="submit" disabled={createProject.isPending}>
-              {createProject.isPending ? "Criando..." : "Criar Projeto"}
+            <Button type="submit" disabled={updateProject.isPending}>
+              {updateProject.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

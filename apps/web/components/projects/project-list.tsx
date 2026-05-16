@@ -6,12 +6,15 @@ import {
   FolderKanban,
   MoreHorizontal,
   Trash2,
+  Pencil,
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useProjects, useDeleteProject } from "@/hooks/use-projects";
+import type { ProjectSummary } from "@/hooks/use-projects";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,11 +32,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectCreateDialog } from "./project-create-dialog";
+import { ProjectEditDialog } from "./project-edit-dialog";
 
 const STATUS_CONFIG = {
   active: { label: "Ativo", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
   paused: { label: "Pausado", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  completed: { label: "Concluido", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" },
+  completed: { label: "Concluído", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" },
   archived: { label: "Arquivado", className: "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400" },
 } as const;
 
@@ -50,6 +54,9 @@ export function ProjectList() {
   const { data: projects, isLoading } = useProjects(currentSector?.id);
   const deleteProject = useDeleteProject();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectSummary | null>(
+    null
+  );
 
   if (!currentSector) {
     return (
@@ -80,7 +87,7 @@ export function ProjectList() {
         description: String(result.error),
       });
     } else {
-      toast.success("Projeto excluido");
+      toast.success("Projeto excluído");
     }
   }
 
@@ -108,7 +115,7 @@ export function ProjectList() {
           <FolderKanban className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <h2 className="text-lg font-medium">Nenhum projeto</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Crie um projeto para comecar a organizar seus objetivos.
+            Crie um projeto para começar a organizar seus objetivos.
           </p>
         </div>
       ) : (
@@ -152,34 +159,53 @@ export function ProjectList() {
                     )}
                   </div>
                   <CardAction>
-                    <PermissionGate
-                      sectorId={currentSector.id}
-                      resource="project"
-                      action="delete"
-                    >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="opacity-0 group-hover:opacity-100"
-                            />
-                          }
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="opacity-0 group-hover:opacity-100"
+                          />
+                        }
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <PermissionGate
+                          sectorId={currentSector.id}
+                          resource="project"
+                          action="update"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleDelete(project.id)}
-                            variant="destructive"
+                            onClick={() => setEditingProject(project)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </PermissionGate>
+                        </PermissionGate>
+                        <PermissionGate
+                          sectorId={currentSector.id}
+                          resource="project"
+                          action="delete"
+                        >
+                          <ConfirmDialog
+                            title="Excluir projeto"
+                            description={`Tem certeza que deseja excluir "${project.name}"? Esta ação não pode ser desfeita.`}
+                            variant="destructive"
+                            onConfirm={() => handleDelete(project.id)}
+                          >
+                            <DropdownMenuItem
+                              variant="destructive"
+                              closeOnClick={false}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </ConfirmDialog>
+                        </PermissionGate>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </CardAction>
                 </CardHeader>
               </Card>
@@ -189,6 +215,15 @@ export function ProjectList() {
       )}
 
       <ProjectCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {editingProject && (
+        <ProjectEditDialog
+          open={editingProject !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingProject(null);
+          }}
+          project={editingProject}
+        />
+      )}
     </div>
   );
 }

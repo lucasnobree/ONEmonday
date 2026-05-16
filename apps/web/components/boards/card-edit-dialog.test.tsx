@@ -34,8 +34,8 @@ describe("CardEditDialog", () => {
         onSaved={() => {}}
       />
     );
-    expect(screen.getByLabelText("Titulo")).toHaveValue("Titulo original");
-    expect(screen.getByLabelText("Descricao")).toHaveValue("Descricao");
+    expect(screen.getByLabelText("Título")).toHaveValue("Titulo original");
+    expect(screen.getByLabelText("Descrição")).toHaveValue("Descricao");
   });
 
   it("submits the edited fields to updateCard", async () => {
@@ -50,7 +50,7 @@ describe("CardEditDialog", () => {
       />
     );
 
-    const titleInput = screen.getByLabelText("Titulo");
+    const titleInput = screen.getByLabelText("Título");
     await user.clear(titleInput);
     await user.type(titleInput, "Titulo novo");
     await user.click(screen.getByRole("button", { name: "Salvar" }));
@@ -75,7 +75,7 @@ describe("CardEditDialog", () => {
       />
     );
 
-    await user.clear(screen.getByLabelText("Titulo"));
+    await user.clear(screen.getByLabelText("Título"));
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(await screen.findByText(/obrigat/i)).toBeVisible();

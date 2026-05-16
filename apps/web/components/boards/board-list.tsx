@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Kanban, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, Kanban, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useBoards, useDeleteBoard } from "@/hooks/use-boards";
+import type { BoardSummary } from "@/hooks/use-boards";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,12 +25,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BoardCreateDialog } from "./board-create-dialog";
+import { BoardEditDialog } from "./board-edit-dialog";
 
 export function BoardList() {
   const { currentSector } = useCurrentSector();
   const { data: boards, isLoading } = useBoards(currentSector?.id);
   const deleteBoard = useDeleteBoard();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingBoard, setEditingBoard] = useState<BoardSummary | null>(null);
 
   if (!currentSector) {
     return (
@@ -59,7 +63,7 @@ export function BoardList() {
         description: String(result.error),
       });
     } else {
-      toast.success("Board excluido");
+      toast.success("Board excluído");
     }
   }
 
@@ -87,7 +91,7 @@ export function BoardList() {
           <Kanban className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <h2 className="text-lg font-medium">Nenhum board</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Crie um board para comecar a organizar as tarefas.
+            Crie um board para começar a organizar as tarefas.
           </p>
         </div>
       ) : (
@@ -110,34 +114,53 @@ export function BoardList() {
                   )}
                 </Link>
                 <CardAction>
-                  <PermissionGate
-                    sectorId={currentSector.id}
-                    resource="board"
-                    action="delete"
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="opacity-0 group-hover:opacity-100"
-                          />
-                        }
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="opacity-0 group-hover:opacity-100"
+                        />
+                      }
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <PermissionGate
+                        sectorId={currentSector.id}
+                        resource="board"
+                        action="update"
                       >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => handleDelete(board.id)}
-                          variant="destructive"
+                          onClick={() => setEditingBoard(board)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Editar
                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </PermissionGate>
+                      </PermissionGate>
+                      <PermissionGate
+                        sectorId={currentSector.id}
+                        resource="board"
+                        action="delete"
+                      >
+                        <ConfirmDialog
+                          title="Excluir board"
+                          description={`Tem certeza que deseja excluir "${board.name}"? Esta ação não pode ser desfeita.`}
+                          variant="destructive"
+                          onConfirm={() => handleDelete(board.id)}
+                        >
+                          <DropdownMenuItem
+                            variant="destructive"
+                            closeOnClick={false}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </ConfirmDialog>
+                      </PermissionGate>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </CardAction>
               </CardHeader>
             </Card>
@@ -146,6 +169,15 @@ export function BoardList() {
       )}
 
       <BoardCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {editingBoard && (
+        <BoardEditDialog
+          open={editingBoard !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingBoard(null);
+          }}
+          board={editingBoard}
+        />
+      )}
     </div>
   );
 }

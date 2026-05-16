@@ -11,7 +11,7 @@ export function ColumnDistribution({ data }: ColumnDistributionProps) {
     return (
       <div className="rounded-lg border border-border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground mb-4">
-          Distribuicao por Coluna
+          Distribuição por Coluna
         </h3>
         <p className="text-sm text-muted-foreground">Nenhum card encontrado.</p>
       </div>

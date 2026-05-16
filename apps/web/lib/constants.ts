@@ -1,7 +1,7 @@
 export const PRIORITY_CONFIG = {
-  critical: { label: "Critico", color: "red", badgeVariant: "destructive" },
+  critical: { label: "Crítico", color: "red", badgeVariant: "destructive" },
   high: { label: "Alta", color: "orange", badgeVariant: "default" },
-  medium: { label: "Media", color: "yellow", badgeVariant: "secondary" },
+  medium: { label: "Média", color: "yellow", badgeVariant: "secondary" },
   low: { label: "Baixa", color: "green", badgeVariant: "outline" },
 } as const;
 
