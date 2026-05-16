@@ -29,10 +29,14 @@ import { toast } from "sonner";
 
 const EMPLOYMENT_TYPES = [
   { value: "full_time", label: "CLT" },
-  { value: "part_time", label: "Meio periodo" },
+  { value: "part_time", label: "Meio período" },
   { value: "contractor", label: "PJ" },
-  { value: "intern", label: "Estagiario" },
+  { value: "intern", label: "Estagiário" },
 ];
+
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  EMPLOYMENT_TYPES.map((t) => [t.value, t.label])
+);
 
 interface EmployeeFormData {
   id: string;
@@ -211,7 +215,7 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="hireDate">Data de admissao</Label>
+                <Label htmlFor="hireDate">Data de admissão</Label>
                 <Input
                   id="hireDate"
                   type="date"
@@ -238,7 +242,11 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
                   onValueChange={(v) => setEmploymentType(v ?? "full_time")}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value) =>
+                        EMPLOYMENT_TYPE_LABELS[value as string] ?? "CLT"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {EMPLOYMENT_TYPES.map((t) => (
@@ -256,7 +264,14 @@ export function EmployeeFormDialog({ employee }: EmployeeFormDialogProps = {}) {
                   onValueChange={(v) => setManagerId(v === "none" ? "" : v ?? "")}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sem gestor" />
+                    <SelectValue placeholder="Sem gestor">
+                      {(value) =>
+                        value === "none" || !value
+                          ? "Sem gestor"
+                          : managerOptions.find((m) => m.id === value)
+                              ?.full_name ?? "Sem gestor"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem gestor</SelectItem>
