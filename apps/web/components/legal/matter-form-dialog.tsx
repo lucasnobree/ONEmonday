@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createMatter, updateMatter } from "@/lib/actions/legal/matters";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useContracts } from "@/hooks/legal/use-contracts";
+import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import type { Matter } from "@/hooks/legal/use-matters";
 import {
   MATTER_TYPES,
@@ -52,11 +53,14 @@ interface FormState {
   priority: string;
   status: string;
   contractId: string;
+  assignedTo: string;
   dueDate: string;
   description: string;
 }
 
 const NO_CONTRACT = "__none__";
+/** Sentinel for "no assignee" — Select cannot hold an empty value. */
+const NO_ASSIGNEE = "__none__";
 
 function initialState(matter?: Matter): FormState {
   return {
@@ -65,6 +69,7 @@ function initialState(matter?: Matter): FormState {
     priority: matter?.priority ?? "medium",
     status: matter?.status ?? "open",
     contractId: matter?.contract_id ?? NO_CONTRACT,
+    assignedTo: matter?.assigned_to ?? NO_ASSIGNEE,
     dueDate: matter?.due_date ?? "",
     description: matter?.description ?? "",
   };
@@ -78,6 +83,7 @@ export function MatterFormDialog({
 }: MatterFormDialogProps) {
   const { currentSector } = useCurrentSector();
   const { data: contracts } = useContracts(currentSector?.id);
+  const { data: members } = useSectorMembers(currentSector?.id);
   const queryClient = useQueryClient();
   const [internalOpen, setInternalOpen] = useState(false);
   const isEdit = !!matter;
@@ -133,6 +139,8 @@ export function MatterFormDialog({
       status: form.status,
       contractId:
         form.contractId === NO_CONTRACT ? undefined : form.contractId,
+      assignedTo:
+        form.assignedTo === NO_ASSIGNEE ? undefined : form.assignedTo,
       dueDate: form.dueDate,
       description: form.description,
     });
@@ -150,15 +158,15 @@ export function MatterFormDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEdit ? "Editar Demanda" : "Nova Demanda Juridica"}
+              {isEdit ? "Editar Demanda" : "Nova Demanda Jurídica"}
             </DialogTitle>
             <DialogDescription>
-              Registre uma solicitacao para o time juridico
+              Registre uma solicitação para o time jurídico
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="matter-title">Titulo</Label>
+              <Label htmlFor="matter-title">Título</Label>
               <Input
                 id="matter-title"
                 value={form.title}
@@ -169,14 +177,18 @@ export function MatterFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Tipo</Label>
+                <Label id="matter-type-label">Tipo</Label>
                 <Select
                   value={form.matterType}
                   onValueChange={(v) =>
                     update("matterType", v ?? "contract_review")
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="matter-type"
+                    aria-labelledby="matter-type-label"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -189,12 +201,16 @@ export function MatterFormDialog({
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Prioridade</Label>
+                <Label id="matter-priority-label">Prioridade</Label>
                 <Select
                   value={form.priority}
                   onValueChange={(v) => update("priority", v ?? "medium")}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="matter-priority"
+                    aria-labelledby="matter-priority-label"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,12 +225,16 @@ export function MatterFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Status</Label>
+                <Label id="matter-status-label">Status</Label>
                 <Select
                   value={form.status}
                   onValueChange={(v) => update("status", v ?? "open")}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="matter-status"
+                    aria-labelledby="matter-status-label"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -236,27 +256,74 @@ export function MatterFormDialog({
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Contrato relacionado</Label>
-              <Select
-                value={form.contractId}
-                onValueChange={(v) => update("contractId", v ?? NO_CONTRACT)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Nenhum" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_CONTRACT}>Nenhum</SelectItem>
-                  {(contracts ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.title}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label id="matter-assignee-label">Responsável</Label>
+                <Select
+                  value={form.assignedTo}
+                  onValueChange={(v) => update("assignedTo", v ?? NO_ASSIGNEE)}
+                >
+                  <SelectTrigger
+                    id="matter-assignee"
+                    aria-labelledby="matter-assignee-label"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Sem responsável">
+                      {(value: string) =>
+                        value === NO_ASSIGNEE
+                          ? "Sem responsável"
+                          : ((members ?? []).find((m) => m.id === value)
+                              ?.full_name ?? "Sem responsável")
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_ASSIGNEE}>
+                      Sem responsável
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    {(members ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label id="matter-contract-label">
+                  Contrato relacionado
+                </Label>
+                <Select
+                  value={form.contractId}
+                  onValueChange={(v) => update("contractId", v ?? NO_CONTRACT)}
+                >
+                  <SelectTrigger
+                    id="matter-contract"
+                    aria-labelledby="matter-contract-label"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Nenhum">
+                      {(value: string) =>
+                        value === NO_CONTRACT
+                          ? "Nenhum"
+                          : ((contracts ?? []).find((c) => c.id === value)
+                              ?.title ?? "Nenhum")
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CONTRACT}>Nenhum</SelectItem>
+                    {(contracts ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="matter-desc">Descricao</Label>
+              <Label htmlFor="matter-desc">Descrição</Label>
               <Textarea
                 id="matter-desc"
                 value={form.description}
