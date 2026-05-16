@@ -72,7 +72,7 @@ const priorityColors: Record<string, string> = {
 const priorityLabels: Record<string, string> = {
   critical: "Critica",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
 };
 
@@ -85,9 +85,9 @@ const activityTypeIcons: Record<string, { icon: typeof Phone; color: string }> =
 };
 
 const activityTypeLabels: Record<string, string> = {
-  call: "Ligacao",
+  call: "Ligação",
   email: "Email",
-  meeting: "Reuniao",
+  meeting: "Reunião",
   note: "Nota",
   task: "Tarefa",
 };
@@ -178,7 +178,7 @@ export function DealDetailSheet({
             <Skeleton className="h-32 w-full" />
           </div>
         ) : !deal ? (
-          <div className="p-4 text-muted-foreground">Deal nao encontrado.</div>
+          <div className="p-4 text-muted-foreground">Deal não encontrado.</div>
         ) : (
           <>
             <SheetHeader>
@@ -272,7 +272,7 @@ export function DealDetailSheet({
                         title={
                           deal.probability_locked
                             ? "Probabilidade travada manualmente"
-                            : "Probabilidade automatica (clique para travar)"
+                            : "Probabilidade automática (clique para travar)"
                         }
                         disabled={toggleLock.isPending}
                       >

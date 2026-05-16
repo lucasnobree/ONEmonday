@@ -103,7 +103,7 @@ export function ProposalDetailSheet({
       );
       return;
     }
-    toast.success("Proposta excluida");
+    toast.success("Proposta excluída");
     onOpenChange(false);
   };
 
@@ -124,7 +124,7 @@ export function ProposalDetailSheet({
             </div>
           ) : !proposal ? (
             <div className="p-4 text-muted-foreground">
-              Proposta nao encontrada.
+              Proposta não encontrada.
             </div>
           ) : (
             <>
@@ -152,7 +152,7 @@ export function ProposalDetailSheet({
 
                 {proposal.content && (
                   <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Descricao</p>
+                    <p className="text-xs text-muted-foreground">Descrição</p>
                     <p className="text-sm whitespace-pre-wrap">
                       {proposal.content}
                     </p>
@@ -198,13 +198,13 @@ export function ProposalDetailSheet({
                         <thead>
                           <tr className="bg-muted text-muted-foreground text-xs">
                             <th className="py-2 px-3 text-left font-medium">
-                              Descricao
+                              Descrição
                             </th>
                             <th className="py-2 px-3 text-right font-medium">
                               Qtd
                             </th>
                             <th className="py-2 px-3 text-right font-medium">
-                              Preco Unit.
+                              Preço Unit.
                             </th>
                             <th className="py-2 px-3 text-right font-medium">
                               Total

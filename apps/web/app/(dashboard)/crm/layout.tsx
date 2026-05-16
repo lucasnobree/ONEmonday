@@ -21,7 +21,7 @@ export default function CRMLayout({ children }: { children: React.ReactNode }) {
       <div>
         <h1 className="text-2xl font-bold">CRM</h1>
         <p className="text-muted-foreground text-sm">
-          Gestao de relacionamento com clientes
+          Gestão de relacionamento com clientes
         </p>
       </div>
 

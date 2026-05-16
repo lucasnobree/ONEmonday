@@ -188,7 +188,7 @@ export function ContactFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="contact-notes">Observacoes</Label>
+              <Label htmlFor="contact-notes">Observações</Label>
               <Textarea
                 id="contact-notes"
                 value={notes}

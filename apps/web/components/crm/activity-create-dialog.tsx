@@ -33,9 +33,9 @@ interface ActivityCreateDialogProps {
 }
 
 const ACTIVITY_TYPES = [
-  { value: "call", label: "Ligacao" },
+  { value: "call", label: "Ligação" },
   { value: "email", label: "Email" },
-  { value: "meeting", label: "Reuniao" },
+  { value: "meeting", label: "Reunião" },
   { value: "note", label: "Nota" },
   { value: "task", label: "Tarefa" },
 ];
@@ -150,7 +150,7 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="activity-duration">Duracao (min)</Label>
+                <Label htmlFor="activity-duration">Duração (min)</Label>
                 <Input
                   id="activity-duration"
                   type="number"
@@ -205,13 +205,13 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
                   id="activity-location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Sala de reuniao, Google Meet, etc."
+                  placeholder="Sala de reunião, Google Meet, etc."
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="activity-description">Descricao</Label>
+              <Label htmlFor="activity-description">Descrição</Label>
               <Textarea
                 id="activity-description"
                 value={description}

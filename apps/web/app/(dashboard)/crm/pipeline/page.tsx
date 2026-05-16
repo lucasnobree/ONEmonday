@@ -187,7 +187,7 @@ export default function PipelinePage() {
       <EmptyState
         icon={Kanban}
         title="Nenhum pipeline encontrado"
-        description='Crie um board com nome "CRM", "Pipeline" ou "Vendas" na secao de Boards para comecar a usar o pipeline de vendas.'
+        description='Crie um board com nome "CRM", "Pipeline" ou "Vendas" na seção de Boards para começar a usar o pipeline de vendas.'
       />
     );
   }
@@ -221,7 +221,7 @@ export default function PipelinePage() {
         <EmptyState
           icon={Kanban}
           title="Nenhum deal no pipeline"
-          description="Adicione seu primeiro deal para comecar a acompanhar suas vendas."
+          description="Adicione seu primeiro deal para começar a acompanhar suas vendas."
           action={
             crmBoard ? (
               <Button onClick={() => setShowCreateDeal(true)}>
@@ -365,7 +365,7 @@ function DealCard({
       {rottingText && (
         <div
           className="mt-2 inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950 dark:text-red-400"
-          title={`Sem movimentacao ha ${rotting.idleDays} dias (limite do estagio: ${rotting.thresholdDays})`}
+          title={`Sem movimentação há ${rotting.idleDays} dias (limite do estágio: ${rotting.thresholdDays})`}
         >
           <AlertTriangle className="h-3 w-3" />
           {rottingText}

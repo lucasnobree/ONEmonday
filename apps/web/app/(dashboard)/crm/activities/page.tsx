@@ -43,7 +43,7 @@ const activityColors: Record<string, string> = {
 const activityLabels: Record<string, string> = {
   call: "Chamada",
   email: "Email",
-  meeting: "Reuniao",
+  meeting: "Reunião",
   note: "Nota",
   task: "Tarefa",
 };
@@ -61,7 +61,7 @@ const TYPE_LABELS: Record<string, string> = {
   all: "Todos",
   call: "Chamadas",
   email: "Emails",
-  meeting: "Reunioes",
+  meeting: "Reuniões",
   note: "Notas",
   task: "Tarefas",
 };
@@ -140,12 +140,12 @@ export default function ActivitiesPage() {
                 [
                   { key: "tipo", label: "Tipo" },
                   { key: "assunto", label: "Assunto" },
-                  { key: "descricao", label: "Descricao" },
-                  { key: "responsavel", label: "Responsavel" },
+                  { key: "descricao", label: "Descrição" },
+                  { key: "responsavel", label: "Responsável" },
                   { key: "deal", label: "Deal" },
                   { key: "contato", label: "Contato" },
                   { key: "empresa", label: "Empresa" },
-                  { key: "duracao_min", label: "Duracao (min)" },
+                  { key: "duracao_min", label: "Duração (min)" },
                   { key: "data", label: "Data" },
                 ]
               )
@@ -182,16 +182,16 @@ export default function ActivitiesPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-8 w-[140px] text-xs"
+              className="h-8 w-35 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Ate</Label>
+            <Label className="text-xs">Até</Label>
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-8 w-[140px] text-xs"
+              className="h-8 w-35 text-xs"
             />
           </div>
           {(dateFrom || dateTo) && (

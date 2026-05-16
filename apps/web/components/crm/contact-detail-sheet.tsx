@@ -33,9 +33,9 @@ import {
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
 const activityTypeLabels: Record<string, string> = {
-  call: "Ligacao",
+  call: "Ligação",
   email: "Email",
-  meeting: "Reuniao",
+  meeting: "Reunião",
   note: "Nota",
   task: "Tarefa",
 };
@@ -141,7 +141,7 @@ export function ContactDetailSheet({
           </div>
         ) : !contact ? (
           <div className="p-4 text-muted-foreground">
-            Contato nao encontrado.
+            Contato não encontrado.
           </div>
         ) : (
           <>
@@ -197,7 +197,7 @@ export function ContactDetailSheet({
 
             <Tabs defaultValue="info" className="px-4">
               <TabsList variant="line" className="w-full justify-start">
-                <TabsTrigger value="info">Informacoes</TabsTrigger>
+                <TabsTrigger value="info">Informações</TabsTrigger>
                 <TabsTrigger value="atividades">
                   Atividades ({activities?.length ?? 0})
                 </TabsTrigger>

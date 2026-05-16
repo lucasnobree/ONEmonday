@@ -40,7 +40,7 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR");
 const sizeLabels: Record<string, string> = {
   micro: "Micro",
   small: "Pequena",
-  medium: "Media",
+  medium: "Média",
   large: "Grande",
   enterprise: "Enterprise",
 };
@@ -122,7 +122,7 @@ export function CompanyDetailSheet({
           </div>
         ) : !company ? (
           <div className="p-4 text-muted-foreground">
-            Empresa nao encontrada.
+            Empresa não encontrada.
           </div>
         ) : (
           <>
@@ -168,7 +168,7 @@ export function CompanyDetailSheet({
 
             <Tabs defaultValue="info" className="px-4">
               <TabsList variant="line" className="w-full justify-start">
-                <TabsTrigger value="info">Informacoes</TabsTrigger>
+                <TabsTrigger value="info">Informações</TabsTrigger>
                 <TabsTrigger value="contatos">
                   Contatos ({company.contacts.length})
                 </TabsTrigger>
@@ -367,7 +367,7 @@ export function CompanyDetailSheet({
                           </div>
                           {deal.expected_close_date && !isClosed && (
                             <p className="text-xs text-muted-foreground">
-                              Previsao:{" "}
+                              Previsão:{" "}
                               {dateFormat.format(
                                 new Date(deal.expected_close_date)
                               )}

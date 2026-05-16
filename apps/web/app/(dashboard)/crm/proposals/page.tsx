@@ -156,7 +156,7 @@ export default function ProposalsPage() {
                 })),
                 `propostas-${new Date().toISOString().split("T")[0]}`,
                 [
-                  { key: "titulo", label: "Titulo" },
+                  { key: "titulo", label: "Título" },
                   { key: "deal", label: "Deal" },
                   { key: "valor", label: "Valor" },
                   { key: "status", label: "Status" },
@@ -197,7 +197,7 @@ export default function ProposalsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted text-left text-muted-foreground">
-                <th className="py-3 px-4 font-medium">Titulo</th>
+                <th className="py-3 px-4 font-medium">Título</th>
                 <th className="py-3 px-4 font-medium">Deal</th>
                 <th className="py-3 px-4 font-medium text-right">Valor</th>
                 <th className="py-3 px-4 font-medium">Expira em</th>

@@ -210,18 +210,18 @@ export function ProposalFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="proposal-title">Titulo</Label>
+              <Label htmlFor="proposal-title">Título</Label>
               <Input
                 id="proposal-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Titulo da proposta"
+                placeholder="Título da proposta"
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="proposal-content">Descricao</Label>
+              <Label htmlFor="proposal-content">Descrição</Label>
               <Textarea
                 id="proposal-content"
                 value={content}
@@ -247,9 +247,9 @@ export function ProposalFormDialog({
 
               <div className="space-y-2">
                 <div className="grid grid-cols-[1fr_80px_120px_32px] gap-2 text-xs font-medium text-muted-foreground">
-                  <span>Descricao</span>
+                  <span>Descrição</span>
                   <span>Qtd</span>
-                  <span>Preco Unit.</span>
+                  <span>Preço Unit.</span>
                   <span />
                 </div>
                 {items.map((item, index) => (
@@ -262,7 +262,7 @@ export function ProposalFormDialog({
                       onChange={(e) =>
                         updateItem(index, "description", e.target.value)
                       }
-                      placeholder="Descricao do item"
+                      placeholder="Descrição do item"
                     />
                     <Input
                       type="number"

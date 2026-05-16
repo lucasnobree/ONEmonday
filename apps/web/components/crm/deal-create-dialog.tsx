@@ -71,7 +71,7 @@ export function DealCreateDialog({
 
     const selectedColumnId = columnId || columns[0]?.id;
     if (!selectedColumnId) {
-      toast.error("Nenhuma coluna disponivel no board");
+      toast.error("Nenhuma coluna disponível no board");
       return;
     }
 
@@ -113,7 +113,7 @@ export function DealCreateDialog({
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="deal-title">Titulo</Label>
+              <Label htmlFor="deal-title">Título</Label>
               <Input
                 id="deal-title"
                 value={title}
@@ -124,7 +124,7 @@ export function DealCreateDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="deal-description">Descricao</Label>
+              <Label htmlFor="deal-description">Descrição</Label>
               <Textarea
                 id="deal-description"
                 value={description}
@@ -135,7 +135,7 @@ export function DealCreateDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Estagio</Label>
+                <Label>Estágio</Label>
                 <Select value={columnId} onValueChange={(v) => setColumnId(v ?? "")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione" />
@@ -158,7 +158,7 @@ export function DealCreateDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="medium">Média</SelectItem>
                     <SelectItem value="high">Alta</SelectItem>
                     <SelectItem value="critical">Critica</SelectItem>
                   </SelectContent>
