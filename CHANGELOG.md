@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### UX audit & quick wins (Wave 3)
+- A screen-by-screen UX & market audit of all 39 screens
+  (`docs/research/ux-audit-*.md`, `screenshots/audit/`), followed by the
+  first wave of fixes across every module:
+  - Filter selects now show localized labels instead of the raw `all` token.
+  - pt-BR accents restored across UI copy app-wide.
+  - Destructive deletes go through a shared confirmation dialog (native
+    `prompt()`/`confirm()` removed).
+  - Built-but-unreachable edit/delete actions wired into the UI (CRM
+    companies/contacts, boards, projects, budgets, contract/matter owners).
+  - Bug fixes: HR time-off saved the wrong policy id; CRM pipeline stage
+    order was non-deterministic; the dashboard "by column" chart was empty
+    for sector managers; Finance dates shifted a day in UTC-3; Analytics had
+    a dead `group_by` control; Support showed a double-slash shortcut.
+
 ### Added
 - Test infrastructure: Vitest + Testing Library for unit/integration tests and
   Playwright for E2E, with `test`, `test:coverage` and `test:e2e` scripts.
