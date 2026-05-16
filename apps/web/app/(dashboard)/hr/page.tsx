@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useHRStats } from "@/hooks/hr/use-hr-stats";
 import { useTimeOffRequests } from "@/hooks/hr/use-time-off-requests";
@@ -70,26 +71,35 @@ export default function HRDashboardPage() {
     );
   }
 
-  const statCards = [
+  const statCards: {
+    title: string;
+    value: number;
+    icon: typeof Users;
+    href?: string;
+  }[] = [
     {
       title: "Colaboradores",
       value: stats?.totalEmployees ?? 0,
       icon: Users,
+      href: "/hr/employees",
     },
     {
-      title: "Em Licenca",
+      title: "Em Licença",
       value: stats?.onLeave ?? 0,
       icon: UserMinus,
+      href: "/hr/employees?status=on_leave",
     },
     {
-      title: "Solicitacoes Pendentes",
+      title: "Solicitações Pendentes",
       value: stats?.pendingRequests ?? 0,
       icon: Clock,
+      href: "/hr/time-off?status=pending",
     },
     {
       title: "Vagas Abertas",
       value: stats?.openPositions ?? 0,
       icon: Briefcase,
+      href: "/hr/recruitment",
     },
   ];
 
@@ -126,8 +136,8 @@ export default function HRDashboardPage() {
   const hasBirthdays = birthdaysThisMonth.length > 0;
   const celebrationList = hasBirthdays ? birthdaysThisMonth : hireAnniversaries;
   const celebrationTitle = hasBirthdays
-    ? "Aniversarios do Mes"
-    : "Aniversarios de Empresa";
+    ? "Aniversários do Mês"
+    : "Aniversários de Empresa";
 
   // Active onboardings
   const activeOnboardings = (onboardings ?? []).filter(
@@ -149,8 +159,8 @@ export default function HRDashboardPage() {
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <Card key={card.title}>
+        {statCards.map((card) => {
+          const content = (
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -162,8 +172,22 @@ export default function HRDashboardPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        ))}
+          );
+
+          return card.href ? (
+            <Link
+              key={card.title}
+              href={card.href}
+              className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Card className="transition-colors hover:bg-muted/50">
+                {content}
+              </Card>
+            </Link>
+          ) : (
+            <Card key={card.title}>{content}</Card>
+          );
+        })}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -173,7 +197,7 @@ export default function HRDashboardPage() {
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
               <CardTitle className="text-base">
-                Distribuicao por Departamento
+                Distribuição por Departamento
               </CardTitle>
             </div>
           </CardHeader>
@@ -228,7 +252,7 @@ export default function HRDashboardPage() {
               </div>
             ) : celebrationList.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nenhum aniversario este mes.
+                Nenhum aniversário este mês.
               </p>
             ) : (
               <div className="space-y-2">
@@ -338,7 +362,7 @@ export default function HRDashboardPage() {
             <div className="flex items-center gap-2">
               <CalendarCheck className="h-4 w-4 text-muted-foreground" />
               <CardTitle className="text-base">
-                Ferias nos Proximos 7 Dias
+                Férias nos Próximos 7 Dias
               </CardTitle>
             </div>
           </CardHeader>
@@ -351,7 +375,7 @@ export default function HRDashboardPage() {
               </div>
             ) : upcomingTimeOff.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nenhuma ferias programada nos proximos 7 dias.
+                Nenhuma férias programada nos próximos 7 dias.
               </p>
             ) : (
               <div className="space-y-2">
@@ -396,7 +420,7 @@ export default function HRDashboardPage() {
               </div>
             ) : (expiringDocs ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nenhum documento vencendo nos proximos 30 dias.
+                Nenhum documento vencendo nos próximos 30 dias.
               </p>
             ) : (
               <div className="space-y-2">
