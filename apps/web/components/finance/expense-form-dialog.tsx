@@ -36,8 +36,9 @@ import {
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
 } from "@/lib/validations/finance";
+import { todayDateOnly } from "@/lib/finance/dates";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayDateOnly();
 
 interface ExpenseFormDialogProps {
   open: boolean;
@@ -79,7 +80,7 @@ export function ExpenseFormDialog({
     e.preventDefault();
 
     if (amountCents == null || amountCents <= 0) {
-      toast.error("Informe um valor valido");
+      toast.error("Informe um valor válido");
       return;
     }
 
@@ -213,7 +214,7 @@ export function ExpenseFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="expense-description">Descricao</Label>
+              <Label htmlFor="expense-description">Descrição</Label>
               <Textarea
                 id="expense-description"
                 value={description}

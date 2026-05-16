@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const financeNav = [
-  { label: "Visao Geral", href: "/finance" },
+  { label: "Visão Geral", href: "/finance" },
   { label: "Faturas", href: "/finance/invoices" },
   { label: "Despesas", href: "/finance/expenses" },
-  { label: "Orcamentos", href: "/finance/budgets" },
+  { label: "Orçamentos", href: "/finance/budgets" },
 ];
 
 export default function FinanceLayout({
@@ -23,7 +23,7 @@ export default function FinanceLayout({
       <div>
         <h1 className="text-2xl font-bold">Financeiro</h1>
         <p className="text-muted-foreground text-sm">
-          Contas a pagar e receber, orcamentos e fluxo de caixa
+          Contas a pagar e receber, orçamentos e fluxo de caixa
         </p>
       </div>
 

@@ -29,8 +29,9 @@ import { toast } from "sonner";
 import { MoneyInput } from "./money-input";
 import { INVOICE_STATUS_LABELS } from "./labels";
 import { INVOICE_STATUSES } from "@/lib/validations/finance";
+import { todayDateOnly } from "@/lib/finance/dates";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayDateOnly();
 
 interface InvoiceFormDialogProps {
   open: boolean;
@@ -75,7 +76,7 @@ export function InvoiceFormDialog({
     e.preventDefault();
 
     if (amountCents == null || amountCents <= 0) {
-      toast.error("Informe um valor valido");
+      toast.error("Informe um valor válido");
       return;
     }
 
@@ -140,7 +141,7 @@ export function InvoiceFormDialog({
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="invoice-number">Numero</Label>
+                <Label htmlFor="invoice-number">Número</Label>
                 <Input
                   id="invoice-number"
                   value={number}
@@ -174,7 +175,7 @@ export function InvoiceFormDialog({
 
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="invoice-issue">Emissao</Label>
+                <Label htmlFor="invoice-issue">Emissão</Label>
                 <Input
                   id="invoice-issue"
                   type="date"
@@ -189,6 +190,7 @@ export function InvoiceFormDialog({
                   id="invoice-due"
                   type="date"
                   value={dueDate}
+                  min={issueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   required
                 />
@@ -214,7 +216,7 @@ export function InvoiceFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="invoice-description">Descricao</Label>
+              <Label htmlFor="invoice-description">Descrição</Label>
               <Textarea
                 id="invoice-description"
                 value={description}
