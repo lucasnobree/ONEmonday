@@ -6,6 +6,8 @@ import { useFinanceSummary } from "@/hooks/finance/use-finance-summary";
 import { useInvoices } from "@/hooks/finance/use-invoices";
 import { CashFlowChart } from "@/components/finance/cash-flow-chart";
 import { formatCents } from "@/lib/finance/money";
+import { formatDateOnly } from "@/lib/finance/dates";
+import { effectiveInvoiceStatus } from "@/lib/finance/invoice-status";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_VARIANTS } from "@/components/finance/labels";
 import {
   Card,
@@ -20,6 +22,7 @@ import {
   TrendingDown,
   Wallet,
   AlertCircle,
+  ArrowDownCircle,
 } from "lucide-react";
 
 export default function FinanceDashboardPage() {
@@ -50,8 +53,8 @@ export default function FinanceDashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
@@ -74,7 +77,7 @@ export default function FinanceDashboardPage() {
       tone: "text-red-500",
     },
     {
-      title: "Caixa Liquido",
+      title: "Caixa Líquido",
       value: formatCents(netCashCents),
       icon: Wallet,
       tone: netCashCents >= 0 ? "text-emerald-500" : "text-red-500",
@@ -89,13 +92,19 @@ export default function FinanceDashboardPage() {
           ? `${summary?.overdue_invoice_count} fatura(s) vencida(s)`
           : undefined,
     },
+    {
+      title: "A Pagar (em aberto)",
+      value: formatCents(summary?.outstanding_ap_cents ?? 0),
+      icon: ArrowDownCircle,
+      tone: "text-red-500",
+    },
   ];
 
   const recentInvoices = (invoices ?? []).slice(0, 8);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="p-4">
@@ -124,7 +133,7 @@ export default function FinanceDashboardPage() {
         <CardHeader>
           <CardTitle className="text-base">Fluxo de Caixa</CardTitle>
           <CardDescription>
-            Entradas e saidas pagas nos ultimos 6 meses
+            Entradas e saídas pagas nos últimos 6 meses
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -135,7 +144,7 @@ export default function FinanceDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Faturas Recentes</CardTitle>
-          <CardDescription>Ultimas contas a receber registradas</CardDescription>
+          <CardDescription>Últimas contas a receber registradas</CardDescription>
         </CardHeader>
         <CardContent>
           {recentInvoices.length === 0 ? (
@@ -147,7 +156,7 @@ export default function FinanceDashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Numero</th>
+                    <th className="pb-2 font-medium">Número</th>
                     <th className="pb-2 font-medium">Cliente</th>
                     <th className="pb-2 font-medium">Valor</th>
                     <th className="pb-2 font-medium">Vencimento</th>
@@ -155,25 +164,28 @@ export default function FinanceDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentInvoices.map((inv) => (
-                    <tr key={inv.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium">{inv.number}</td>
-                      <td className="py-3 text-muted-foreground">
-                        {inv.customer_name}
-                      </td>
-                      <td className="py-3">
-                        {formatCents(inv.amount_cents, inv.currency)}
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {new Date(inv.due_date).toLocaleDateString("pt-BR")}
-                      </td>
-                      <td className="py-3">
-                        <Badge variant={INVOICE_STATUS_VARIANTS[inv.status]}>
-                          {INVOICE_STATUS_LABELS[inv.status]}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
+                  {recentInvoices.map((inv) => {
+                    const status = effectiveInvoiceStatus(inv);
+                    return (
+                      <tr key={inv.id} className="border-b last:border-0">
+                        <td className="py-3 font-medium">{inv.number}</td>
+                        <td className="py-3 text-muted-foreground">
+                          {inv.customer_name}
+                        </td>
+                        <td className="py-3">
+                          {formatCents(inv.amount_cents, inv.currency)}
+                        </td>
+                        <td className="py-3 text-muted-foreground">
+                          {formatDateOnly(inv.due_date)}
+                        </td>
+                        <td className="py-3">
+                          <Badge variant={INVOICE_STATUS_VARIANTS[status]}>
+                            {INVOICE_STATUS_LABELS[status]}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
