@@ -11,14 +11,14 @@ export async function createKBArticle(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createArticleSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "kb_article", "create")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { data, error } = await supabase
@@ -43,13 +43,13 @@ export async function createKBArticle(formData: unknown) {
 
 export async function updateKBArticle(id: string, formData: unknown) {
   const idParsed = z.string().uuid().safeParse(id);
-  if (!idParsed.success) return { error: "ID invalido" };
+  if (!idParsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createArticleSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -60,11 +60,11 @@ export async function updateKBArticle(id: string, formData: unknown) {
     .eq("id", id)
     .single();
 
-  if (!existing) return { error: "Artigo nao encontrado" };
+  if (!existing) return { error: "Artigo não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "kb_article", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase
@@ -86,13 +86,13 @@ export async function updateKBArticle(id: string, formData: unknown) {
 
 export async function deleteKBArticle(id: string) {
   const parsed = z.string().uuid().safeParse(id);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: article } = await supabase
     .from("kb_articles")
@@ -100,11 +100,11 @@ export async function deleteKBArticle(id: string) {
     .eq("id", id)
     .single();
 
-  if (!article) return { error: "Artigo nao encontrado" };
+  if (!article) return { error: "Artigo não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, article.sector_id, "kb_article", "delete")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase
@@ -120,13 +120,13 @@ export async function deleteKBArticle(id: string) {
 
 export async function toggleKBArticlePublished(id: string) {
   const parsed = z.string().uuid().safeParse(id);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: article } = await supabase
     .from("kb_articles")
@@ -134,11 +134,11 @@ export async function toggleKBArticlePublished(id: string) {
     .eq("id", id)
     .single();
 
-  if (!article) return { error: "Artigo nao encontrado" };
+  if (!article) return { error: "Artigo não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, article.sector_id, "kb_article", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase

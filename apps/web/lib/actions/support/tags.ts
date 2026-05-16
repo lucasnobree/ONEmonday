@@ -13,14 +13,14 @@ export async function createTicketTag(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createTagSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { data: existing } = await supabase
@@ -53,13 +53,13 @@ export async function createTicketTag(formData: unknown) {
 
 export async function deleteTicketTag(id: string) {
   const parsed = z.string().uuid().safeParse(id);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: tag } = await supabase
     .from("ticket_tags")
@@ -67,11 +67,11 @@ export async function deleteTicketTag(id: string) {
     .eq("id", id)
     .single();
 
-  if (!tag) return { error: "Tag nao encontrada" };
+  if (!tag) return { error: "Tag não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, tag.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   // ON DELETE CASCADE on support_ticket_tags removes the links too.
@@ -87,7 +87,7 @@ export async function addTagToTicket(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = tagAssignmentSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -97,11 +97,11 @@ export async function addTagToTicket(formData: unknown) {
     .select("sector_id")
     .eq("id", parsed.data.ticketId)
     .single();
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase
@@ -122,7 +122,7 @@ export async function removeTagFromTicket(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = tagAssignmentSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -132,11 +132,11 @@ export async function removeTagFromTicket(formData: unknown) {
     .select("sector_id")
     .eq("id", parsed.data.ticketId)
     .single();
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase

@@ -26,6 +26,13 @@ import { toast } from "sonner";
 
 type SlaPriority = "critical" | "high" | "medium" | "low";
 
+const PRIORITY_LABELS: Record<SlaPriority, string> = {
+  critical: "Crítica",
+  high: "Alta",
+  medium: "Média",
+  low: "Baixa",
+};
+
 interface SlaRuleFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -105,7 +112,7 @@ function SlaRuleForm({
         </DialogTitle>
         <DialogDescription>
           {isEdit
-            ? "Atualize os tempos de resposta e resolucao"
+            ? "Atualize os tempos de resposta e resolução"
             : "Configure tempos de SLA por prioridade"}
         </DialogDescription>
       </DialogHeader>
@@ -117,7 +124,7 @@ function SlaRuleForm({
             id="sla-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: SLA Critico"
+            placeholder="Ex: SLA Crítico"
             required
           />
         </div>
@@ -130,12 +137,16 @@ function SlaRuleForm({
               onValueChange={(v) => setPriority((v as SlaPriority) ?? "medium")}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione" />
+                <SelectValue>
+                  {(value) =>
+                    PRIORITY_LABELS[value as SlaPriority] ?? "Selecione"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="critical">Critica</SelectItem>
+                <SelectItem value="critical">Crítica</SelectItem>
                 <SelectItem value="high">Alta</SelectItem>
-                <SelectItem value="medium">Media</SelectItem>
+                <SelectItem value="medium">Média</SelectItem>
                 <SelectItem value="low">Baixa</SelectItem>
               </SelectContent>
             </Select>
@@ -168,7 +179,7 @@ function SlaRuleForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="sla-resolve">Resolucao (horas)</Label>
+            <Label htmlFor="sla-resolve">Resolução (horas)</Label>
             <Input
               id="sla-resolve"
               type="number"
@@ -183,7 +194,7 @@ function SlaRuleForm({
         </div>
 
         <div className="flex items-center justify-between">
-          <Label>Somente horario comercial</Label>
+          <Label>Somente horário comercial</Label>
           <Switch
             checked={businessHoursOnly}
             onCheckedChange={setBusinessHoursOnly}

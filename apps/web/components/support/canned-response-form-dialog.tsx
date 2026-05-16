@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { normalizeShortcut } from "@/lib/support/shortcut";
 import { toast } from "sonner";
 
 interface CannedResponseFormDialogProps {
@@ -55,7 +56,9 @@ function CannedResponseForm({
       title,
       content,
       category: category || undefined,
-      shortcut: shortcut.replace(/^\//, "") || undefined,
+      // Strip every leading slash so the badge (`/{shortcut}`) never
+      // renders a double slash for values typed/stored as `/escalar`.
+      shortcut: normalizeShortcut(shortcut),
     };
 
     const result = isEdit
@@ -85,19 +88,19 @@ function CannedResponseForm({
         </DialogTitle>
         <DialogDescription>
           {isEdit
-            ? "Atualize o texto da resposta padrao"
-            : "Crie uma resposta reutilizavel para agilizar o atendimento"}
+            ? "Atualize o texto da resposta padrão"
+            : "Crie uma resposta reutilizável para agilizar o atendimento"}
         </DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-4 py-4">
         <div className="grid gap-2">
-          <Label htmlFor="cr-title">Titulo</Label>
+          <Label htmlFor="cr-title">Título</Label>
           <Input
             id="cr-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: Saudacao inicial"
+            placeholder="Ex: Saudação inicial"
             required
           />
         </div>
@@ -124,7 +127,7 @@ function CannedResponseForm({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="cr-content">Conteudo</Label>
+          <Label htmlFor="cr-content">Conteúdo</Label>
           <Textarea
             id="cr-content"
             value={content}

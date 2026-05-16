@@ -140,7 +140,7 @@ function EscalateTicketForm({
           </Select>
           {sectors?.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              Voce nao tem acesso a outros setores para escalar.
+              Você não tem acesso a outros setores para escalar.
             </p>
           )}
         </div>

@@ -15,7 +15,7 @@ export async function addTicketComment(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = addCommentSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -25,11 +25,11 @@ export async function addTicketComment(formData: unknown) {
     .select("sector_id")
     .eq("id", parsed.data.cardId)
     .single();
-  if (!card) return { error: "Card nao encontrado" };
+  if (!card) return { error: "Card não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, card.sector_id, "card_comment", "create")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { data, error } = await supabase

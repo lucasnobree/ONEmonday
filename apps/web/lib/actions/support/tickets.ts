@@ -18,14 +18,14 @@ export async function createTicket(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createTicketSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "ticket", "create")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   // Auto-detect support board and first column if not provided
@@ -148,13 +148,13 @@ export async function createTicket(formData: unknown) {
 
 export async function markFirstResponse(ticketId: string) {
   const parsed = z.string().uuid().safeParse(ticketId);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: ticket } = await supabase
     .from("support_tickets")
@@ -162,7 +162,7 @@ export async function markFirstResponse(ticketId: string) {
     .eq("id", ticketId)
     .single();
 
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
 
   // Idempotent: the first response timestamp is only ever set once.
   if (ticket.first_response_at) {
@@ -171,7 +171,7 @@ export async function markFirstResponse(ticketId: string) {
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const now = new Date();
@@ -201,13 +201,13 @@ export async function markFirstResponse(ticketId: string) {
 
 export async function resolveTicket(ticketId: string) {
   const parsed = z.string().uuid().safeParse(ticketId);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: ticket } = await supabase
     .from("support_tickets")
@@ -217,11 +217,11 @@ export async function resolveTicket(ticketId: string) {
     .eq("id", ticketId)
     .single();
 
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   // Compute SLA breach flags at resolution time so the dashboard counts
@@ -279,13 +279,13 @@ export async function resolveTicket(ticketId: string) {
 
 export async function reopenTicket(ticketId: string) {
   const parsed = z.string().uuid().safeParse(ticketId);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: ticket } = await supabase
     .from("support_tickets")
@@ -293,12 +293,12 @@ export async function reopenTicket(ticketId: string) {
     .eq("id", ticketId)
     .single();
 
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
   if (!ticket.resolved_at) return { error: "Ticket ja esta aberto" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   // Clear the resolution timestamp.
@@ -350,7 +350,7 @@ export async function submitCSAT(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = submitCSATSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -361,7 +361,7 @@ export async function submitCSAT(formData: unknown) {
     .eq("id", parsed.data.ticketId)
     .single();
 
-  if (!ticket) return { error: "Ticket nao encontrado" };
+  if (!ticket) return { error: "Ticket não encontrado" };
 
   const { error } = await supabase
     .from("support_tickets")

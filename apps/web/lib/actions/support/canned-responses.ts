@@ -11,14 +11,14 @@ export async function createCannedResponse(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createCannedResponseSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "canned_response", "create")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { data, error } = await supabase
@@ -42,13 +42,13 @@ export async function createCannedResponse(formData: unknown) {
 
 export async function updateCannedResponse(id: string, formData: unknown) {
   const idParsed = z.string().uuid().safeParse(id);
-  if (!idParsed.success) return { error: "ID invalido" };
+  if (!idParsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createCannedResponseSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -59,11 +59,11 @@ export async function updateCannedResponse(id: string, formData: unknown) {
     .eq("id", id)
     .single();
 
-  if (!existing) return { error: "Resposta nao encontrada" };
+  if (!existing) return { error: "Resposta não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "canned_response", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase
@@ -84,13 +84,13 @@ export async function updateCannedResponse(id: string, formData: unknown) {
 
 export async function deleteCannedResponse(id: string) {
   const parsed = z.string().uuid().safeParse(id);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: response } = await supabase
     .from("canned_responses")
@@ -98,11 +98,11 @@ export async function deleteCannedResponse(id: string) {
     .eq("id", id)
     .single();
 
-  if (!response) return { error: "Resposta nao encontrada" };
+  if (!response) return { error: "Resposta não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, response.sector_id, "canned_response", "delete")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   // Soft delete to keep historical references intact.

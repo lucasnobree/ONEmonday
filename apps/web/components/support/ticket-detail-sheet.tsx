@@ -53,9 +53,9 @@ const priorityColors: Record<string, string> = {
 };
 
 const priorityLabels: Record<string, string> = {
-  critical: "Critica",
+  critical: "Crítica",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
 };
 
@@ -78,14 +78,14 @@ const activityDotColors: Record<string, string> = {
 
 const activityLabels: Record<string, string> = {
   card_created: "Ticket criado",
-  comment_added: "Comentario adicionado",
+  comment_added: "Comentário adicionado",
   status_changed: "Status alterado",
   priority_changed: "Prioridade alterada",
-  assignee_added: "Responsavel adicionado",
-  assignee_removed: "Responsavel removido",
+  assignee_added: "Responsável adicionado",
+  assignee_removed: "Responsável removido",
   resolved: "Ticket resolvido",
   column_changed: "Coluna alterada",
-  description_updated: "Descricao atualizada",
+  description_updated: "Descrição atualizada",
 };
 
 function formatSlaTime(dueAt: string | null, breached: boolean): {
@@ -242,7 +242,7 @@ function DetailsTab({
       {card?.description && (
         <div>
           <h4 className="text-xs font-medium text-muted-foreground mb-1">
-            Descricao
+            Descrição
           </h4>
           <p className="text-sm whitespace-pre-wrap">{card.description}</p>
         </div>
@@ -330,7 +330,7 @@ function DetailsTab({
           </p>
         </div>
         <div>
-          <span className="text-muted-foreground text-xs">SLA Resolucao</span>
+          <span className="text-muted-foreground text-xs">SLA Resolução</span>
           <p>
             <span
               className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${slaResolve.className}`}
@@ -438,12 +438,12 @@ function CommentsTab({
       const msg =
         typeof result.error === "string"
           ? result.error
-          : "Erro ao adicionar comentario";
+          : "Erro ao adicionar comentário";
       toast.error(msg);
       return;
     }
 
-    toast.success("Comentario adicionado");
+    toast.success("Comentário adicionado");
     setContent("");
     queryClient.invalidateQueries({
       queryKey: ["ticket-detail", ticket.card_id],
@@ -456,14 +456,14 @@ function CommentsTab({
         {comments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <MessageSquare className="size-8 mb-2 opacity-50" />
-            <p className="text-sm">Nenhum comentario ainda.</p>
+            <p className="text-sm">Nenhum comentário ainda.</p>
           </div>
         ) : (
           comments.map((comment) => (
             <div key={comment.id} className="rounded-lg border p-3 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">
-                  {comment.users?.full_name || "Usuario"}
+                  {comment.users?.full_name || "Usuário"}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatRelativeTime(comment.created_at)}
@@ -481,7 +481,7 @@ function CommentsTab({
         <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Escreva um comentario..."
+          placeholder="Escreva um comentário..."
           rows={2}
           className="flex-1 resize-none"
         />
@@ -489,7 +489,7 @@ function CommentsTab({
           type="submit"
           size="icon"
           disabled={submitting || !content.trim()}
-          title="Enviar comentario"
+          title="Enviar comentário"
         >
           <Send className="size-4" />
         </Button>
@@ -664,14 +664,14 @@ export function TicketDetailSheet({
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <AlertTriangle className="size-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Ticket nao encontrado.</p>
+              <p className="text-sm">Ticket não encontrado.</p>
             </div>
           </div>
         ) : (
           <>
             <SheetHeader className="pr-8">
               <SheetTitle className="leading-snug">
-                {ticket.card?.title || "Sem titulo"}
+                {ticket.card?.title || "Sem título"}
               </SheetTitle>
               <SheetDescription className="sr-only">
                 Detalhes do ticket de suporte
@@ -713,7 +713,7 @@ export function TicketDetailSheet({
                   Detalhes
                 </TabsTrigger>
                 <TabsTrigger value="comentarios" className="flex-1">
-                  Comentarios
+                  Comentários
                 </TabsTrigger>
                 <TabsTrigger value="atividade" className="flex-1">
                   Atividade

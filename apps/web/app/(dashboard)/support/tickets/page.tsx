@@ -44,10 +44,28 @@ const priorityColors: Record<string, string> = {
 };
 
 const priorityLabels: Record<string, string> = {
-  critical: "Critica",
+  critical: "Crítica",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
+};
+
+// base-ui's <SelectValue> renders the raw selected value when no `items`
+// prop is supplied to the Root, so a value of "all" shows the literal
+// string "all". These maps drive a value->label function child on each
+// SelectValue so the trigger always shows a localized label.
+const statusFilterLabels: Record<string, string> = {
+  all: "Todos",
+  open: "Abertos",
+  resolved: "Resolvidos",
+};
+
+const priorityFilterLabels: Record<string, string> = {
+  all: "Todas",
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+  critical: "Crítica",
 };
 
 function getSlaIndicator(
@@ -65,7 +83,7 @@ function getSlaIndicator(
   if (pct < 25)
     return {
       color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      label: "SLA Critico",
+      label: "SLA Crítico",
     };
   if (pct <= 50)
     return {
@@ -162,7 +180,7 @@ export default function TicketsPage() {
       action="read"
       fallback={
         <p className="text-muted-foreground">
-          Voce nao tem permissao para acessar os tickets deste setor.
+          Você não tem permissão para acessar os tickets deste setor.
         </p>
       }
     >
@@ -170,8 +188,12 @@ export default function TicketsPage() {
         {/* Header with filters and create button */}
         <div className="flex flex-wrap items-center gap-3">
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
+            <SelectTrigger className="w-35">
+              <SelectValue>
+                {(value) =>
+                  statusFilterLabels[value as string] ?? "Status"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
@@ -181,21 +203,31 @@ export default function TicketsPage() {
           </Select>
 
           <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v ?? "all")}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Prioridade" />
+            <SelectTrigger className="w-35">
+              <SelectValue>
+                {(value) =>
+                  priorityFilterLabels[value as string] ?? "Prioridade"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="low">Baixa</SelectItem>
-              <SelectItem value="medium">Media</SelectItem>
+              <SelectItem value="medium">Média</SelectItem>
               <SelectItem value="high">Alta</SelectItem>
-              <SelectItem value="critical">Critica</SelectItem>
+              <SelectItem value="critical">Crítica</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Categoria" />
+            <SelectTrigger className="w-40">
+              <SelectValue>
+                {(value) =>
+                  value === "all" || value == null
+                    ? "Categoria"
+                    : (value as string)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
@@ -208,8 +240,15 @@ export default function TicketsPage() {
           </Select>
 
           <Select value={tagFilter} onValueChange={(v) => setTagFilter(v ?? "all")}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Tag" />
+            <SelectTrigger className="w-35">
+              <SelectValue>
+                {(value) =>
+                  value === "all" || value == null
+                    ? "Tag"
+                    : ((sectorTags ?? []).find((t) => t.id === value)?.name ??
+                      "Tag")
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as tags</SelectItem>
@@ -239,7 +278,7 @@ export default function TicketsPage() {
                   })),
                   `tickets-${new Date().toISOString().split("T")[0]}`,
                   [
-                    { key: "titulo", label: "Titulo" },
+                    { key: "titulo", label: "Título" },
                     { key: "prioridade", label: "Prioridade" },
                     { key: "status", label: "Status" },
                     { key: "categoria", label: "Categoria" },
@@ -282,7 +321,7 @@ export default function TicketsPage() {
               <EmptyState
                 icon={Ticket}
                 title="Nenhum ticket ainda"
-                description="Crie seu primeiro ticket de suporte para comecar a gerenciar atendimentos."
+                description="Crie seu primeiro ticket de suporte para começar a gerenciar atendimentos."
                 action={
                   <TicketCreateDialog
                     sectorId={currentSector.id}
@@ -305,15 +344,15 @@ export default function TicketsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Titulo</th>
+                      <th className="pb-2 font-medium">Título</th>
                       <th className="pb-2 font-medium">Prioridade</th>
                       <th className="pb-2 font-medium">Status</th>
                       <th className="pb-2 font-medium">Categoria</th>
-                      <th className="pb-2 font-medium">Responsavel</th>
+                      <th className="pb-2 font-medium">Responsável</th>
                       <th className="pb-2 font-medium">Canal</th>
                       <th className="pb-2 font-medium">SLA</th>
                       <th className="pb-2 font-medium">Criado em</th>
-                      <th className="pb-2 font-medium">Acoes</th>
+                      <th className="pb-2 font-medium">Ações</th>
                     </tr>
                   </thead>
                   <tbody>

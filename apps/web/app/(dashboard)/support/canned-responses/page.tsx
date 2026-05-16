@@ -8,7 +8,9 @@ import {
 } from "@/hooks/support/use-canned-responses";
 import type { CannedResponse } from "@/hooks/support/use-canned-responses";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CannedResponseFormDialog } from "@/components/support/canned-response-form-dialog";
+import { formatShortcut } from "@/lib/support/shortcut";
 import {
   Card,
   CardContent,
@@ -42,7 +44,7 @@ export default function CannedResponsesPage() {
   function handleCopy(content: string, id: string) {
     navigator.clipboard.writeText(content);
     setCopiedId(id);
-    toast.success("Copiado para a area de transferencia");
+    toast.success("Copiado para a área de transferência");
     setTimeout(() => setCopiedId(null), 2000);
   }
 
@@ -66,7 +68,7 @@ export default function CannedResponsesPage() {
       );
       return;
     }
-    toast.success("Resposta excluida");
+    toast.success("Resposta excluída");
   }
 
   if (!currentSector) {
@@ -84,14 +86,14 @@ export default function CannedResponsesPage() {
       action="read"
       fallback={
         <p className="text-muted-foreground">
-          Voce nao tem permissao para acessar as Respostas Prontas deste setor.
+          Você não tem permissão para acessar as Respostas Prontas deste setor.
         </p>
       }
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Respostas reutilizaveis para agilizar o atendimento de tickets.
+            Respostas reutilizáveis para agilizar o atendimento de tickets.
           </p>
           <Button size="sm" onClick={handleCreate}>
             <Plus className="size-4 mr-1" />
@@ -132,7 +134,7 @@ export default function CannedResponsesPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       {response.shortcut && (
                         <Badge variant="outline" className="text-xs font-mono">
-                          /{response.shortcut}
+                          {formatShortcut(response.shortcut)}
                         </Badge>
                       )}
                       <Button
@@ -142,7 +144,7 @@ export default function CannedResponsesPage() {
                           e.stopPropagation();
                           handleCopy(response.content, response.id);
                         }}
-                        title="Copiar conteudo"
+                        title="Copiar conteúdo"
                       >
                         {copiedId === response.id ? (
                           <Check className="h-3.5 w-3.5 text-green-600" />
@@ -178,17 +180,23 @@ export default function CannedResponsesPage() {
                     >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(response.id);
-                      }}
-                      title="Excluir"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {/* span stops the click bubbling to the card's
+                        expand/collapse handler */}
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <ConfirmDialog
+                        title="Excluir resposta pronta"
+                        description={`A resposta "${response.title}" será removida permanentemente. Esta ação não pode ser desfeita.`}
+                        onConfirm={() => handleDelete(response.id)}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          title="Excluir"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </ConfirmDialog>
+                    </span>
                   </div>
                 </CardContent>
               </Card>

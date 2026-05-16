@@ -71,7 +71,7 @@ export function KBArticleSheet({
           </div>
         ) : !article ? (
           <div className="p-4 text-muted-foreground">
-            Artigo nao encontrado.
+            Artigo não encontrado.
           </div>
         ) : (
           <>

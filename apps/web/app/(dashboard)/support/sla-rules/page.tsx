@@ -9,6 +9,7 @@ import {
 } from "@/hooks/support/use-sla-rules";
 import type { SlaRule } from "@/hooks/support/use-sla-rules";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { SlaRuleFormDialog } from "@/components/support/sla-rule-form-dialog";
 import {
   Card,
@@ -25,9 +26,9 @@ import { toast } from "sonner";
 import { ShieldCheck, Plus, Pencil, Trash2 } from "lucide-react";
 
 const priorityLabels: Record<string, string> = {
-  critical: "Critica",
+  critical: "Crítica",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
 };
 
@@ -82,7 +83,7 @@ export default function SLARulesPage() {
       );
       return;
     }
-    toast.success("Regra SLA excluida");
+    toast.success("Regra SLA excluída");
   }
 
   async function handleToggle(id: string, isActive: boolean) {
@@ -105,7 +106,7 @@ export default function SLARulesPage() {
       action="read"
       fallback={
         <p className="text-muted-foreground">
-          Voce nao tem permissao para acessar as Regras SLA deste setor.
+          Você não tem permissão para acessar as Regras SLA deste setor.
         </p>
       }
     >
@@ -116,7 +117,7 @@ export default function SLARulesPage() {
               <div>
                 <CardTitle>Regras de SLA</CardTitle>
                 <CardDescription>
-                  Tempos de resposta e resolucao configurados por prioridade
+                  Tempos de resposta e resolução configurados por prioridade
                 </CardDescription>
               </div>
               <Button size="sm" onClick={handleCreate}>
@@ -148,10 +149,10 @@ export default function SLARulesPage() {
                       <th className="pb-2 font-medium">Prioridade</th>
                       <th className="pb-2 font-medium">Categoria</th>
                       <th className="pb-2 font-medium">Tempo de Resposta</th>
-                      <th className="pb-2 font-medium">Tempo de Resolucao</th>
-                      <th className="pb-2 font-medium">Horario Comercial</th>
+                      <th className="pb-2 font-medium">Tempo de Resolução</th>
+                      <th className="pb-2 font-medium">Horário Comercial</th>
                       <th className="pb-2 font-medium">Ativo</th>
-                      <th className="pb-2 font-medium">Acoes</th>
+                      <th className="pb-2 font-medium">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -205,14 +206,19 @@ export default function SLARulesPage() {
                             >
                               <Pencil className="size-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => handleDelete(rule.id)}
-                              title="Excluir"
+                            <ConfirmDialog
+                              title="Excluir regra SLA"
+                              description={`A regra "${rule.name}" será removida permanentemente. Esta ação não pode ser desfeita.`}
+                              onConfirm={() => handleDelete(rule.id)}
                             >
-                              <Trash2 className="size-4" />
-                            </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                title="Excluir"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </ConfirmDialog>
                           </div>
                         </td>
                       </tr>

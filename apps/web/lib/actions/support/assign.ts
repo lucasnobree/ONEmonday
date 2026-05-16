@@ -17,20 +17,20 @@ async function loadTicketForAssignment(ticketId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" as const };
+  if (!user) return { error: "Não autenticado" as const };
 
   const { data: ticket } = await supabase
     .from("support_tickets")
     .select("sector_id, card_id")
     .eq("id", ticketId)
     .single();
-  if (!ticket) return { error: "Ticket nao encontrado" as const };
+  if (!ticket) return { error: "Ticket não encontrado" as const };
 
   // 'assign' is not a seeded permission action; reassignment is gated on
   // 'ticket:update', consistent with the escalation action.
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
-    return { error: "Sem permissao" as const };
+    return { error: "Sem permissão" as const };
   }
 
   return { supabase, user, ticket };
@@ -52,7 +52,7 @@ export async function assignTicket(formData: unknown) {
     .eq("user_id", parsed.data.userId)
     .maybeSingle();
   if (!targetRole) {
-    return { error: "Usuario nao pertence ao setor do ticket" };
+    return { error: "Usuário não pertence ao setor do ticket" };
   }
 
   const { error } = await supabase

@@ -11,14 +11,14 @@ export async function createSlaRule(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createSLARuleSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "sla_rule", "create")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { data, error } = await supabase
@@ -44,13 +44,13 @@ export async function createSlaRule(formData: unknown) {
 
 export async function updateSlaRule(id: string, formData: unknown) {
   const idParsed = z.string().uuid().safeParse(id);
-  if (!idParsed.success) return { error: "ID invalido" };
+  if (!idParsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createSLARuleSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -61,11 +61,11 @@ export async function updateSlaRule(id: string, formData: unknown) {
     .eq("id", id)
     .single();
 
-  if (!existing) return { error: "Regra SLA nao encontrada" };
+  if (!existing) return { error: "Regra SLA não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "sla_rule", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase
@@ -89,13 +89,13 @@ export async function updateSlaRule(id: string, formData: unknown) {
 
 export async function deleteSlaRule(id: string) {
   const parsed = z.string().uuid().safeParse(id);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: rule } = await supabase
     .from("sla_rules")
@@ -103,11 +103,11 @@ export async function deleteSlaRule(id: string) {
     .eq("id", id)
     .single();
 
-  if (!rule) return { error: "Regra SLA nao encontrada" };
+  if (!rule) return { error: "Regra SLA não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, rule.sector_id, "sla_rule", "delete")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase.from("sla_rules").delete().eq("id", id);
@@ -120,13 +120,13 @@ export async function deleteSlaRule(id: string) {
 
 export async function toggleSlaRule(id: string, isActive: boolean) {
   const parsed = z.string().uuid().safeParse(id);
-  if (!parsed.success) return { error: "ID invalido" };
+  if (!parsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: rule } = await supabase
     .from("sla_rules")
@@ -134,11 +134,11 @@ export async function toggleSlaRule(id: string, isActive: boolean) {
     .eq("id", id)
     .single();
 
-  if (!rule) return { error: "Regra SLA nao encontrada" };
+  if (!rule) return { error: "Regra SLA não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, rule.sector_id, "sla_rule", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase
