@@ -8,6 +8,7 @@ import {
 
 const SECTOR = "11111111-1111-4111-8111-111111111111";
 const CONTRACT = "22222222-2222-4222-8222-222222222222";
+const USER = "33333333-3333-4333-8333-333333333333";
 
 describe("createContractSchema", () => {
   const base = {
@@ -95,6 +96,24 @@ describe("createContractSchema", () => {
         .success
     ).toBe(false);
   });
+
+  it("accepts a valid owner id", () => {
+    const result = createContractSchema.safeParse({ ...base, ownerId: USER });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.ownerId).toBe(USER);
+  });
+
+  it("rejects a non-uuid owner id", () => {
+    expect(
+      createContractSchema.safeParse({ ...base, ownerId: "someone" }).success
+    ).toBe(false);
+  });
+
+  it("treats a contract with no owner as valid (owner is optional)", () => {
+    const result = createContractSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.ownerId).toBeUndefined();
+  });
 });
 
 describe("updateContractSchema", () => {
@@ -152,6 +171,24 @@ describe("createMatterSchema", () => {
     expect(
       createMatterSchema.safeParse({ ...base, contractId: CONTRACT }).success
     ).toBe(true);
+  });
+
+  it("accepts a valid assignee id", () => {
+    const result = createMatterSchema.safeParse({ ...base, assignedTo: USER });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.assignedTo).toBe(USER);
+  });
+
+  it("rejects a non-uuid assignee id", () => {
+    expect(
+      createMatterSchema.safeParse({ ...base, assignedTo: "nobody" }).success
+    ).toBe(false);
+  });
+
+  it("treats a matter with no assignee as valid (assignee is optional)", () => {
+    const result = createMatterSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.assignedTo).toBeUndefined();
   });
 });
 

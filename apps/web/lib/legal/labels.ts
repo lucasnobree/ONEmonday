@@ -7,12 +7,12 @@ import type { RenewalStatus } from "./renewal";
 export type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
 export const CONTRACT_TYPE_LABELS: Record<string, string> = {
-  service: "Servico",
+  service: "Serviço",
   nda: "NDA",
   vendor: "Fornecedor",
   employment: "Trabalhista",
-  lease: "Locacao",
-  license: "Licenca",
+  lease: "Locação",
+  license: "Licença",
   partnership: "Parceria",
   other: "Outro",
 };
@@ -22,7 +22,7 @@ export const CONTRACT_STATUS_LABELS: Record<
   { label: string; variant: BadgeVariant }
 > = {
   draft: { label: "Rascunho", variant: "outline" },
-  in_review: { label: "Em revisao", variant: "secondary" },
+  in_review: { label: "Em revisão", variant: "secondary" },
   approved: { label: "Aprovado", variant: "secondary" },
   active: { label: "Ativo", variant: "default" },
   expired: { label: "Vencido", variant: "destructive" },
@@ -31,9 +31,9 @@ export const CONTRACT_STATUS_LABELS: Record<
 };
 
 export const RENEWAL_TYPE_LABELS: Record<string, string> = {
-  none: "Sem renovacao",
-  auto: "Renovacao automatica",
-  optional: "Renovacao opcional",
+  none: "Sem renovação",
+  auto: "Renovação automática",
+  optional: "Renovação opcional",
 };
 
 export const RENEWAL_STATUS_LABELS: Record<
@@ -42,17 +42,17 @@ export const RENEWAL_STATUS_LABELS: Record<
 > = {
   none: { label: "Sem prazo", variant: "outline" },
   ok: { label: "Em dia", variant: "secondary" },
-  upcoming: { label: "Renovacao proxima", variant: "secondary" },
-  notice: { label: "Acao necessaria", variant: "destructive" },
+  upcoming: { label: "Renovação próxima", variant: "secondary" },
+  notice: { label: "Ação necessária", variant: "destructive" },
   expired: { label: "Vencido", variant: "destructive" },
 };
 
 export const MATTER_TYPE_LABELS: Record<string, string> = {
-  contract_review: "Revisao de contrato",
+  contract_review: "Revisão de contrato",
   advice: "Consultoria",
   dispute: "Disputa",
   compliance: "Compliance",
-  litigation: "Litigio",
+  litigation: "Litígio",
   other: "Outro",
 };
 
@@ -61,7 +61,7 @@ export const MATTER_PRIORITY_LABELS: Record<
   { label: string; variant: BadgeVariant }
 > = {
   low: { label: "Baixa", variant: "outline" },
-  medium: { label: "Media", variant: "secondary" },
+  medium: { label: "Média", variant: "secondary" },
   high: { label: "Alta", variant: "default" },
   urgent: { label: "Urgente", variant: "destructive" },
 };
@@ -82,7 +82,7 @@ export const CLAUSE_CATEGORY_LABELS: Record<string, string> = {
   confidentiality: "Confidencialidade",
   liability: "Responsabilidade",
   payment: "Pagamento",
-  termination: "Rescisao",
+  termination: "Rescisão",
   ip: "Propriedade intelectual",
   compliance: "Compliance",
   other: "Outro",

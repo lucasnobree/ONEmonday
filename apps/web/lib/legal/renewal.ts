@@ -98,8 +98,8 @@ export function renewalOutcomeLabel(renewalType: RenewalType): string {
     case "auto":
       return "Renova automaticamente";
     case "optional":
-      return "Renovacao opcional";
+      return "Renovação opcional";
     default:
-      return "Nao renova";
+      return "Não renova";
   }
 }

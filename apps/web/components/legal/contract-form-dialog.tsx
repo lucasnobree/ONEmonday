@@ -7,6 +7,7 @@ import {
   updateContract,
 } from "@/lib/actions/legal/contracts";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import type { Contract } from "@/hooks/legal/use-contracts";
 import {
   CONTRACT_TYPES,
@@ -62,8 +63,12 @@ interface FormState {
   currency: string;
   effectiveDate: string;
   expiryDate: string;
+  ownerId: string;
   description: string;
 }
+
+/** Sentinel for "no owner selected" — Select cannot hold an empty value. */
+const NO_OWNER = "__none__";
 
 function initialState(contract?: Contract): FormState {
   return {
@@ -78,6 +83,7 @@ function initialState(contract?: Contract): FormState {
     currency: contract?.currency ?? "BRL",
     effectiveDate: contract?.effective_date ?? "",
     expiryDate: contract?.expiry_date ?? "",
+    ownerId: contract?.owner_id ?? NO_OWNER,
     description: contract?.description ?? "",
   };
 }
@@ -89,6 +95,7 @@ export function ContractFormDialog({
   hideTrigger,
 }: ContractFormDialogProps) {
   const { currentSector } = useCurrentSector();
+  const { data: members } = useSectorMembers(currentSector?.id);
   const queryClient = useQueryClient();
   const [internalOpen, setInternalOpen] = useState(false);
   const isEdit = !!contract;
@@ -150,6 +157,7 @@ export function ContractFormDialog({
       currency: form.currency,
       effectiveDate: form.effectiveDate,
       expiryDate: form.expiryDate,
+      ownerId: form.ownerId === NO_OWNER ? undefined : form.ownerId,
       description: form.description,
     });
   }
@@ -169,17 +177,17 @@ export function ContractFormDialog({
               {isEdit ? "Editar Contrato" : "Novo Contrato"}
             </DialogTitle>
             <DialogDescription>
-              Registre os dados do contrato e o ciclo de renovacao
+              Registre os dados do contrato e o ciclo de renovação
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Titulo</Label>
+              <Label htmlFor="title">Título</Label>
               <Input
                 id="title"
                 value={form.title}
                 onChange={(e) => update("title", e.target.value)}
-                placeholder="Ex: Contrato de prestacao de servicos"
+                placeholder="Ex: Contrato de prestação de serviços"
                 required
               />
             </div>
@@ -195,12 +203,16 @@ export function ContractFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Tipo</Label>
+                <Label id="contract-type-label">Tipo</Label>
                 <Select
                   value={form.contractType}
                   onValueChange={(v) => update("contractType", v ?? "service")}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="contract-type"
+                    aria-labelledby="contract-type-label"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -213,12 +225,16 @@ export function ContractFormDialog({
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Status</Label>
+                <Label id="contract-status-label">Status</Label>
                 <Select
                   value={form.status}
                   onValueChange={(v) => update("status", v ?? "draft")}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="contract-status"
+                    aria-labelledby="contract-status-label"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -233,7 +249,7 @@ export function ContractFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="effectiveDate">Data de inicio</Label>
+                <Label htmlFor="effectiveDate">Data de início</Label>
                 <Input
                   id="effectiveDate"
                   type="date"
@@ -242,7 +258,7 @@ export function ContractFormDialog({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="expiryDate">Data de termino</Label>
+                <Label htmlFor="expiryDate">Data de término</Label>
                 <Input
                   id="expiryDate"
                   type="date"
@@ -253,12 +269,16 @@ export function ContractFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Renovacao</Label>
+                <Label id="contract-renewal-label">Renovação</Label>
                 <Select
                   value={form.renewalType}
                   onValueChange={(v) => update("renewalType", v ?? "none")}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="contract-renewal"
+                    aria-labelledby="contract-renewal-label"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -272,7 +292,7 @@ export function ContractFormDialog({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="noticePeriodDays">
-                  Aviso previo (dias)
+                  Aviso prévio (dias)
                 </Label>
                 <Input
                   id="noticePeriodDays"
@@ -311,7 +331,37 @@ export function ContractFormDialog({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Observacoes</Label>
+              <Label id="contract-owner-label">Responsável</Label>
+              <Select
+                value={form.ownerId}
+                onValueChange={(v) => update("ownerId", v ?? NO_OWNER)}
+              >
+                <SelectTrigger
+                  id="contract-owner"
+                  aria-labelledby="contract-owner-label"
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Sem responsável">
+                    {(value: string) =>
+                      value === NO_OWNER
+                        ? "Sem responsável"
+                        : ((members ?? []).find((m) => m.id === value)
+                            ?.full_name ?? "Sem responsável")
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_OWNER}>Sem responsável</SelectItem>
+                  {(members ?? []).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Observações</Label>
               <Textarea
                 id="description"
                 value={form.description}

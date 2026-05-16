@@ -17,14 +17,14 @@ export async function createMatter(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = createMatterSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "legal_matter", "create")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { data: matter, error } = await supabase
@@ -59,7 +59,7 @@ export async function updateMatter(formData: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const parsed = updateMatterSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -69,11 +69,11 @@ export async function updateMatter(formData: unknown) {
     .select("sector_id, resolved_at")
     .eq("id", parsed.data.id)
     .single();
-  if (!existing) return { error: "Demanda nao encontrada" };
+  if (!existing) return { error: "Demanda não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "legal_matter", "update")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const isTerminal = TERMINAL_STATUSES.has(parsed.data.status);
@@ -107,24 +107,24 @@ export async function updateMatter(formData: unknown) {
 
 export async function deleteMatter(matterId: string) {
   const idParsed = z.string().uuid().safeParse(matterId);
-  if (!idParsed.success) return { error: "ID invalido" };
+  if (!idParsed.success) return { error: "ID inválido" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: existing } = await supabase
     .from("legal_matters")
     .select("sector_id")
     .eq("id", idParsed.data)
     .single();
-  if (!existing) return { error: "Demanda nao encontrada" };
+  if (!existing) return { error: "Demanda não encontrada" };
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, existing.sector_id, "legal_matter", "delete")) {
-    return { error: "Sem permissao" };
+    return { error: "Sem permissão" };
   }
 
   const { error } = await supabase

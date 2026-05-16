@@ -8,7 +8,7 @@ const legalNav = [
   { label: "Dashboard", href: "/legal" },
   { label: "Contratos", href: "/legal/contracts" },
   { label: "Demandas", href: "/legal/matters" },
-  { label: "Clausulas", href: "/legal/clauses" },
+  { label: "Cláusulas", href: "/legal/clauses" },
 ];
 
 export default function LegalLayout({
@@ -21,9 +21,9 @@ export default function LegalLayout({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Juridico</h1>
+        <h1 className="text-2xl font-bold">Jurídico</h1>
         <p className="text-muted-foreground text-sm">
-          Gestao de contratos, renovacoes e demandas juridicas
+          Gestão de contratos, renovações e demandas jurídicas
         </p>
       </div>
 
