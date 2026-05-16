@@ -10,6 +10,7 @@ import {
   type Campaign,
 } from "@/hooks/marketing/use-campaigns";
 import { CampaignFormDialog } from "@/components/marketing/campaign-form-dialog";
+import { MarketingError } from "@/components/marketing/marketing-error";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_STATUS_VARIANTS,
@@ -21,10 +22,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 export default function MarketingCampaignsPage() {
   const { currentSector } = useCurrentSector();
-  const { data: campaigns, isLoading } = useCampaigns(currentSector?.id);
+  const {
+    data: campaigns,
+    isLoading,
+    isError,
+    refetch,
+  } = useCampaigns(currentSector?.id);
   const deleteCampaign = useDeleteCampaign();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,7 +53,7 @@ export default function MarketingCampaignsPage() {
       );
       return;
     }
-    toast.success("Campanha excluida");
+    toast.success("Campanha excluída");
   };
 
   return (
@@ -67,6 +74,8 @@ export default function MarketingCampaignsPage() {
 
       {isLoading ? (
         <Skeleton className="h-48 w-full" />
+      ) : isError ? (
+        <MarketingError subject="as campanhas" onRetry={() => refetch()} />
       ) : campaigns && campaigns.length > 0 ? (
         <Card>
           <CardContent className="p-0">
@@ -100,15 +109,20 @@ export default function MarketingCampaignsPage() {
                   >
                     Editar
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-500"
-                    disabled={deleteCampaign.isPending}
-                    onClick={() => handleDelete(c.id)}
+                  <ConfirmDialog
+                    title="Excluir campanha"
+                    description={`Excluir a campanha "${c.name}"? Esta ação remove o orçamento e os resultados registrados.`}
+                    onConfirm={() => handleDelete(c.id)}
                   >
-                    Excluir
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500"
+                      disabled={deleteCampaign.isPending}
+                    >
+                      Excluir
+                    </Button>
+                  </ConfirmDialog>
                 </div>
               </div>
             ))}
@@ -118,7 +132,7 @@ export default function MarketingCampaignsPage() {
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
           <Megaphone className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Nenhuma campanha ainda. Crie a primeira para acompanhar orcamento e
+            Nenhuma campanha ainda. Crie a primeira para acompanhar orçamento e
             resultados.
           </p>
         </div>
