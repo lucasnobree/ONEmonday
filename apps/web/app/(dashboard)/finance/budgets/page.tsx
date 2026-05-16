@@ -14,6 +14,11 @@ import {
   sumCents,
 } from "@/lib/finance/money";
 import {
+  currentMonthKey,
+  formatMonthKey,
+  shiftMonthKey,
+} from "@/lib/finance/dates";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -24,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, PiggyBank } from "lucide-react";
+import { Plus, Pencil, Trash2, PiggyBank, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -35,9 +40,6 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-
-/** Current month key as "YYYY-MM". */
-const currentMonthKey = () => new Date().toISOString().slice(0, 7);
 
 export default function BudgetsPage() {
   const { currentSector } = useCurrentSector();
@@ -50,9 +52,12 @@ export default function BudgetsPage() {
   const deleteBudget = useDeleteBudget();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const monthKey = currentMonthKey();
+  const [editing, setEditing] = useState<Budget | undefined>();
+  // The month currently in view — defaults to the current month but can be
+  // navigated so past and future budgets stay reachable.
+  const [monthKey, setMonthKey] = useState(currentMonthKey());
 
-  // Actual paid spend per category for the current month, in integer cents.
+  // Actual paid spend per category for the selected month, in integer cents.
   const actualByCategory = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of expenses ?? []) {
@@ -63,7 +68,7 @@ export default function BudgetsPage() {
     return map;
   }, [expenses, monthKey]);
 
-  // Budgets for the current month, joined with actual spend.
+  // Budgets for the selected month, joined with actual spend.
   const rows = useMemo(() => {
     return (budgets ?? [])
       .filter((b) => b.period_month.slice(0, 7) === monthKey)
@@ -86,12 +91,23 @@ export default function BudgetsPage() {
   if (!currentSector) {
     return (
       <p className="text-muted-foreground">
-        Selecione um setor para acessar os orcamentos.
+        Selecione um setor para acessar os orçamentos.
       </p>
     );
   }
 
   const isLoading = budgetsLoading || expensesLoading;
+  const isCurrentMonth = monthKey === currentMonthKey();
+
+  const openCreate = () => {
+    setEditing(undefined);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (budget: Budget) => {
+    setEditing(budget);
+    setDialogOpen(true);
+  };
 
   const handleDelete = async (budget: Budget) => {
     const result = await deleteBudget.mutateAsync(budget.id);
@@ -101,7 +117,7 @@ export default function BudgetsPage() {
       );
       return;
     }
-    toast.success("Orcamento excluido");
+    toast.success("Orçamento excluído");
   };
 
   const chartData = rows.map((r) => ({
@@ -114,15 +130,46 @@ export default function BudgetsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Orcamentos</h2>
+          <h2 className="text-lg font-semibold">Orçamentos</h2>
           <p className="text-xs text-muted-foreground">
-            Orcado vs. realizado do mes corrente
+            Orçado vs. realizado por mês
           </p>
         </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
+        <Button size="sm" onClick={openCreate}>
           <Plus className="size-4 mr-1" />
-          Novo Orcamento
+          Novo Orçamento
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Mês anterior"
+          onClick={() => setMonthKey((m) => shiftMonthKey(m, -1))}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="min-w-40 text-center text-sm font-medium capitalize">
+          {formatMonthKey(monthKey)}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Próximo mês"
+          onClick={() => setMonthKey((m) => shiftMonthKey(m, 1))}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+        {!isCurrentMonth && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMonthKey(currentMonthKey())}
+          >
+            Mês atual
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -134,12 +181,12 @@ export default function BudgetsPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           icon={PiggyBank}
-          title="Nenhum orcamento neste mes"
+          title="Nenhum orçamento neste mês"
           description="Defina limites de gasto por categoria para acompanhar o realizado."
           action={
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button onClick={openCreate}>
               <Plus className="size-4 mr-1" />
-              Novo Orcamento
+              Novo Orçamento
             </Button>
           }
         />
@@ -148,7 +195,7 @@ export default function BudgetsPage() {
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Total Orcado</p>
+                <p className="text-sm text-muted-foreground">Total Orçado</p>
                 <p className="text-xl font-bold">
                   {formatCents(totals.planned)}
                 </p>
@@ -181,9 +228,11 @@ export default function BudgetsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Orcado vs. Realizado
+                Orçado vs. Realizado
               </CardTitle>
-              <CardDescription>Por categoria, no mes corrente</CardDescription>
+              <CardDescription>
+                Por categoria, no mês selecionado
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={260}>
@@ -260,19 +309,29 @@ export default function BudgetsPage() {
                       >
                         {r.usagePercent}%
                       </span>
-                      <ConfirmDialog
-                        title="Excluir orcamento"
-                        description={`Excluir o orcamento de ${CATEGORY_LABELS[r.budget.category]}?`}
-                        onConfirm={() => handleDelete(r.budget)}
-                      >
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Excluir orcamento"
+                          aria-label="Editar orçamento"
+                          onClick={() => openEdit(r.budget)}
                         >
-                          <Trash2 className="size-4 text-destructive" />
+                          <Pencil className="size-4" />
                         </Button>
-                      </ConfirmDialog>
+                        <ConfirmDialog
+                          title="Excluir orçamento"
+                          description={`Excluir o orçamento de ${CATEGORY_LABELS[r.budget.category]}?`}
+                          onConfirm={() => handleDelete(r.budget)}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Excluir orçamento"
+                          >
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        </ConfirmDialog>
+                      </div>
                     </div>
                   );
                 })}
@@ -286,6 +345,8 @@ export default function BudgetsPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         sectorId={currentSector.id}
+        budget={editing}
+        defaultMonth={monthKey}
       />
     </div>
   );
