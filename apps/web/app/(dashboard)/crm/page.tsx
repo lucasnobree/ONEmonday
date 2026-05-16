@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useDeals } from "@/hooks/crm/use-deals";
 import { useCRMStats } from "@/hooks/crm/use-crm-stats";
+import { buildFunnelStages } from "@/lib/crm/pipeline-stages";
 import { PipelineFunnel } from "@/components/crm/pipeline-funnel";
 import {
   Card,
@@ -43,23 +44,10 @@ export default function CRMDashboardPage() {
   const { data: deals, isLoading: dealsLoading } = useDeals(currentSector?.id);
   const { data: stats, isLoading: statsLoading } = useCRMStats(currentSector?.id);
 
-  const pipelineStages = useMemo(() => {
-    if (!deals) return [];
-    const openDeals = deals.filter((d) => !d.actual_close_date);
-    const stageMap = new Map<string, { count: number; value: number }>();
-    for (const deal of openDeals) {
-      const stage = deal.card?.board_columns?.name ?? "Sem estagio";
-      const existing = stageMap.get(stage) ?? { count: 0, value: 0 };
-      existing.count += 1;
-      existing.value += Number(deal.value) || 0;
-      stageMap.set(stage, existing);
-    }
-    return Array.from(stageMap.entries()).map(([stage, data]) => ({
-      stage,
-      count: data.count,
-      value: data.value,
-    }));
-  }, [deals]);
+  const pipelineStages = useMemo(
+    () => buildFunnelStages(deals ?? []),
+    [deals]
+  );
 
   // Weighted pipeline forecast: sum of (value x win_probability) across
   // open deals. Best-practice forecasting signal alongside raw pipeline value.

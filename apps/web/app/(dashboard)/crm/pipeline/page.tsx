@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useDeals, type Deal } from "@/hooks/crm/use-deals";
+import { buildStageColumns } from "@/lib/crm/pipeline-stages";
 import {
   useStageDefaults,
   toRottingConfig,
@@ -48,14 +49,6 @@ const probabilityVariant = (prob: number | null) => {
   if (prob >= 40) return "secondary";
   return "outline";
 };
-
-interface StageColumn {
-  columnId: string;
-  stageName: string;
-  stageColor: string;
-  position: number;
-  deals: Deal[];
-}
 
 export default function PipelinePage() {
   const { currentSector } = useCurrentSector();
@@ -199,26 +192,7 @@ export default function PipelinePage() {
     );
   }
 
-  const columnMap = new Map<string, StageColumn>();
-  for (const deal of deals || []) {
-    const col = deal.card?.board_columns;
-    if (!col) continue;
-    const key = col.id;
-    if (!columnMap.has(key)) {
-      columnMap.set(key, {
-        columnId: col.id,
-        stageName: col.name,
-        stageColor: col.color,
-        position: 0,
-        deals: [],
-      });
-    }
-    columnMap.get(key)!.deals.push(deal);
-  }
-
-  const stages = Array.from(columnMap.values()).sort(
-    (a, b) => a.position - b.position
-  );
+  const stages = buildStageColumns(deals || []);
 
   const totalPipelineValue = (deals || []).reduce(
     (sum, d) => sum + (d.value || 0),
