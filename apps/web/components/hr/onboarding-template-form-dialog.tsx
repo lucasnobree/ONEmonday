@@ -141,7 +141,7 @@ function TemplateForm({
             </DialogTitle>
             <DialogDescription>
               {isEdit
-                ? "Atualize o template de integracao"
+                ? "Atualize o template de integração"
                 : "Crie um novo template com as etapas do onboarding"}
             </DialogDescription>
           </DialogHeader>
@@ -185,7 +185,7 @@ function TemplateForm({
               {items.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4 border rounded-md">
                   Nenhuma etapa adicionada. Clique em &quot;Adicionar&quot;
-                  para comecar.
+                  para começar.
                 </p>
               )}
 
@@ -211,7 +211,7 @@ function TemplateForm({
                   <Input
                     value={item.title}
                     onChange={(e) => updateItem(index, "title", e.target.value)}
-                    placeholder="Titulo da etapa"
+                    placeholder="Título da etapa"
                     required
                   />
 
@@ -220,7 +220,7 @@ function TemplateForm({
                     onChange={(e) =>
                       updateItem(index, "description", e.target.value)
                     }
-                    placeholder="Descricao (opcional)"
+                    placeholder="Descrição (opcional)"
                   />
 
                   <div className="grid grid-cols-2 gap-2">
@@ -229,7 +229,7 @@ function TemplateForm({
                       onChange={(e) =>
                         updateItem(index, "responsibleRole", e.target.value)
                       }
-                      placeholder="Responsavel"
+                      placeholder="Responsável"
                     />
                     <div className="relative">
                       <Input

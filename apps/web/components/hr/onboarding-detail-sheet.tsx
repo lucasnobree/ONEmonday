@@ -21,7 +21,7 @@ const statusMap: Record<
   { label: string; variant: "default" | "secondary" | "outline" }
 > = {
   in_progress: { label: "Em andamento", variant: "default" },
-  completed: { label: "Concluido", variant: "secondary" },
+  completed: { label: "Concluído", variant: "secondary" },
   cancelled: { label: "Cancelado", variant: "outline" },
 };
 
@@ -44,7 +44,7 @@ export function OnboardingDetailSheet({
   async function handleToggle(itemId: string, completed: boolean) {
     try {
       await toggleItem.mutateAsync({ itemId, completed });
-      toast.success(completed ? "Etapa concluida!" : "Etapa reaberta");
+      toast.success(completed ? "Etapa concluída!" : "Etapa reaberta");
     } catch {
       toast.error("Erro ao atualizar etapa");
     }
@@ -87,11 +87,11 @@ export function OnboardingDetailSheet({
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar className="h-3.5 w-3.5" />
                   <span>
-                    Inicio: {dateFormat.format(new Date(instance.start_date))}
+                    Início: {dateFormat.format(new Date(instance.start_date))}
                   </span>
                   {instance.completed_at && (
                     <span className="ml-2">
-                      Concluido:{" "}
+                      Concluído:{" "}
                       {dateFormat.format(new Date(instance.completed_at))}
                     </span>
                   )}
@@ -165,7 +165,7 @@ export function OnboardingDetailSheet({
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {item.responsible_role && (
                             <span className="text-xs text-muted-foreground">
-                              Responsavel: {item.responsible_role}
+                              Responsável: {item.responsible_role}
                             </span>
                           )}
                           {item.due_date && (
@@ -182,7 +182,7 @@ export function OnboardingDetailSheet({
                           )}
                           {item.completed_at && (
                             <span className="text-xs text-green-600">
-                              Concluido em{" "}
+                              Concluído em{" "}
                               {dateFormat.format(new Date(item.completed_at))}
                             </span>
                           )}
