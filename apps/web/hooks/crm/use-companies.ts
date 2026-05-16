@@ -80,6 +80,7 @@ export function useUpdateCompany() {
     mutationFn: (input: unknown) => updateCompany(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-company-detail"] });
     },
   });
 }

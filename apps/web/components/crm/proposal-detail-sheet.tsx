@@ -7,6 +7,7 @@ import {
   useDeleteProposal,
 } from "@/hooks/crm/use-proposals";
 import { ProposalFormDialog } from "./proposal-form-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -269,15 +270,20 @@ export function ProposalDetailSheet({
                         <Pencil className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleDelete}
-                        disabled={deleteProposal.isPending}
+                      <ConfirmDialog
+                        title="Excluir proposta?"
+                        description={`A proposta "${proposal.title}" será removida. Esta ação não pode ser desfeita.`}
+                        onConfirm={handleDelete}
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Excluir
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={deleteProposal.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
+                      </ConfirmDialog>
                     </>
                   )}
                   {(proposal.status === "sent" ||

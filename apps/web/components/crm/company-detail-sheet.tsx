@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useCompanyDetail } from "@/hooks/crm/use-company-detail";
+import { useDeleteCompany, type Company } from "@/hooks/crm/use-companies";
+import { CompanyFormDialog } from "./company-form-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -10,8 +14,10 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import {
   Building2,
   Globe,
@@ -19,6 +25,8 @@ import {
   Phone,
   Mail,
   Star,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 const formatCurrency = (value: number) =>
@@ -49,6 +57,45 @@ export function CompanyDetailSheet({
   onOpenChange,
 }: CompanyDetailSheetProps) {
   const { data: company, isLoading } = useCompanyDetail(companyId);
+  const deleteCompany = useDeleteCompany();
+  const [showEdit, setShowEdit] = useState(false);
+
+  // The form dialog edits a `Company`; the detail query returns the same
+  // columns plus relations, so adapt it into the shape the form expects.
+  const editableCompany: Company | undefined = company
+    ? {
+        id: company.id,
+        sector_id: company.sector_id,
+        name: company.name,
+        domain: company.domain,
+        industry: company.industry,
+        size: company.size,
+        phone: company.phone,
+        email: company.email,
+        address: company.address,
+        city: company.city,
+        state: company.state,
+        notes: company.notes,
+        is_active: true,
+        created_at: company.created_at,
+        contacts_count: company.contacts.length,
+      }
+    : undefined;
+
+  const handleDelete = async () => {
+    if (!companyId) return;
+    const result = await deleteCompany.mutateAsync(companyId);
+    if (result && "error" in result && result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao excluir empresa"
+      );
+      return;
+    }
+    toast.success("Empresa excluída");
+    onOpenChange(false);
+  };
 
   const openDeals = company?.deals.filter((d) => !d.actual_close_date) ?? [];
   const totalPipelineValue = openDeals.reduce(
@@ -64,6 +111,7 @@ export function CompanyDetailSheet({
   );
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
         {isLoading ? (
@@ -83,7 +131,7 @@ export function CompanyDetailSheet({
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Building2 className="h-5 w-5 text-primary" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <SheetTitle>{company.name}</SheetTitle>
                   <SheetDescription>
                     {[company.industry, company.size && sizeLabels[company.size]]
@@ -91,6 +139,30 @@ export function CompanyDetailSheet({
                       .join(" · ")}
                   </SheetDescription>
                 </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowEdit(true)}
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+                <ConfirmDialog
+                  title="Excluir empresa?"
+                  description={`A empresa "${company.name}" será removida. Esta ação não pode ser desfeita.`}
+                  onConfirm={handleDelete}
+                >
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={deleteCompany.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Excluir
+                  </Button>
+                </ConfirmDialog>
               </div>
             </SheetHeader>
 
@@ -312,5 +384,15 @@ export function CompanyDetailSheet({
         )}
       </SheetContent>
     </Sheet>
+
+    {editableCompany && (
+      <CompanyFormDialog
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        sectorId={editableCompany.sector_id}
+        company={editableCompany}
+      />
+    )}
+    </>
   );
 }

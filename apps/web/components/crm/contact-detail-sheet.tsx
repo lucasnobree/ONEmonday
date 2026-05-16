@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useActivities } from "@/hooks/crm/use-activities";
+import { useDeleteContact, type Contact } from "@/hooks/crm/use-contacts";
+import { ContactFormDialog } from "./contact-form-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -11,8 +15,10 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import {
   User,
   Mail,
@@ -20,6 +26,8 @@ import {
   Building2,
   Star,
   Calendar,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
@@ -63,8 +71,8 @@ export function ContactDetailSheet({
         .from("crm_contacts")
         .select(
           `
-          id, sector_id, full_name, email, phone, position,
-          is_primary, notes, created_at,
+          id, sector_id, company_id, full_name, email, phone, position,
+          is_primary, notes, is_active, created_at,
           crm_companies (id, name, industry)
         `
         )
@@ -82,7 +90,47 @@ export function ContactDetailSheet({
     contactId: contactId ?? undefined,
   });
 
+  const deleteContact = useDeleteContact();
+  const [showEdit, setShowEdit] = useState(false);
+
+  // The form dialog edits a `Contact`; the detail query returns the same
+  // columns plus the company relation, so adapt it into the form's shape.
+  const editableContact: Contact | undefined = contact
+    ? {
+        id: contact.id,
+        sector_id: contact.sector_id,
+        company_id: contact.company_id ?? null,
+        full_name: contact.full_name,
+        email: contact.email,
+        phone: contact.phone,
+        position: contact.position,
+        is_primary: contact.is_primary,
+        notes: contact.notes,
+        is_active: contact.is_active ?? true,
+        created_at: contact.created_at,
+        company: contact.company
+          ? { id: contact.company.id, name: contact.company.name }
+          : null,
+      }
+    : undefined;
+
+  const handleDelete = async () => {
+    if (!contactId) return;
+    const result = await deleteContact.mutateAsync(contactId);
+    if (result && "error" in result && result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao excluir contato"
+      );
+      return;
+    }
+    toast.success("Contato excluído");
+    onOpenChange(false);
+  };
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
         {isLoading ? (
@@ -107,7 +155,7 @@ export function ContactDetailSheet({
                     .join("")
                     .toUpperCase()}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <SheetTitle className="flex items-center gap-1.5">
                     {contact.full_name}
                     {contact.is_primary && (
@@ -120,6 +168,30 @@ export function ContactDetailSheet({
                       .join(" · ")}
                   </SheetDescription>
                 </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowEdit(true)}
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+                <ConfirmDialog
+                  title="Excluir contato?"
+                  description={`O contato "${contact.full_name}" será removido. Esta ação não pode ser desfeita.`}
+                  onConfirm={handleDelete}
+                >
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={deleteContact.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Excluir
+                  </Button>
+                </ConfirmDialog>
               </div>
             </SheetHeader>
 
@@ -196,7 +268,7 @@ export function ContactDetailSheet({
                         className="relative pl-6 pb-4"
                       >
                         <div
-                          className={`absolute -left-[5px] top-1 h-2 w-2 rounded-full ${
+                          className={`absolute -left-1.25 top-1 h-2 w-2 rounded-full ${
                             activityTypeDots[activity.type] || "bg-gray-400"
                           }`}
                         />
@@ -234,5 +306,15 @@ export function ContactDetailSheet({
         )}
       </SheetContent>
     </Sheet>
+
+    {editableContact && (
+      <ContactFormDialog
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        sectorId={editableContact.sector_id}
+        contact={editableContact}
+      />
+    )}
+    </>
   );
 }

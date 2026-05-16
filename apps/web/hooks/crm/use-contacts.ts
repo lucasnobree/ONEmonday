@@ -77,6 +77,7 @@ export function useUpdateContact() {
     mutationFn: (input: unknown) => updateContact(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-contact-detail"] });
     },
   });
 }
