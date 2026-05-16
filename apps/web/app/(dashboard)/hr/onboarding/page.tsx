@@ -11,6 +11,7 @@ import {
 } from "@/hooks/hr/use-onboarding";
 import { OnboardingTemplateFormDialog } from "@/components/hr/onboarding-template-form-dialog";
 import { OnboardingDetailSheet } from "@/components/hr/onboarding-detail-sheet";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -42,7 +43,7 @@ const statusMap: Record<
   { label: string; variant: "default" | "secondary" | "outline" }
 > = {
   in_progress: { label: "Em andamento", variant: "default" },
-  completed: { label: "Concluido", variant: "secondary" },
+  completed: { label: "Concluído", variant: "secondary" },
   pending: { label: "Pendente", variant: "outline" },
 };
 
@@ -71,21 +72,20 @@ export default function OnboardingPage() {
   async function handleToggleItem(itemId: string, completed: boolean) {
     try {
       await completeItem.mutateAsync({ itemId, completed });
-      toast.success(completed ? "Etapa concluida!" : "Etapa reaberta");
+      toast.success(completed ? "Etapa concluída!" : "Etapa reaberta");
     } catch {
       toast.error("Erro ao atualizar etapa");
     }
   }
 
   async function handleDeleteTemplate(id: string) {
-    if (!confirm("Tem certeza que deseja excluir este template?")) return;
     const result = await deleteTemplate.mutateAsync(id);
     if (result.error) {
       toast.error(
         typeof result.error === "string" ? result.error : "Erro ao excluir"
       );
     } else {
-      toast.success("Template excluido");
+      toast.success("Template excluído");
     }
   }
 
@@ -197,7 +197,7 @@ function ActiveOnboardings({
       <EmptyState
         icon={UserCog}
         title="Nenhum onboarding ativo"
-        description="Onboardings aparecerao aqui quando novos colaboradores forem adicionados com um template de integracao."
+        description="Onboardings aparecerão aqui quando novos colaboradores forem adicionados com um template de integração."
       />
     );
   }
@@ -239,7 +239,7 @@ function ActiveOnboardings({
                     )}
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      Inicio:{" "}
+                      Início:{" "}
                       {dateFormat.format(new Date(instance.start_date))}
                     </span>
                   </div>
@@ -257,7 +257,7 @@ function ActiveOnboardings({
               <div className="mt-3">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                   <span>{instance.template.name}</span>
-                  <span>{progress}% concluido</span>
+                  <span>{progress}% concluído</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div
@@ -332,7 +332,7 @@ function ActiveOnboardings({
                           )}
                           {item.completed_at && (
                             <span className="text-xs text-green-600">
-                              Concluido em{" "}
+                              Concluído em{" "}
                               {dateFormat.format(new Date(item.completed_at))}
                             </span>
                           )}
@@ -381,7 +381,7 @@ function TemplatesList({
       <EmptyState
         icon={FileText}
         title="Nenhum template criado"
-        description="Crie templates de onboarding para padronizar a integracao de novos colaboradores."
+        description="Crie templates de onboarding para padronizar a integração de novos colaboradores."
       />
     );
   }
@@ -415,13 +415,15 @@ function TemplatesList({
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onDelete(template.id)}
+                <ConfirmDialog
+                  title="Excluir template"
+                  description="Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita."
+                  onConfirm={() => onDelete(template.id)}
                 >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
+                  <Button variant="ghost" size="icon-sm">
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </ConfirmDialog>
               </div>
             </div>
           </CardContent>

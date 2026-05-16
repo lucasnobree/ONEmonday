@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmployeeFormDialog } from "@/components/hr/employee-form-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { getExpiryStatus } from "@/lib/hr/document-expiry";
 import { Calendar, Clock, UserX, Users, Play, Upload, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -49,15 +50,15 @@ const STATUS_MAP: Record<
   { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
   active: { label: "Ativo", variant: "default" },
-  on_leave: { label: "Licenca", variant: "secondary" },
+  on_leave: { label: "Licença", variant: "secondary" },
   terminated: { label: "Desligado", variant: "destructive" },
 };
 
 const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
   full_time: "CLT",
-  part_time: "Meio periodo",
+  part_time: "Meio período",
   contractor: "PJ",
-  intern: "Estagiario",
+  intern: "Estagiário",
 };
 
 const TIME_OFF_STATUS_MAP: Record<
@@ -129,9 +130,9 @@ export function EmployeeProfileSheet({
               <Tabs defaultValue="perfil">
                 <TabsList className="w-full">
                   <TabsTrigger value="perfil">Perfil</TabsTrigger>
-                  <TabsTrigger value="ferias">Ferias</TabsTrigger>
+                  <TabsTrigger value="ferias">Férias</TabsTrigger>
                   <TabsTrigger value="docs">Documentos</TabsTrigger>
-                  <TabsTrigger value="acoes">Acoes</TabsTrigger>
+                  <TabsTrigger value="acoes">Ações</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="perfil" className="mt-4">
@@ -184,7 +185,7 @@ function ProfileTab({
           value={EMPLOYMENT_TYPE_MAP[employee.employment_type] ?? employee.employment_type}
         />
         <InfoField
-          label="Data de Admissao"
+          label="Data de Admissão"
           value={dateFormat.format(new Date(employee.hire_date))}
         />
         {employee.birth_date && (
@@ -281,7 +282,7 @@ function TimeOffTab({
           <Calendar className="h-10 w-10 text-muted-foreground/50 mb-2" />
           <p className="text-sm font-medium">Nenhuma solicitacao</p>
           <p className="text-xs text-muted-foreground">
-            Este colaborador nao possui solicitacoes de ferias.
+            Este colaborador não possui solicitações de férias.
           </p>
         </div>
       ) : (
@@ -295,7 +296,7 @@ function TimeOffTab({
               <div key={req.id} className="rounded-md border p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
-                    {req.policy?.name ?? "Ferias"}
+                    {req.policy?.name ?? "Férias"}
                   </span>
                   <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                 </div>
@@ -407,7 +408,7 @@ function StartOnboardingButton({
           </Select>
           {(!templates || templates.length === 0) && (
             <p className="text-xs text-muted-foreground">
-              Nenhum template disponivel. Crie um em Onboarding &gt; Templates.
+              Nenhum template disponível. Crie um em Onboarding &gt; Templates.
             </p>
           )}
         </div>
@@ -480,14 +481,13 @@ function DocumentsTab({
   }
 
   async function handleDelete(docId: string) {
-    if (!confirm("Excluir este documento?")) return;
     const result = await deleteDoc.mutateAsync(docId);
     if (result.error) {
       toast.error(
         typeof result.error === "string" ? result.error : "Erro ao excluir"
       );
     } else {
-      toast.success("Documento excluido");
+      toast.success("Documento excluído");
     }
   }
 
@@ -618,13 +618,15 @@ function DocumentsTab({
                   >
                     <Download className="h-3.5 w-3.5" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleDelete(doc.id)}
+                  <ConfirmDialog
+                    title="Excluir documento"
+                    description="Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita."
+                    onConfirm={() => handleDelete(doc.id)}
                   >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
+                    <Button variant="ghost" size="icon-sm">
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </ConfirmDialog>
                 </div>
               </div>
               );
