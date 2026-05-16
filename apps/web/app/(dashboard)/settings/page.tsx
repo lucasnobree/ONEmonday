@@ -21,12 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-interface UserProfile {
-  full_name: string;
-  email: string;
-  avatar_url: string | null;
-}
-
 type Channel = "in_app" | "email" | "both" | "none";
 
 interface NotificationPref {
@@ -65,7 +59,6 @@ export default function SettingsPage() {
   const { currentSector } = useCurrentSector();
   const { isGlobalAdmin } = usePermissions();
   const pathname = usePathname();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [prefs, setPrefs] = useState<NotificationPref[]>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
 
@@ -76,14 +69,6 @@ export default function SettingsPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { data: userData } = await supabase
-        .from("users")
-        .select("full_name, email, avatar_url")
-        .eq("id", user.id)
-        .single();
-
-      if (userData) setProfile(userData);
 
       const { data: prefData } = await supabase
         .from("notification_preferences")
@@ -210,27 +195,6 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Perfil</CardTitle>
-            <CardDescription>
-              Informações da sua conta
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-1">
-              <Label className="text-muted-foreground text-xs">Nome</Label>
-              <p className="text-sm font-medium">
-                {profile?.full_name || "—"}
-              </p>
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-muted-foreground text-xs">Email</Label>
-              <p className="text-sm font-medium">{profile?.email || "—"}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Preferências de Notificação</CardTitle>
             <CardDescription>
               Escolha como deseja ser notificado para cada tipo de evento
@@ -256,6 +220,7 @@ export default function SettingsPage() {
                     <div className="flex justify-center">
                       <Switch
                         checked={flags.in_app}
+                        aria-label={`${nt.label} — In-app`}
                         onCheckedChange={(checked) =>
                           handleToggle(nt.type, "in_app", checked)
                         }
@@ -264,6 +229,7 @@ export default function SettingsPage() {
                     <div className="flex justify-center">
                       <Switch
                         checked={flags.email}
+                        aria-label={`${nt.label} — Email`}
                         onCheckedChange={(checked) =>
                           handleToggle(nt.type, "email", checked)
                         }
