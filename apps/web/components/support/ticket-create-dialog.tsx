@@ -34,9 +34,9 @@ interface TicketCreateDialogProps {
 
 const PRIORITIES = [
   { value: "low", label: "Baixa" },
-  { value: "medium", label: "Media" },
+  { value: "medium", label: "Média" },
   { value: "high", label: "Alta" },
-  { value: "critical", label: "Critica" },
+  { value: "critical", label: "Crítica" },
 ];
 
 const CATEGORIES = [
@@ -126,7 +126,7 @@ export function TicketCreateDialog({
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="ticket-title">Titulo</Label>
+              <Label htmlFor="ticket-title">Título</Label>
               <Input
                 id="ticket-title"
                 value={title}
@@ -137,7 +137,7 @@ export function TicketCreateDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ticket-description">Descricao</Label>
+              <Label htmlFor="ticket-description">Descrição</Label>
               <Textarea
                 id="ticket-description"
                 value={description}
@@ -152,7 +152,12 @@ export function TicketCreateDialog({
                 <Label>Prioridade</Label>
                 <Select value={priority} onValueChange={(v) => setPriority(v ?? "medium")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value) =>
+                        PRIORITIES.find((p) => p.value === value)?.label ??
+                        "Selecione"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {PRIORITIES.map((p) => (
@@ -168,7 +173,12 @@ export function TicketCreateDialog({
                 <Label>Canal</Label>
                 <Select value={channel} onValueChange={(v) => setChannel(v ?? "internal")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value) =>
+                        CHANNELS.find((c) => c.value === value)?.label ??
+                        "Selecione"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CHANNELS.map((c) => (
