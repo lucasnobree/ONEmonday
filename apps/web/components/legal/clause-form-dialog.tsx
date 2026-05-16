@@ -92,11 +92,11 @@ export function ClauseFormDialog({
         toast.error(
           typeof result.error === "string"
             ? result.error
-            : "Erro ao salvar clausula"
+            : "Erro ao salvar cláusula"
         );
         return;
       }
-      toast.success(isEdit ? "Clausula atualizada" : "Clausula criada");
+      toast.success(isEdit ? "Cláusula atualizada" : "Cláusula criada");
       queryClient.invalidateQueries({ queryKey: ["legal-clauses"] });
       setOpen(false);
     },
@@ -121,37 +121,41 @@ export function ClauseFormDialog({
       {!hideTrigger && (
         <DialogTrigger render={<Button size="sm" />}>
           <Plus className="h-4 w-4 mr-1" />
-          Nova Clausula
+          Nova Cláusula
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEdit ? "Editar Clausula" : "Nova Clausula"}
+              {isEdit ? "Editar Cláusula" : "Nova Cláusula"}
             </DialogTitle>
             <DialogDescription>
-              Adicione um modelo de clausula reutilizavel a biblioteca
+              Adicione um modelo de cláusula reutilizável à biblioteca
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="clause-title">Titulo</Label>
+              <Label htmlFor="clause-title">Título</Label>
               <Input
                 id="clause-title"
                 value={form.title}
                 onChange={(e) => update("title", e.target.value)}
-                placeholder="Ex: Confidencialidade mutua"
+                placeholder="Ex: Confidencialidade mútua"
                 required
               />
             </div>
             <div className="grid gap-2">
-              <Label>Categoria</Label>
+              <Label id="clause-category-label">Categoria</Label>
               <Select
                 value={form.category}
                 onValueChange={(v) => update("category", v ?? "general")}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger
+                  id="clause-category"
+                  aria-labelledby="clause-category-label"
+                  className="w-full"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -164,7 +168,7 @@ export function ClauseFormDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="clause-body">Conteudo</Label>
+              <Label htmlFor="clause-body">Conteúdo</Label>
               <Textarea
                 id="clause-body"
                 value={form.body}
@@ -174,13 +178,13 @@ export function ClauseFormDialog({
                 required
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="clause-approved">Clausula aprovada</Label>
+            <Label className="flex items-center justify-between">
+              <span>Cláusula aprovada</span>
               <Switch
                 checked={form.isApproved}
                 onCheckedChange={(v) => update("isApproved", v)}
               />
-            </div>
+            </Label>
           </div>
           <DialogFooter>
             <Button
@@ -191,7 +195,7 @@ export function ClauseFormDialog({
                 ? "Salvando..."
                 : isEdit
                   ? "Salvar"
-                  : "Criar Clausula"}
+                  : "Criar Cláusula"}
             </Button>
           </DialogFooter>
         </form>
