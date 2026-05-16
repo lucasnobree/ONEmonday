@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useMatters, type Matter } from "@/hooks/legal/use-matters";
+import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { MatterFormDialog } from "@/components/legal/matter-form-dialog";
 import {
   Card,
@@ -11,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Gavel } from "lucide-react";
+import { Gavel, Search } from "lucide-react";
 import { MATTER_STATUSES } from "@/lib/validations/legal";
 import {
   MATTER_STATUS_LABELS,
@@ -32,15 +34,30 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR");
 export default function MattersPage() {
   const { currentSector } = useCurrentSector();
   const { data: matters, isLoading } = useMatters(currentSector?.id);
+  const { data: members } = useSectorMembers(currentSector?.id);
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<Matter | null>(null);
 
+  const memberNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of members ?? []) map.set(m.id, m.full_name);
+    return map;
+  }, [members]);
+
   const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
     return (matters ?? []).filter((m: Matter) => {
       if (statusFilter !== "all" && m.status !== statusFilter) return false;
+      if (term) {
+        const haystack = [m.title, m.description ?? ""]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       return true;
     });
-  }, [matters, statusFilter]);
+  }, [matters, statusFilter, search]);
 
   if (!currentSector) {
     return (
@@ -53,29 +70,46 @@ export default function MattersPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v ?? "all")}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {MATTER_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {MATTER_STATUS_LABELS[s].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por título ou descrição"
+              className="w-64 pl-8"
+            />
+          </div>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v ?? "all")}
+          >
+            <SelectTrigger aria-label="Filtrar por status">
+              <SelectValue placeholder="Status">
+                {(value: string) =>
+                  value === "all"
+                    ? "Todos os status"
+                    : (MATTER_STATUS_LABELS[value]?.label ?? value)
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              {MATTER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {MATTER_STATUS_LABELS[s].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <MatterFormDialog />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Demandas Juridicas ({filtered.length})
+            Demandas Jurídicas ({filtered.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -89,7 +123,7 @@ export default function MattersPage() {
             <EmptyState
               icon={Gavel}
               title="Nenhuma demanda registrada"
-              description="Registre a primeira solicitacao para o time juridico."
+              description="Registre a primeira solicitação para o time jurídico."
               action={<MatterFormDialog />}
             />
           ) : filtered.length === 0 ? (
@@ -101,8 +135,9 @@ export default function MattersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Titulo</th>
+                    <th className="pb-2 font-medium">Título</th>
                     <th className="pb-2 font-medium">Tipo</th>
+                    <th className="pb-2 font-medium">Responsável</th>
                     <th className="pb-2 font-medium">Prioridade</th>
                     <th className="pb-2 font-medium">Prazo</th>
                     <th className="pb-2 font-medium">Status</th>
@@ -130,6 +165,11 @@ export default function MattersPage() {
                         <td className="py-2">
                           {MATTER_TYPE_LABELS[matter.matter_type] ??
                             matter.matter_type}
+                        </td>
+                        <td className="py-2">
+                          {matter.assigned_to
+                            ? (memberNames.get(matter.assigned_to) ?? "-")
+                            : "-"}
                         </td>
                         <td className="py-2">
                           <Badge variant={priorityInfo.variant}>
