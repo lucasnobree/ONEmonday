@@ -48,7 +48,7 @@ export default function LegalDashboardPage() {
   if (!currentSector) {
     return (
       <p className="text-muted-foreground">
-        Selecione um setor para acessar o Juridico.
+        Selecione um setor para acessar o Jurídico.
       </p>
     );
   }
@@ -70,7 +70,7 @@ export default function LegalDashboardPage() {
     { title: "Contratos Ativos", value: stats?.activeContracts ?? 0, icon: FileText },
     { title: "Vencem em 30 dias", value: stats?.expiring30 ?? 0, icon: CalendarClock },
     { title: "Demandas Abertas", value: stats?.openMatters ?? 0, icon: Gavel },
-    { title: "Em Elaboracao", value: stats?.draftContracts ?? 0, icon: FilePen },
+    { title: "Em Elaboração", value: stats?.draftContracts ?? 0, icon: FilePen },
   ];
 
   // Contract status distribution.
@@ -181,7 +181,7 @@ export default function LegalDashboardPage() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               <CardTitle className="text-base">
-                Renovacoes que Exigem Acao
+                Renovações que Exigem Ação
               </CardTitle>
             </div>
           </CardHeader>
@@ -194,7 +194,7 @@ export default function LegalDashboardPage() {
               </div>
             ) : renewalAlerts.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nenhum contrato exige acao de renovacao no momento.
+                Nenhum contrato exige ação de renovação no momento.
               </p>
             ) : (
               <div className="space-y-2">
@@ -238,7 +238,7 @@ export default function LegalDashboardPage() {
             <div className="flex items-center gap-2">
               <Gavel className="h-4 w-4 text-muted-foreground" />
               <CardTitle className="text-base">
-                Demandas Juridicas Abertas
+                Demandas Jurídicas Abertas
               </CardTitle>
             </div>
           </CardHeader>

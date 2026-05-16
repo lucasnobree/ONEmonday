@@ -117,6 +117,12 @@ describe("renewalOutcomeLabel", () => {
   it("describes each renewal type", () => {
     expect(renewalOutcomeLabel("auto")).toMatch(/automaticamente/i);
     expect(renewalOutcomeLabel("optional")).toMatch(/opcional/i);
-    expect(renewalOutcomeLabel("none")).toMatch(/nao renova/i);
+    expect(renewalOutcomeLabel("none")).toBe("Não renova");
+  });
+
+  it("renders pt-BR labels with the correct diacritics", () => {
+    // Regression: accents were previously stripped from these labels.
+    expect(renewalOutcomeLabel("optional")).toBe("Renovação opcional");
+    expect(renewalOutcomeLabel("none")).toBe("Não renova");
   });
 });
