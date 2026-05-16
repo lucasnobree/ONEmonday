@@ -6,6 +6,10 @@ import { requestTimeOff } from "@/lib/actions/hr/time-off";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useEmployees, type Employee } from "@/hooks/hr/use-employees";
 import {
+  useTimeOffPolicies,
+  type TimeOffPolicy,
+} from "@/hooks/hr/use-time-off-policies";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -39,9 +43,11 @@ function calcDays(start: string, end: string): number {
 export function TimeOffRequestDialog() {
   const { currentSector } = useCurrentSector();
   const { data: employees } = useEmployees(currentSector?.id);
+  const { data: policies } = useTimeOffPolicies(currentSector?.id);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
+  const [policyId, setPolicyId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
@@ -60,11 +66,11 @@ export function TimeOffRequestDialog() {
         toast.error(
           typeof result.error === "string"
             ? result.error
-            : "Erro ao criar solicitacao"
+            : "Erro ao criar solicitação"
         );
         return;
       }
-      toast.success("Solicitacao criada com sucesso");
+      toast.success("Solicitação criada com sucesso");
       queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
       queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
       resetForm();
@@ -74,6 +80,7 @@ export function TimeOffRequestDialog() {
 
   function resetForm() {
     setEmployeeId("");
+    setPolicyId("");
     setStartDate("");
     setEndDate("");
     setReason("");
@@ -86,7 +93,7 @@ export function TimeOffRequestDialog() {
     mutation.mutate({
       employeeId,
       sectorId: currentSector.id,
-      policyId: employeeId,
+      policyId,
       startDate,
       endDate,
       daysCount,
@@ -98,14 +105,14 @@ export function TimeOffRequestDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button size="sm" />}>
         <Plus className="h-4 w-4 mr-1" />
-        Nova Solicitacao
+        Nova Solicitação
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Nova Solicitacao de Ferias</DialogTitle>
+            <DialogTitle>Nova Solicitação de Férias</DialogTitle>
             <DialogDescription>
-              Registre uma solicitacao de ferias ou ausencia
+              Registre uma solicitação de férias ou ausência
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -124,9 +131,29 @@ export function TimeOffRequestDialog() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-2">
+              <Label>Política</Label>
+              <Select value={policyId} onValueChange={(v) => setPolicyId(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione a política" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(policies ?? []).map((policy: TimeOffPolicy) => (
+                    <SelectItem key={policy.id} value={policy.id}>
+                      {policy.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {policies && policies.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Nenhuma política de férias cadastrada para este setor.
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="startDate">Data de inicio</Label>
+                <Label htmlFor="startDate">Data de início</Label>
                 <Input
                   id="startDate"
                   type="date"
@@ -157,13 +184,16 @@ export function TimeOffRequestDialog() {
                 id="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Motivo da solicitacao (opcional)"
+                placeholder="Motivo da solicitação (opcional)"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={mutation.isPending || !employeeId}>
-              {mutation.isPending ? "Enviando..." : "Enviar Solicitacao"}
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !employeeId || !policyId}
+            >
+              {mutation.isPending ? "Enviando..." : "Enviar Solicitação"}
             </Button>
           </DialogFooter>
         </form>
