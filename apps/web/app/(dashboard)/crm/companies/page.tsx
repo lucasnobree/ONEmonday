@@ -21,7 +21,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 const sizeLabels: Record<string, string> = {
   micro: "Micro",
   small: "Pequena",
-  medium: "Media",
+  medium: "Média",
   large: "Grande",
   enterprise: "Enterprise",
 };
@@ -94,8 +94,8 @@ export default function CompaniesPage() {
                 `empresas-${new Date().toISOString().split("T")[0]}`,
                 [
                   { key: "nome", label: "Nome" },
-                  { key: "dominio", label: "Dominio" },
-                  { key: "industria", label: "Industria" },
+                  { key: "dominio", label: "Domínio" },
+                  { key: "industria", label: "Indústria" },
                   { key: "cidade", label: "Cidade" },
                   { key: "telefone", label: "Telefone" },
                 ]
@@ -117,7 +117,7 @@ export default function CompaniesPage() {
         <EmptyState
           icon={Building2}
           title="Nenhuma empresa cadastrada"
-          description="Adicione sua primeira empresa para comecar a organizar seus clientes."
+          description="Adicione sua primeira empresa para começar a organizar seus clientes."
           action={
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-1" />

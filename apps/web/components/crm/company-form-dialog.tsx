@@ -133,7 +133,7 @@ export function CompanyFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="company-domain">Dominio</Label>
+                <Label htmlFor="company-domain">Domínio</Label>
                 <Input
                   id="company-domain"
                   value={domain}
@@ -151,7 +151,7 @@ export function CompanyFormDialog({
                   <SelectContent>
                     <SelectItem value="micro">Micro</SelectItem>
                     <SelectItem value="small">Pequena</SelectItem>
-                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="medium">Média</SelectItem>
                     <SelectItem value="large">Grande</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
@@ -160,7 +160,7 @@ export function CompanyFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="company-industry">Setor/Industria</Label>
+              <Label htmlFor="company-industry">Setor/Indústria</Label>
               <Input
                 id="company-industry"
                 value={industry}
@@ -199,7 +199,7 @@ export function CompanyFormDialog({
                   id="company-city"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Sao Paulo"
+                  placeholder="São Paulo"
                 />
               </div>
 
@@ -216,7 +216,7 @@ export function CompanyFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="company-notes">Observacoes</Label>
+              <Label htmlFor="company-notes">Observações</Label>
               <Textarea
                 id="company-notes"
                 value={notes}

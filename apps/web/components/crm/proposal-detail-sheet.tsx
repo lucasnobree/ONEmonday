@@ -7,6 +7,7 @@ import {
   useDeleteProposal,
 } from "@/hooks/crm/use-proposals";
 import { ProposalFormDialog } from "./proposal-form-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -102,7 +103,7 @@ export function ProposalDetailSheet({
       );
       return;
     }
-    toast.success("Proposta excluida");
+    toast.success("Proposta excluída");
     onOpenChange(false);
   };
 
@@ -123,7 +124,7 @@ export function ProposalDetailSheet({
             </div>
           ) : !proposal ? (
             <div className="p-4 text-muted-foreground">
-              Proposta nao encontrada.
+              Proposta não encontrada.
             </div>
           ) : (
             <>
@@ -151,7 +152,7 @@ export function ProposalDetailSheet({
 
                 {proposal.content && (
                   <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Descricao</p>
+                    <p className="text-xs text-muted-foreground">Descrição</p>
                     <p className="text-sm whitespace-pre-wrap">
                       {proposal.content}
                     </p>
@@ -197,13 +198,13 @@ export function ProposalDetailSheet({
                         <thead>
                           <tr className="bg-muted text-muted-foreground text-xs">
                             <th className="py-2 px-3 text-left font-medium">
-                              Descricao
+                              Descrição
                             </th>
                             <th className="py-2 px-3 text-right font-medium">
                               Qtd
                             </th>
                             <th className="py-2 px-3 text-right font-medium">
-                              Preco Unit.
+                              Preço Unit.
                             </th>
                             <th className="py-2 px-3 text-right font-medium">
                               Total
@@ -269,15 +270,20 @@ export function ProposalDetailSheet({
                         <Pencil className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleDelete}
-                        disabled={deleteProposal.isPending}
+                      <ConfirmDialog
+                        title="Excluir proposta?"
+                        description={`A proposta "${proposal.title}" será removida. Esta ação não pode ser desfeita.`}
+                        onConfirm={handleDelete}
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Excluir
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={deleteProposal.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
+                      </ConfirmDialog>
                     </>
                   )}
                   {(proposal.status === "sent" ||

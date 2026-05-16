@@ -20,7 +20,7 @@ export function PipelineFunnel({ stages }: PipelineFunnelProps) {
   if (!stages.length) {
     return (
       <p className="text-sm text-muted-foreground py-4 text-center">
-        Nenhum dado de pipeline disponivel.
+        Nenhum dado de pipeline disponível.
       </p>
     );
   }

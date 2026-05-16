@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useDeals } from "@/hooks/crm/use-deals";
 import { useCRMStats } from "@/hooks/crm/use-crm-stats";
+import { buildFunnelStages } from "@/lib/crm/pipeline-stages";
 import { PipelineFunnel } from "@/components/crm/pipeline-funnel";
 import {
   Card,
@@ -43,23 +44,10 @@ export default function CRMDashboardPage() {
   const { data: deals, isLoading: dealsLoading } = useDeals(currentSector?.id);
   const { data: stats, isLoading: statsLoading } = useCRMStats(currentSector?.id);
 
-  const pipelineStages = useMemo(() => {
-    if (!deals) return [];
-    const openDeals = deals.filter((d) => !d.actual_close_date);
-    const stageMap = new Map<string, { count: number; value: number }>();
-    for (const deal of openDeals) {
-      const stage = deal.card?.board_columns?.name ?? "Sem estagio";
-      const existing = stageMap.get(stage) ?? { count: 0, value: 0 };
-      existing.count += 1;
-      existing.value += Number(deal.value) || 0;
-      stageMap.set(stage, existing);
-    }
-    return Array.from(stageMap.entries()).map(([stage, data]) => ({
-      stage,
-      count: data.count,
-      value: data.value,
-    }));
-  }, [deals]);
+  const pipelineStages = useMemo(
+    () => buildFunnelStages(deals ?? []),
+    [deals]
+  );
 
   // Weighted pipeline forecast: sum of (value x win_probability) across
   // open deals. Best-practice forecasting signal alongside raw pipeline value.
@@ -84,7 +72,7 @@ export default function CRMDashboardPage() {
     for (const deal of wonDeals) {
       const creatorId = deal.card?.created_by;
       if (!creatorId) continue;
-      const name = deal.card?.users?.full_name ?? "Usuario";
+      const name = deal.card?.users?.full_name ?? "Usuário";
       const existing = performerMap.get(creatorId) ?? { name, total: 0 };
       existing.total += Number(deal.value) || 0;
       performerMap.set(creatorId, existing);
@@ -157,7 +145,7 @@ export default function CRMDashboardPage() {
       icon: TrendingUp,
     },
     {
-      title: "Previsao Ponderada",
+      title: "Previsão Ponderada",
       value: formatCurrency(weightedPipeline),
       icon: Target,
       hint: "Soma de valor x probabilidade dos deals abertos",
@@ -203,7 +191,7 @@ export default function CRMDashboardPage() {
           <CardHeader>
             <CardTitle className="text-base">Funil de Pipeline</CardTitle>
             <CardDescription>
-              Distribuicao de deals por estagio
+              Distribuição de deals por estágio
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -215,16 +203,16 @@ export default function CRMDashboardPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">Fechamento Proximo</CardTitle>
+              <CardTitle className="text-base">Fechamento Próximo</CardTitle>
             </div>
             <CardDescription>
-              Deals com fechamento nos proximos 7 dias
+              Deals com fechamento nos próximos 7 dias
             </CardDescription>
           </CardHeader>
           <CardContent>
             {closingSoon.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                Nenhum deal com fechamento proximo.
+                Nenhum deal com fechamento próximo.
               </p>
             ) : (
               <div className="space-y-3">
@@ -251,7 +239,7 @@ export default function CRMDashboardPage() {
                         {deal.daysLeft === 0
                           ? "Hoje"
                           : deal.daysLeft === 1
-                            ? "Amanha"
+                            ? "Amanhã"
                             : `${deal.daysLeft}d`}
                       </Badge>
                     </div>
@@ -305,7 +293,7 @@ export default function CRMDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Deals Recentes</CardTitle>
-          <CardDescription>Ultimos deals criados no pipeline</CardDescription>
+          <CardDescription>Últimos deals criados no pipeline</CardDescription>
         </CardHeader>
         <CardContent>
           {recentDeals.length === 0 ? (
@@ -317,11 +305,11 @@ export default function CRMDashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Titulo</th>
+                    <th className="pb-2 font-medium">Título</th>
                     <th className="pb-2 font-medium">Empresa</th>
                     <th className="pb-2 font-medium">Valor</th>
                     <th className="pb-2 font-medium">Probabilidade</th>
-                    <th className="pb-2 font-medium">Estagio</th>
+                    <th className="pb-2 font-medium">Estágio</th>
                   </tr>
                 </thead>
                 <tbody>

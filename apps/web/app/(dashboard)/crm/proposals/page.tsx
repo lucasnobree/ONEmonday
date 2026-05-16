@@ -27,6 +27,16 @@ const formatCurrency = (value: number) =>
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "draft", label: "Rascunho" },
+  { value: "sent", label: "Enviada" },
+  { value: "viewed", label: "Visualizada" },
+  { value: "accepted", label: "Aceita" },
+  { value: "rejected", label: "Rejeitada" },
+  { value: "expired", label: "Expirada" },
+] as const;
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: {
     label: "Rascunho",
@@ -112,16 +122,20 @@ export default function ProposalsPage() {
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v ?? "all")}
           >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status">
+                {(value: string) =>
+                  STATUS_FILTER_OPTIONS.find((o) => o.value === value)?.label ??
+                  "Status"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="draft">Rascunho</SelectItem>
-              <SelectItem value="sent">Enviada</SelectItem>
-              <SelectItem value="viewed">Visualizada</SelectItem>
-              <SelectItem value="accepted">Aceita</SelectItem>
-              <SelectItem value="rejected">Rejeitada</SelectItem>
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -142,7 +156,7 @@ export default function ProposalsPage() {
                 })),
                 `propostas-${new Date().toISOString().split("T")[0]}`,
                 [
-                  { key: "titulo", label: "Titulo" },
+                  { key: "titulo", label: "Título" },
                   { key: "deal", label: "Deal" },
                   { key: "valor", label: "Valor" },
                   { key: "status", label: "Status" },
@@ -183,7 +197,7 @@ export default function ProposalsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted text-left text-muted-foreground">
-                <th className="py-3 px-4 font-medium">Titulo</th>
+                <th className="py-3 px-4 font-medium">Título</th>
                 <th className="py-3 px-4 font-medium">Deal</th>
                 <th className="py-3 px-4 font-medium text-right">Valor</th>
                 <th className="py-3 px-4 font-medium">Expira em</th>

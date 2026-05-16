@@ -32,6 +32,7 @@ export interface Deal {
       id: string;
       name: string;
       color: string;
+      position: number;
       is_done_column: boolean;
     };
     users: { id: string; full_name: string } | null;
@@ -64,7 +65,7 @@ export function useDeals(sectorId: string | undefined) {
           cards!inner (
             id, title, description, priority, column_id, board_id, is_active,
             created_by,
-            board_columns!inner (id, name, color, is_done_column),
+            board_columns!inner (id, name, color, position, is_done_column),
             users (id, full_name)
           ),
           crm_companies (id, name),

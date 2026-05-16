@@ -110,7 +110,7 @@ export default function ContactsPage() {
         <EmptyState
           icon={UserRound}
           title="Nenhum contato cadastrado"
-          description="Adicione seu primeiro contato para comecar a gerenciar seu relacionamento com clientes."
+          description="Adicione seu primeiro contato para começar a gerenciar seu relacionamento com clientes."
           action={
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-1" />
