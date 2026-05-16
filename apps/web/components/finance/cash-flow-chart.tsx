@@ -22,10 +22,17 @@ interface CashFlowChartProps {
  * are converted to major units only for axis ticks / tooltip display.
  */
 export function CashFlowChart({ data }: CashFlowChartProps) {
-  if (data.length === 0) {
+  // The RPC always returns 6 points (one per month), so `data.length` is
+  // never 0 in practice — an all-zero series must also be treated as empty,
+  // otherwise the chart renders a bare axis that looks broken.
+  const hasMovement = data.some(
+    (p) => p.income_cents !== 0 || p.expense_cents !== 0
+  );
+
+  if (data.length === 0 || !hasMovement) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        Sem dados de fluxo de caixa.
+        Sem movimentação registrada nos últimos 6 meses.
       </p>
     );
   }

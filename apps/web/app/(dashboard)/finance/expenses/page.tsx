@@ -14,6 +14,7 @@ import {
   EXPENSE_STATUS_VARIANTS,
 } from "@/components/finance/labels";
 import { formatCents } from "@/lib/finance/money";
+import { formatDateOnly } from "@/lib/finance/dates";
 import { exportToCSV } from "@/lib/utils/export-csv";
 import { EXPENSE_CATEGORIES } from "@/lib/validations/finance";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,7 +68,7 @@ export default function ExpensesPage() {
       );
       return;
     }
-    toast.success("Despesa excluida");
+    toast.success("Despesa excluída");
   };
 
   return (
@@ -167,7 +168,7 @@ export default function ExpensesPage() {
                     <th className="p-3 font-medium">Valor</th>
                     <th className="p-3 font-medium">Data</th>
                     <th className="p-3 font-medium">Status</th>
-                    <th className="p-3 font-medium text-right">Acoes</th>
+                    <th className="p-3 font-medium text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -181,7 +182,7 @@ export default function ExpensesPage() {
                         {formatCents(exp.amount_cents, exp.currency)}
                       </td>
                       <td className="p-3 text-muted-foreground">
-                        {new Date(exp.expense_date).toLocaleDateString("pt-BR")}
+                        {formatDateOnly(exp.expense_date)}
                       </td>
                       <td className="p-3">
                         <Badge variant={EXPENSE_STATUS_VARIANTS[exp.status]}>

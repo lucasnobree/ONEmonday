@@ -13,6 +13,8 @@ import {
   INVOICE_STATUS_VARIANTS,
 } from "@/components/finance/labels";
 import { formatCents } from "@/lib/finance/money";
+import { formatDateOnly } from "@/lib/finance/dates";
+import { effectiveInvoiceStatus } from "@/lib/finance/invoice-status";
 import { exportToCSV } from "@/lib/utils/export-csv";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,11 +42,19 @@ export default function InvoicesPage() {
   const [editing, setEditing] = useState<Invoice | undefined>();
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all");
 
+  // Each row carries an `effectiveStatus`: a `sent` invoice past its due date
+  // is shown (and filtered) as `overdue` even though the stored status lags.
+  const rows = useMemo(() => {
+    return (invoices ?? []).map((invoice) => ({
+      invoice,
+      effectiveStatus: effectiveInvoiceStatus(invoice),
+    }));
+  }, [invoices]);
+
   const filtered = useMemo(() => {
-    if (!invoices) return [];
-    if (statusFilter === "all") return invoices;
-    return invoices.filter((i) => i.status === statusFilter);
-  }, [invoices, statusFilter]);
+    if (statusFilter === "all") return rows;
+    return rows.filter((r) => r.effectiveStatus === statusFilter);
+  }, [rows, statusFilter]);
 
   if (!currentSector) {
     return (
@@ -72,7 +82,7 @@ export default function InvoicesPage() {
       );
       return;
     }
-    toast.success("Fatura excluida");
+    toast.success("Fatura excluída");
   };
 
   return (
@@ -86,21 +96,21 @@ export default function InvoicesPage() {
             disabled={!filtered.length}
             onClick={() =>
               exportToCSV(
-                filtered.map((i) => ({
+                filtered.map(({ invoice: i, effectiveStatus }) => ({
                   numero: i.number,
                   cliente: i.customer_name,
                   valor: formatCents(i.amount_cents, i.currency),
-                  status: INVOICE_STATUS_LABELS[i.status],
+                  status: INVOICE_STATUS_LABELS[effectiveStatus],
                   emissao: i.issue_date,
                   vencimento: i.due_date,
                 })),
                 `faturas-${new Date().toISOString().split("T")[0]}`,
                 [
-                  { key: "numero", label: "Numero" },
+                  { key: "numero", label: "Número" },
                   { key: "cliente", label: "Cliente" },
                   { key: "valor", label: "Valor" },
                   { key: "status", label: "Status" },
-                  { key: "emissao", label: "Emissao" },
+                  { key: "emissao", label: "Emissão" },
                   { key: "vencimento", label: "Vencimento" },
                 ]
               )
@@ -158,16 +168,16 @@ export default function InvoicesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="p-3 font-medium">Numero</th>
+                    <th className="p-3 font-medium">Número</th>
                     <th className="p-3 font-medium">Cliente</th>
                     <th className="p-3 font-medium">Valor</th>
                     <th className="p-3 font-medium">Vencimento</th>
                     <th className="p-3 font-medium">Status</th>
-                    <th className="p-3 font-medium text-right">Acoes</th>
+                    <th className="p-3 font-medium text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((inv) => (
+                  {filtered.map(({ invoice: inv, effectiveStatus }) => (
                     <tr key={inv.id} className="border-b last:border-0">
                       <td className="p-3 font-medium">{inv.number}</td>
                       <td className="p-3 text-muted-foreground">
@@ -177,11 +187,13 @@ export default function InvoicesPage() {
                         {formatCents(inv.amount_cents, inv.currency)}
                       </td>
                       <td className="p-3 text-muted-foreground">
-                        {new Date(inv.due_date).toLocaleDateString("pt-BR")}
+                        {formatDateOnly(inv.due_date)}
                       </td>
                       <td className="p-3">
-                        <Badge variant={INVOICE_STATUS_VARIANTS[inv.status]}>
-                          {INVOICE_STATUS_LABELS[inv.status]}
+                        <Badge
+                          variant={INVOICE_STATUS_VARIANTS[effectiveStatus]}
+                        >
+                          {INVOICE_STATUS_LABELS[effectiveStatus]}
                         </Badge>
                       </td>
                       <td className="p-3">
