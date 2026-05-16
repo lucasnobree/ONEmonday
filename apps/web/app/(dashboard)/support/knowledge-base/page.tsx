@@ -12,6 +12,7 @@ import type {
   KBArticle,
 } from "@/hooks/support/use-kb-articles";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { KBArticleSheet } from "@/components/support/kb-article-sheet";
 import {
   KBArticleFormSheet,
@@ -110,7 +111,7 @@ export default function KnowledgeBasePage() {
       );
       return;
     }
-    toast.success("Artigo excluido");
+    toast.success("Artigo excluído");
   }
 
   async function handleTogglePublish(id: string) {
@@ -119,7 +120,7 @@ export default function KnowledgeBasePage() {
       toast.error(
         typeof result.error === "string"
           ? result.error
-          : "Erro ao alterar publicacao"
+          : "Erro ao alterar publicação"
       );
       return;
     }
@@ -134,14 +135,14 @@ export default function KnowledgeBasePage() {
       action="read"
       fallback={
         <p className="text-muted-foreground">
-          Voce nao tem permissao para acessar a Base de Conhecimento deste
+          Você não tem permissão para acessar a Base de Conhecimento deste
           setor.
         </p>
       }
     >
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-0.75 text-muted-foreground">
             {filterTabs.map((tab) => (
               <button
                 key={tab.value}
@@ -259,17 +260,23 @@ export default function KnowledgeBasePage() {
                         <Eye className="size-4" />
                       )}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(article.id);
-                      }}
-                      title="Excluir"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {/* span stops the click bubbling to the card's
+                        open-detail handler */}
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <ConfirmDialog
+                        title="Excluir artigo"
+                        description={`O artigo "${article.title}" será removido permanentemente. Esta ação não pode ser desfeita.`}
+                        onConfirm={() => handleDelete(article.id)}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          title="Excluir"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </ConfirmDialog>
+                    </span>
                   </div>
                 </CardContent>
               </Card>
