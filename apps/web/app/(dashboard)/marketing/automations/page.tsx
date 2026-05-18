@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Workflow, Play, ListOrdered, UserPlus } from "lucide-react";
+import { Plus, Workflow, Play, ListOrdered, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import {
@@ -13,6 +13,7 @@ import {
 import { SequenceFormDialog } from "@/components/marketing/sequence-form-dialog";
 import { SequenceStepsDialog } from "@/components/marketing/sequence-steps-dialog";
 import { SequenceEnrollDialog } from "@/components/marketing/sequence-enroll-dialog";
+import { SequenceEnrollmentsDialog } from "@/components/marketing/sequence-enrollments-dialog";
 import { MarketingError } from "@/components/marketing/marketing-error";
 import {
   SEQUENCE_STATUS_LABELS,
@@ -39,6 +40,7 @@ export default function MarketingAutomationsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [enrollmentsOpen, setEnrollmentsOpen] = useState(false);
   const [editing, setEditing] = useState<Sequence>();
   const [active, setActive] = useState<Sequence>();
 
@@ -154,6 +156,17 @@ export default function MarketingAutomationsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
+                      setActive(s);
+                      setEnrollmentsOpen(true);
+                    }}
+                  >
+                    <Users className="mr-1 h-3.5 w-3.5" />
+                    Inscrições
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
                       setEditing(s);
                       setFormOpen(true);
                     }}
@@ -203,6 +216,11 @@ export default function MarketingAutomationsPage() {
       <SequenceEnrollDialog
         open={enrollOpen}
         onOpenChange={setEnrollOpen}
+        sequence={active}
+      />
+      <SequenceEnrollmentsDialog
+        open={enrollmentsOpen}
+        onOpenChange={setEnrollmentsOpen}
         sequence={active}
       />
     </div>

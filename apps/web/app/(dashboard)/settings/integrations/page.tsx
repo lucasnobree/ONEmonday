@@ -32,6 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import {
+  ROUTABLE_EVENT_TYPES,
+  ROUTABLE_CHANNELS,
+  eventLabel,
+  channelLabel,
+} from "@/lib/integrations/labels";
 import { toast } from "sonner";
 import { Loader2, Plug, Trash2 } from "lucide-react";
 
@@ -42,15 +49,9 @@ const PROVIDERS = [
 ] as const;
 
 /** Notification event types that can route to an outbound channel. */
-const EVENT_TYPES = [
-  "card_assigned",
-  "card_comment",
-  "card_escalated",
-  "card_due_soon",
-  "card_overdue",
-] as const;
+const EVENT_TYPES = ROUTABLE_EVENT_TYPES;
 
-const CHANNELS = ["teams", "whatsapp"] as const;
+const CHANNELS = ROUTABLE_CHANNELS;
 
 interface Credential {
   id: string;
@@ -294,14 +295,22 @@ export default function IntegrationsSettingsPage() {
                         <Badge variant="outline">Desativado</Badge>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteCredential(c.id)}
-                      aria-label={`Remover ${c.provider}`}
+                    <ConfirmDialog
+                      title="Remover credencial"
+                      description={`Remover a credencial de ${
+                        PROVIDERS.find((p) => p.slug === c.provider)?.label ??
+                        c.provider
+                      }? Os alertas roteados para este canal deixarão de funcionar.`}
+                      onConfirm={() => handleDeleteCredential(c.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Remover ${c.provider}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ConfirmDialog>
                   </div>
                 ))}
               </div>
@@ -406,23 +415,36 @@ export default function IntegrationsSettingsPage() {
                     key={r.id}
                     className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-4 py-3"
                   >
-                    <span className="text-sm">{r.event_type}</span>
+                    <span className="text-sm">
+                      {eventLabel(r.event_type)}
+                    </span>
                     <span className="text-sm text-muted-foreground">
-                      {r.channel}
+                      {channelLabel(r.channel)}
                     </span>
                     <Switch
                       checked={r.is_enabled}
-                      aria-label={`${r.event_type} para ${r.channel}`}
+                      aria-label={`${eventLabel(r.event_type)} para ${channelLabel(
+                        r.channel
+                      )}`}
                       onCheckedChange={(v) => handleToggleRoute(r, v)}
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteRoute(r.id)}
-                      aria-label={`Remover rota ${r.event_type}`}
+                    <ConfirmDialog
+                      title="Remover rota"
+                      description={`Remover a rota "${eventLabel(
+                        r.event_type
+                      )} → ${channelLabel(
+                        r.channel
+                      )}"? Este evento deixará de ser enviado para o canal.`}
+                      onConfirm={() => handleDeleteRoute(r.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Remover rota ${eventLabel(r.event_type)}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ConfirmDialog>
                   </div>
                 ))}
               </div>
@@ -441,7 +463,7 @@ export default function IntegrationsSettingsPage() {
                   <SelectContent>
                     {EVENT_TYPES.map((e) => (
                       <SelectItem key={e} value={e}>
-                        {e}
+                        {eventLabel(e)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -459,7 +481,7 @@ export default function IntegrationsSettingsPage() {
                   <SelectContent>
                     {CHANNELS.map((c) => (
                       <SelectItem key={c} value={c}>
-                        {c}
+                        {channelLabel(c)}
                       </SelectItem>
                     ))}
                   </SelectContent>

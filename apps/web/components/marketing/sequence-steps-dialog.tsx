@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import {
   useSequenceSteps,
   useSaveSequenceSteps,
   type Sequence,
 } from "@/hooks/marketing/use-sequences";
 import { useEmailCampaigns } from "@/hooks/marketing/use-email-campaigns";
+import { moveItemUp, moveItemDown } from "@/lib/marketing/step-reorder";
 import type { SequenceStepType } from "@/lib/validations/marketing";
 import {
   Dialog,
@@ -83,6 +84,14 @@ export function SequenceStepsDialog({
 
   const removeStep = (index: number) => {
     setDraft((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveStepUp = (index: number) => {
+    setDraft((prev) => moveItemUp(prev, index));
+  };
+
+  const moveStepDown = (index: number) => {
+    setDraft((prev) => moveItemDown(prev, index));
   };
 
   const handleSave = async () => {
@@ -210,15 +219,38 @@ export function SequenceStepsDialog({
                   </div>
                 )}
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500"
-                  onClick={() => removeStep(index)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Mover passo ${index + 1} para cima`}
+                    disabled={index === 0}
+                    onClick={() => moveStepUp(index)}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Mover passo ${index + 1} para baixo`}
+                    disabled={index === draft.length - 1}
+                    onClick={() => moveStepDown(index)}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500"
+                    aria-label={`Remover passo ${index + 1}`}
+                    onClick={() => removeStep(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))
           )}

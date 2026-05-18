@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { usePermissions } from "@/hooks/use-permissions";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { updateNotificationPreferences } from "@/lib/actions/settings";
 import {
@@ -18,7 +15,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Channel = "in_app" | "email" | "both" | "none";
@@ -57,8 +53,6 @@ const DEFAULT_PREFS: NotificationPref[] = NOTIFICATION_TYPES.map((nt) => ({
 
 export default function SettingsPage() {
   const { currentSector } = useCurrentSector();
-  const { isGlobalAdmin } = usePermissions();
-  const pathname = usePathname();
   const [prefs, setPrefs] = useState<NotificationPref[]>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
 
@@ -154,55 +148,6 @@ export default function SettingsPage() {
     >
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Configurações</h1>
-
-        {isGlobalAdmin && (
-          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
-            <Link
-              href="/settings"
-              className={cn(
-                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-                pathname === "/settings"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              Geral
-            </Link>
-            <Link
-              href="/settings/profile"
-              className={cn(
-                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-                pathname === "/settings/profile"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              Perfil
-            </Link>
-            <Link
-              href="/settings/admin"
-              className={cn(
-                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-                pathname === "/settings/admin"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              Administração
-            </Link>
-            <Link
-              href="/settings/integrations"
-              className={cn(
-                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-                pathname === "/settings/integrations"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              Integrações
-            </Link>
-          </div>
-        )}
 
         <Card>
           <CardHeader>
