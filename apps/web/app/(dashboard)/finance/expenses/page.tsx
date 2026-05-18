@@ -6,24 +6,33 @@ import {
   useExpenses,
   useDeleteExpense,
 } from "@/hooks/finance/use-expenses";
-import type { Expense, ExpenseCategory } from "@/hooks/finance/use-expenses";
+import type {
+  Expense,
+  ExpenseCategory,
+  ExpenseStatus,
+} from "@/hooks/finance/use-expenses";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
+import { ExpenseReceiptsDialog } from "@/components/finance/expense-receipts-dialog";
+import { ExpenseApprovalMenu } from "@/components/finance/expense-approval-menu";
 import {
   CATEGORY_LABELS,
   EXPENSE_STATUS_LABELS,
   EXPENSE_STATUS_VARIANTS,
 } from "@/components/finance/labels";
-import { formatCents } from "@/lib/finance/money";
+import { formatCents, sumCents } from "@/lib/finance/money";
 import { formatDateOnly } from "@/lib/finance/dates";
 import { exportToCSV } from "@/lib/utils/export-csv";
-import { EXPENSE_CATEGORIES } from "@/lib/validations/finance";
+import {
+  EXPENSE_CATEGORIES,
+  EXPENSE_STATUSES,
+} from "@/lib/validations/finance";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
-import { Plus, Download, Pencil, Trash2, CreditCard } from "lucide-react";
+import { Plus, Download, Pencil, Trash2, CreditCard, Paperclip } from "lucide-react";
 
 export default function ExpensesPage() {
   const { currentSector } = useCurrentSector();
@@ -32,15 +41,28 @@ export default function ExpensesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | undefined>();
+  const [receiptsOpen, setReceiptsOpen] = useState(false);
+  const [receiptsExpense, setReceiptsExpense] = useState<Expense | undefined>();
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "all">(
     "all"
   );
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "all">("all");
 
+  // Category and status filters combine (audit item E5).
   const filtered = useMemo(() => {
     if (!expenses) return [];
-    if (categoryFilter === "all") return expenses;
-    return expenses.filter((e) => e.category === categoryFilter);
-  }, [expenses, categoryFilter]);
+    return expenses.filter(
+      (e) =>
+        (categoryFilter === "all" || e.category === categoryFilter) &&
+        (statusFilter === "all" || e.status === statusFilter)
+    );
+  }, [expenses, categoryFilter, statusFilter]);
+
+  // Filtered-set total (audit item E6).
+  const filteredTotal = useMemo(
+    () => sumCents(filtered.map((e) => e.amount_cents)),
+    [filtered]
+  );
 
   if (!currentSector) {
     return (
@@ -58,6 +80,11 @@ export default function ExpensesPage() {
   const openEdit = (expense: Expense) => {
     setEditing(expense);
     setDialogOpen(true);
+  };
+
+  const openReceipts = (expense: Expense) => {
+    setReceiptsExpense(expense);
+    setReceiptsOpen(true);
   };
 
   const handleDelete = async (expense: Expense) => {
@@ -110,32 +137,78 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <div className="inline-flex h-8 flex-wrap items-center rounded-lg bg-muted p-[3px] text-muted-foreground">
-        <button
-          type="button"
-          onClick={() => setCategoryFilter("all")}
-          className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
-            categoryFilter === "all"
-              ? "bg-background text-foreground shadow-sm"
-              : "hover:text-foreground"
-          }`}
+      <div className="flex flex-col gap-2">
+        <div
+          role="tablist"
+          aria-label="Filtrar despesas por categoria"
+          className="inline-flex h-8 flex-wrap items-center rounded-lg bg-muted p-0.75 text-muted-foreground"
         >
-          Todas
-        </button>
-        {EXPENSE_CATEGORIES.map((c) => (
           <button
-            key={c}
             type="button"
-            onClick={() => setCategoryFilter(c)}
+            role="tab"
+            aria-selected={categoryFilter === "all"}
+            onClick={() => setCategoryFilter("all")}
             className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
-              categoryFilter === c
+              categoryFilter === "all"
                 ? "bg-background text-foreground shadow-sm"
                 : "hover:text-foreground"
             }`}
           >
-            {CATEGORY_LABELS[c]}
+            Todas
           </button>
-        ))}
+          {EXPENSE_CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="tab"
+              aria-selected={categoryFilter === c}
+              onClick={() => setCategoryFilter(c)}
+              className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                categoryFilter === c
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              }`}
+            >
+              {CATEGORY_LABELS[c]}
+            </button>
+          ))}
+        </div>
+
+        <div
+          role="tablist"
+          aria-label="Filtrar despesas por status"
+          className="inline-flex h-8 flex-wrap items-center rounded-lg bg-muted p-0.75 text-muted-foreground"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === "all"}
+            onClick={() => setStatusFilter("all")}
+            className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
+              statusFilter === "all"
+                ? "bg-background text-foreground shadow-sm"
+                : "hover:text-foreground"
+            }`}
+          >
+            Todos
+          </button>
+          {EXPENSE_STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === s}
+              onClick={() => setStatusFilter(s)}
+              className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                statusFilter === s
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              }`}
+            >
+              {EXPENSE_STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
@@ -188,9 +261,26 @@ export default function ExpensesPage() {
                         <Badge variant={EXPENSE_STATUS_VARIANTS[exp.status]}>
                           {EXPENSE_STATUS_LABELS[exp.status]}
                         </Badge>
+                        {exp.status === "rejected" && exp.rejection_reason && (
+                          <p
+                            className="mt-1 max-w-[16rem] truncate text-xs text-muted-foreground"
+                            title={exp.rejection_reason}
+                          >
+                            {exp.rejection_reason}
+                          </p>
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-1">
+                          <ExpenseApprovalMenu expense={exp} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Comprovantes"
+                            onClick={() => openReceipts(exp)}
+                          >
+                            <Paperclip className="size-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -217,6 +307,17 @@ export default function ExpensesPage() {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t font-medium">
+                    <td className="p-3" colSpan={2}>
+                      {filtered.length}{" "}
+                      {filtered.length === 1 ? "despesa" : "despesas"}
+                    </td>
+                    <td className="p-3" colSpan={4}>
+                      Total: {formatCents(filteredTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </CardContent>
@@ -228,6 +329,12 @@ export default function ExpensesPage() {
         onOpenChange={setDialogOpen}
         sectorId={currentSector.id}
         expense={editing}
+      />
+
+      <ExpenseReceiptsDialog
+        open={receiptsOpen}
+        onOpenChange={setReceiptsOpen}
+        expense={receiptsExpense}
       />
     </div>
   );

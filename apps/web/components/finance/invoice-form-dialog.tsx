@@ -6,6 +6,7 @@ import {
   useUpdateInvoice,
 } from "@/hooks/finance/use-invoices";
 import type { Invoice, InvoiceStatus } from "@/hooks/finance/use-invoices";
+import { useInvoiceLineItems } from "@/hooks/finance/use-invoice-line-items";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +28,15 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { MoneyInput } from "./money-input";
+import {
+  InvoiceLineItemsEditor,
+  type EditableLine,
+} from "./invoice-line-items-editor";
 import { INVOICE_STATUS_LABELS } from "./labels";
 import { INVOICE_STATUSES } from "@/lib/validations/finance";
 import { todayDateOnly } from "@/lib/finance/dates";
+import { invoiceTotalCents } from "@/lib/finance/line-items";
+import { formatCents } from "@/lib/finance/money";
 
 const today = () => todayDateOnly();
 
@@ -49,6 +56,10 @@ export function InvoiceFormDialog({
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const isEdit = !!invoice;
+  // Existing line items of the invoice being edited (empty for a new invoice).
+  const { data: existingLines } = useInvoiceLineItems(
+    open ? invoice?.id : undefined
+  );
 
   const [number, setNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -57,9 +68,14 @@ export function InvoiceFormDialog({
   const [status, setStatus] = useState<InvoiceStatus>("draft");
   const [issueDate, setIssueDate] = useState(today());
   const [dueDate, setDueDate] = useState(today());
+  // When true the amount is derived from line items; the amount field hides.
+  const [itemized, setItemized] = useState(false);
+  const [lines, setLines] = useState<EditableLine[]>([]);
 
   // Re-seed the form when the dialog (re)opens — state adjusted during render.
-  const formKey = `${open}:${invoice?.id ?? "new"}`;
+  // Re-seeding also runs once the async line items resolve, hence its length
+  // is part of the key.
+  const formKey = `${open}:${invoice?.id ?? "new"}:${existingLines?.length ?? 0}`;
   const [seededKey, setSeededKey] = useState<string | null>(null);
   if (open && seededKey !== formKey) {
     setSeededKey(formKey);
@@ -70,12 +86,50 @@ export function InvoiceFormDialog({
     setStatus(invoice?.status ?? "draft");
     setIssueDate(invoice?.issue_date ?? today());
     setDueDate(invoice?.due_date ?? today());
+    const seededLines: EditableLine[] = (existingLines ?? []).map((l) => ({
+      description: l.description,
+      quantityMilli: l.quantity_milli,
+      unitPriceCents: l.unit_price_cents,
+    }));
+    setLines(seededLines);
+    setItemized(seededLines.length > 0);
   }
+
+  const derivedTotal = invoiceTotalCents(
+    lines.map((l) => ({
+      description: l.description,
+      quantityMilli: l.quantityMilli,
+      unitPriceCents: l.unitPriceCents ?? 0,
+    }))
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (amountCents == null || amountCents <= 0) {
+    // Itemized invoices: every line needs a description and a positive price.
+    const cleanLines = itemized
+      ? lines
+          .filter((l) => l.description.trim() !== "")
+          .map((l) => ({
+            description: l.description.trim(),
+            quantityMilli: l.quantityMilli,
+            unitPriceCents: l.unitPriceCents ?? 0,
+          }))
+      : [];
+
+    if (itemized) {
+      if (cleanLines.length === 0) {
+        toast.error("Adicione ao menos um item com descricao");
+        return;
+      }
+      if (cleanLines.some((l) => l.unitPriceCents <= 0)) {
+        toast.error("Informe o preco unitario de cada item");
+        return;
+      }
+    }
+
+    const effectiveAmount = itemized ? derivedTotal : amountCents;
+    if (effectiveAmount == null || effectiveAmount <= 0) {
       toast.error("Informe um valor válido");
       return;
     }
@@ -86,22 +140,25 @@ export function InvoiceFormDialog({
           number,
           customerName,
           description: description || undefined,
-          amountCents,
+          amountCents: effectiveAmount,
           currency: invoice.currency,
           status,
           issueDate,
           dueDate,
+          // `[]` explicitly clears lines; itemized sends the lines.
+          lineItems: cleanLines,
         }
       : {
           sectorId,
           number,
           customerName,
           description: description || undefined,
-          amountCents,
+          amountCents: effectiveAmount,
           currency: "BRL" as const,
           status,
           issueDate,
           dueDate,
+          lineItems: itemized ? cleanLines : undefined,
         };
 
     const result = isEdit
@@ -150,16 +207,25 @@ export function InvoiceFormDialog({
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="invoice-amount">Valor (R$)</Label>
-                <MoneyInput
-                  key={formKey}
-                  id="invoice-amount"
-                  valueCents={amountCents}
-                  onChangeCents={setAmountCents}
-                  required
-                />
-              </div>
+              {itemized ? (
+                <div className="grid gap-2">
+                  <Label>Valor (R$)</Label>
+                  <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm">
+                    {formatCents(derivedTotal)}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  <Label htmlFor="invoice-amount">Valor (R$)</Label>
+                  <MoneyInput
+                    key={formKey}
+                    id="invoice-amount"
+                    valueCents={amountCents}
+                    onChangeCents={setAmountCents}
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -214,6 +280,20 @@ export function InvoiceFormDialog({
                 </Select>
               </div>
             </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={itemized}
+                onChange={(e) => setItemized(e.target.checked)}
+                className="size-4"
+              />
+              Detalhar fatura em itens
+            </label>
+
+            {itemized && (
+              <InvoiceLineItemsEditor lines={lines} onChange={setLines} />
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="invoice-description">Descrição</Label>

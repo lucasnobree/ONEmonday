@@ -24,6 +24,9 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 export const EXPENSE_STATUS_LABELS: Record<ExpenseStatus, string> = {
   pending: "Pendente",
+  submitted: "Em aprovacao",
+  approved: "Aprovada",
+  rejected: "Rejeitada",
   paid: "Paga",
   void: "Cancelada",
 };
@@ -40,6 +43,19 @@ export const INVOICE_STATUS_VARIANTS: Record<InvoiceStatus, BadgeVariant> = {
 
 export const EXPENSE_STATUS_VARIANTS: Record<ExpenseStatus, BadgeVariant> = {
   pending: "secondary",
+  submitted: "secondary",
+  approved: "default",
+  rejected: "destructive",
   paid: "default",
   void: "outline",
+};
+
+/** Portuguese labels for the workflow transitions surfaced as row actions. */
+export const EXPENSE_TRANSITION_LABELS: Record<string, string> = {
+  submit: "Enviar para aprovacao",
+  approve: "Aprovar",
+  reject: "Rejeitar",
+  pay: "Marcar como paga",
+  void: "Cancelar",
+  reopen: "Reabrir",
 };

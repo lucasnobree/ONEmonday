@@ -9,6 +9,7 @@ import {
 import type { Invoice, InvoiceStatus } from "@/hooks/finance/use-invoices";
 import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
 import { InvoiceFiscalDialog } from "@/components/finance/invoice-fiscal-dialog";
+import { InvoicePrintButton } from "@/components/finance/invoice-print-button";
 import {
   INVOICE_STATUS_LABELS,
   INVOICE_STATUS_VARIANTS,
@@ -134,11 +135,17 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      <div className="inline-flex h-8 items-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+      <div
+        role="tablist"
+        aria-label="Filtrar faturas por status"
+        className="inline-flex h-8 items-center rounded-lg bg-muted p-0.75 text-muted-foreground"
+      >
         {STATUS_TABS.map((s) => (
           <button
             key={s}
             type="button"
+            role="tab"
+            aria-selected={statusFilter === s}
             onClick={() => setStatusFilter(s)}
             className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all ${
               statusFilter === s
@@ -206,6 +213,10 @@ export default function InvoicesPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-1">
+                          <InvoicePrintButton
+                            invoice={inv}
+                            sectorName={currentSector.name}
+                          />
                           <Button
                             variant="ghost"
                             size="sm"
