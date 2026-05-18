@@ -190,6 +190,17 @@ export default function SettingsPage() {
             >
               Administração
             </Link>
+            <Link
+              href="/settings/integrations"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
+                pathname === "/settings/integrations"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              )}
+            >
+              Integrações
+            </Link>
           </div>
         )}
 
