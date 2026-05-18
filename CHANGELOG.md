@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CRM migration parity (migration Phase 2)
+- Builds the CRM toward Pipedrive / RD Station CRM parity so both can be
+  retired: deal ownership (`owner_id`, picker, reassignment, owner-ranked
+  Top Performers); activity/task management (scheduled + assignable
+  activities, complete/reschedule, a pending-tasks view); real filters and
+  sortable list views on deals/companies/contacts; and CRM events
+  (deal won/lost, stage change, activity due) fan out to Teams/WhatsApp
+  through the Phase 1 notification outbox.
+
 ### Integration layer (migration Phase 1)
 - Foundation for consolidating the company's external SaaS onto ONEmonday:
   a provider-adapter integration layer (`lib/integrations/`), an encrypted
