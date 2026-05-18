@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BoardCard } from "./board-card";
+import { BoardColumnMenu } from "./board-column-menu";
 import { isWipLimitReached, wipLimitMessage } from "./board-wip";
 import { createCard } from "@/lib/actions/cards";
 import type {
@@ -25,6 +26,10 @@ interface BoardColumnProps {
   sectorId: string;
   /** Disables card dragging (used while a board filter is active). */
   dragDisabled?: boolean;
+  /** When set, renders the column-management `⋯` menu in the header. */
+  canManageColumns?: boolean;
+  /** All column ids on the board, in position order — needed for reorder. */
+  orderedColumnIds?: string[];
   onCardClick?: (cardId: string) => void;
   onCardCreated?: () => void;
 }
@@ -34,6 +39,8 @@ export function BoardColumn({
   boardId,
   sectorId,
   dragDisabled = false,
+  canManageColumns = false,
+  orderedColumnIds = [],
   onCardClick,
   onCardCreated,
 }: BoardColumnProps) {
@@ -94,18 +101,27 @@ export function BoardColumn({
             {column.cards.length}
           </span>
         </div>
-        {column.wip_limit != null && (
-          <span
-            className={cn(
-              "text-xs",
-              isOverWipLimit
-                ? "text-red-500 font-medium"
-                : "text-muted-foreground"
-            )}
-          >
-            max {column.wip_limit}
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {column.wip_limit != null && (
+            <span
+              className={cn(
+                "text-xs",
+                isOverWipLimit
+                  ? "text-red-500 font-medium"
+                  : "text-muted-foreground"
+              )}
+            >
+              max {column.wip_limit}
+            </span>
+          )}
+          {canManageColumns && (
+            <BoardColumnMenu
+              boardId={boardId}
+              column={column}
+              orderedColumnIds={orderedColumnIds}
+            />
+          )}
+        </div>
       </div>
 
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>

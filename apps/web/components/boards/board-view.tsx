@@ -21,6 +21,7 @@ import {
   type BoardData,
 } from "@/hooks/use-board-data";
 import { useRealtimeBoard } from "@/hooks/use-realtime-board";
+import { usePermissions } from "@/hooks/use-permissions";
 import { reorderCards } from "@/lib/actions/cards";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BoardColumn } from "./board-column";
@@ -45,6 +46,9 @@ import {
   collectTagOptions,
 } from "./board-grouping";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { BoardColumnDialog } from "./board-column-dialog";
 
 interface BoardViewProps {
   boardId: string;
@@ -55,12 +59,22 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   const { data: board, isLoading, error } = useBoardData(boardId);
   useRealtimeBoard(boardId);
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
   const [activeCard, setActiveCard] = useState<BoardCardType | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [addColumnOpen, setAddColumnOpen] = useState(false);
   const [filters, setFilters] = useState<BoardFilterState>(
     EMPTY_BOARD_FILTERS
   );
   const [groupBy, setGroupBy] = useState<BoardGroupBy>("column");
+
+  // Column management is gated on the `board_column` capability and only
+  // offered in the ungrouped Kanban view, where every column is shown once.
+  const canManageColumns = hasPermission(
+    sectorId,
+    "board_column",
+    "update"
+  );
 
   // Reordering is disabled while a filter is active OR while the board is
   // grouped into swimlanes — in both cases a lane only ever holds a partial
@@ -257,6 +271,12 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   const viewBoard = filteredBoard ?? board;
   const swimlanes = buildSwimlanes(viewBoard, groupBy);
 
+  // The full, unfiltered column ordering — the reorder RPC needs every id.
+  const orderedColumnIds = board.columns.map((c) => c.id);
+  // Column management is only safe in the single-lane "Coluna" view: while
+  // grouped, the same column id appears in several lanes.
+  const showColumnMenus = canManageColumns && groupBy === "column";
+
   return (
     <div>
       <div className="mb-4">
@@ -320,6 +340,8 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                           boardId={boardId}
                           sectorId={sectorId}
                           dragDisabled={dragDisabled}
+                          canManageColumns={showColumnMenus}
+                          orderedColumnIds={orderedColumnIds}
                           onCardClick={(cardId) => setSelectedCardId(cardId)}
                           onCardCreated={() =>
                             queryClient.invalidateQueries({
@@ -328,6 +350,18 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                           }
                         />
                       ))}
+                      {showColumnMenus && (
+                        <div className="w-56 shrink-0 pt-2">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-muted-foreground"
+                            onClick={() => setAddColumnOpen(true)}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Adicionar coluna
+                          </Button>
+                        </div>
+                      )}
                     </BoardLaneScroll>
                   </div>
                 ))
@@ -367,6 +401,12 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
         }}
         boardId={boardId}
         sectorId={sectorId}
+      />
+
+      <BoardColumnDialog
+        open={addColumnOpen}
+        onOpenChange={setAddColumnOpen}
+        boardId={boardId}
       />
     </div>
   );
