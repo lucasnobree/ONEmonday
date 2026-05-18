@@ -39,6 +39,27 @@ describe("createProjectSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts a valid health and status note", () => {
+    const result = createProjectSchema.safeParse({
+      name: "Project",
+      status: "active",
+      health: "at_risk",
+      statusNote: "Aguardando aprovação do orçamento.",
+      sectorIds: [UUID],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an unknown health value", () => {
+    const result = createProjectSchema.safeParse({
+      name: "Project",
+      status: "active",
+      health: "burning",
+      sectorIds: [UUID],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("updateProjectSchema", () => {
@@ -54,5 +75,13 @@ describe("updateProjectSchema", () => {
     expect(
       updateProjectSchema.safeParse({ status: "paused" }).success
     ).toBe(false);
+  });
+
+  it("accepts a partial health-only update", () => {
+    const result = updateProjectSchema.safeParse({
+      id: UUID,
+      health: "off_track",
+    });
+    expect(result.success).toBe(true);
   });
 });
