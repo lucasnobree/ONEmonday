@@ -4,9 +4,18 @@ import {
   applyBoardFilters,
   countBoardCards,
   priorityFilterLabel,
+  dueDateMatches,
+  isBoardFiltered,
+  activeFilterCount,
   EMPTY_BOARD_FILTERS,
+  type BoardFilterState,
 } from "./board-filters";
 import type { BoardCard, BoardData } from "@/hooks/use-board-data";
+
+/** Builds a filter state from a partial override over the empty default. */
+function filters(partial: Partial<BoardFilterState>): BoardFilterState {
+  return { ...EMPTY_BOARD_FILTERS, ...partial };
+}
 
 function makeCard(
   id: string,
@@ -70,36 +79,112 @@ describe("cardMatchesFilters", () => {
   });
 
   it("matches a case-insensitive substring of the title", () => {
-    expect(
-      cardMatchesFilters(card, { search: "login", priority: "all" })
-    ).toBe(true);
+    expect(cardMatchesFilters(card, filters({ search: "login" }))).toBe(true);
   });
 
   it("rejects a card whose title does not contain the query", () => {
-    expect(
-      cardMatchesFilters(card, { search: "deploy", priority: "all" })
-    ).toBe(false);
+    expect(cardMatchesFilters(card, filters({ search: "deploy" }))).toBe(
+      false
+    );
   });
 
   it("ignores surrounding whitespace in the query", () => {
-    expect(
-      cardMatchesFilters(card, { search: "  login  ", priority: "all" })
-    ).toBe(true);
+    expect(cardMatchesFilters(card, filters({ search: "  login  " }))).toBe(
+      true
+    );
   });
 
   it("filters by exact priority", () => {
-    expect(
-      cardMatchesFilters(card, { search: "", priority: "high" })
-    ).toBe(true);
-    expect(
-      cardMatchesFilters(card, { search: "", priority: "low" })
-    ).toBe(false);
+    expect(cardMatchesFilters(card, filters({ priority: "high" }))).toBe(
+      true
+    );
+    expect(cardMatchesFilters(card, filters({ priority: "low" }))).toBe(
+      false
+    );
   });
 
   it("requires both search and priority to match", () => {
     expect(
-      cardMatchesFilters(card, { search: "login", priority: "low" })
+      cardMatchesFilters(card, filters({ search: "login", priority: "low" }))
     ).toBe(false);
+  });
+
+  it("matches when the card has any of the selected assignees", () => {
+    const assigned: BoardCard = {
+      ...card,
+      assignees: [{ user_id: "u1", full_name: "Ana", avatar_url: null }],
+    };
+    expect(
+      cardMatchesFilters(assigned, filters({ assignees: ["u1"] }))
+    ).toBe(true);
+    expect(
+      cardMatchesFilters(assigned, filters({ assignees: ["u2"] }))
+    ).toBe(false);
+  });
+
+  it("matches when the card has any of the selected tags", () => {
+    const tagged: BoardCard = {
+      ...card,
+      tags: [{ id: "t1", name: "bug", color: "#f00" }],
+    };
+    expect(cardMatchesFilters(tagged, filters({ tags: ["t1"] }))).toBe(true);
+    expect(cardMatchesFilters(tagged, filters({ tags: ["t2"] }))).toBe(false);
+  });
+});
+
+describe("dueDateMatches", () => {
+  // Local-time noon on 2026-05-18, so day-bucket maths is timezone-stable.
+  const now = new Date(2026, 4, 18, 12, 0, 0);
+  /** A local-midnight date for the given local Y/M/D. */
+  const at = (y: number, m: number, d: number) =>
+    new Date(y, m - 1, d, 10, 0, 0).toISOString();
+
+  it("matches everything for the 'all' bucket", () => {
+    expect(dueDateMatches(null, "all", now)).toBe(true);
+    expect(dueDateMatches(at(2020, 1, 1), "all", now)).toBe(true);
+  });
+
+  it("'none' matches only cards without a due date", () => {
+    expect(dueDateMatches(null, "none", now)).toBe(true);
+    expect(dueDateMatches(at(2026, 5, 18), "none", now)).toBe(false);
+  });
+
+  it("'overdue' matches a due date before today", () => {
+    expect(dueDateMatches(at(2026, 5, 10), "overdue", now)).toBe(true);
+    expect(dueDateMatches(at(2026, 5, 25), "overdue", now)).toBe(false);
+  });
+
+  it("'today' matches only the current day", () => {
+    expect(dueDateMatches(at(2026, 5, 18), "today", now)).toBe(true);
+    expect(dueDateMatches(at(2026, 5, 19), "today", now)).toBe(false);
+  });
+
+  it("'week' matches the next 7 days", () => {
+    expect(dueDateMatches(at(2026, 5, 20), "week", now)).toBe(true);
+    expect(dueDateMatches(at(2026, 5, 30), "week", now)).toBe(false);
+  });
+});
+
+describe("isBoardFiltered / activeFilterCount", () => {
+  it("reports an empty filter state as not filtered", () => {
+    expect(isBoardFiltered(EMPTY_BOARD_FILTERS)).toBe(false);
+    expect(activeFilterCount(EMPTY_BOARD_FILTERS)).toBe(0);
+  });
+
+  it("counts each active facet", () => {
+    const f = filters({
+      priority: "high",
+      assignees: ["u1"],
+      dueDate: "overdue",
+    });
+    expect(isBoardFiltered(f)).toBe(true);
+    expect(activeFilterCount(f)).toBe(3);
+  });
+
+  it("search alone makes the board filtered but is not a facet", () => {
+    const f = filters({ search: "abc" });
+    expect(isBoardFiltered(f)).toBe(true);
+    expect(activeFilterCount(f)).toBe(0);
   });
 });
 
@@ -110,27 +195,27 @@ describe("applyBoardFilters", () => {
   });
 
   it("keeps all columns even when a column ends up empty", () => {
-    const result = applyBoardFilters(makeBoard(), {
-      search: "login",
-      priority: "all",
-    });
+    const result = applyBoardFilters(
+      makeBoard(),
+      filters({ search: "login" })
+    );
     expect(result.columns).toHaveLength(2);
     expect(result.columns[0].cards.map((c) => c.id)).toEqual(["c1"]);
     expect(result.columns[1].cards).toHaveLength(0);
   });
 
   it("filters across columns by priority", () => {
-    const result = applyBoardFilters(makeBoard(), {
-      search: "",
-      priority: "critical",
-    });
+    const result = applyBoardFilters(
+      makeBoard(),
+      filters({ priority: "critical" })
+    );
     expect(countBoardCards(result)).toBe(1);
     expect(result.columns[1].cards[0].id).toBe("c3");
   });
 
   it("does not mutate the original board", () => {
     const board = makeBoard();
-    applyBoardFilters(board, { search: "login", priority: "all" });
+    applyBoardFilters(board, filters({ search: "login" }));
     expect(countBoardCards(board)).toBe(3);
   });
 });
