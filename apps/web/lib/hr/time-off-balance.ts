@@ -32,6 +32,25 @@ export function checkTimeOffBalance(
   };
 }
 
+/**
+ * The balance year a time-off request draws from: the year of its start date.
+ * Balances are tracked per calendar year, so a 2027-dated request must resolve
+ * against the 2027 balance, not the year the table happens to be viewed in.
+ *
+ * The year is read from the leading `YYYY` of an ISO date string to avoid the
+ * timezone drift `new Date(iso).getFullYear()` causes for UTC-midnight dates.
+ * Falls back to the current year when the date is missing or unparseable.
+ */
+export function balanceYearForDate(startDate: string | null | undefined): number {
+  if (startDate) {
+    const match = /^(\d{4})-\d{2}-\d{2}/.exec(startDate);
+    if (match) return Number(match[1]);
+    const parsed = new Date(startDate);
+    if (!Number.isNaN(parsed.getTime())) return parsed.getFullYear();
+  }
+  return new Date().getFullYear();
+}
+
 /** Human-readable pt-BR warning for an over-balance request. */
 export function overBalanceMessage(check: BalanceCheck): string | null {
   if (check.withinBalance) return null;
