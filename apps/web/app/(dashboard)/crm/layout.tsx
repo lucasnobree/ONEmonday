@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 
 const crmNav = [
   { label: "Dashboard", href: "/crm" },
+  { label: "Leads", href: "/crm/leads" },
+  { label: "Formulários", href: "/crm/forms" },
   { label: "Pipeline", href: "/crm/pipeline" },
   { label: "Propostas", href: "/crm/proposals" },
   { label: "Contatos", href: "/crm/contacts" },
@@ -25,7 +27,7 @@ export default function CRMLayout({ children }: { children: React.ReactNode }) {
         </p>
       </div>
 
-      <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+      <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-0.75 text-muted-foreground">
         {crmNav.map((item) => {
           const isActive =
             item.href === "/crm"

@@ -23,6 +23,8 @@ export type Resource =
   | "deal"
   | "crm_activity"
   | "proposal"
+  | "lead"
+  | "lead_form"
   // RH
   | "employee"
   | "time_off"
