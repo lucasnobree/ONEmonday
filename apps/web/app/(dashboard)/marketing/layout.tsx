@@ -9,6 +9,8 @@ const marketingNav = [
   { label: "Campanhas", href: "/marketing/campaigns" },
   { label: "Calendário", href: "/marketing/calendar" },
   { label: "Audiências", href: "/marketing/audiences" },
+  { label: "E-mails", href: "/marketing/email" },
+  { label: "Automações", href: "/marketing/automations" },
 ];
 
 export default function MarketingLayout({
