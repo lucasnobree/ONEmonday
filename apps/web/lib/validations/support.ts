@@ -21,6 +21,34 @@ export const updateTicketSchema = z.object({
   channel: z.enum(["internal", "email", "chat", "phone"]).optional(),
 });
 
+export const ticketStatusSchema = z.enum([
+  "new",
+  "open",
+  "pending",
+  "on_hold",
+  "resolved",
+]);
+
+export const updateTicketStatusSchema = z.object({
+  ticketId: z.string().uuid(),
+  status: ticketStatusSchema,
+});
+
+// Bulk status update — capped to keep a single request bounded, matching the
+// Zendesk-style bulk-triage workflow the queue exposes.
+export const bulkUpdateTicketStatusSchema = z.object({
+  ticketIds: z.array(z.string().uuid()).min(1).max(100),
+  status: ticketStatusSchema,
+});
+
+export const createTicketAttachmentSchema = z.object({
+  ticketId: z.string().uuid(),
+  filePath: z.string().min(1),
+  fileName: z.string().min(1).max(255),
+  fileSize: z.number().int().min(0),
+  mimeType: z.string().optional(),
+});
+
 export const submitCSATSchema = z.object({
   ticketId: z.string().uuid(),
   rating: z.number().int().min(1).max(5),

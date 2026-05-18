@@ -10,11 +10,14 @@ export interface TicketDetail {
   category: string;
   subcategory: string | null;
   channel: string | null;
+  status: string;
   requester_id: string | null;
   requester_email: string | null;
   sla_rule_id: string | null;
   first_response_at: string | null;
   resolved_at: string | null;
+  sla_paused_at: string | null;
+  sla_paused_ms: number;
   sla_response_due_at: string | null;
   sla_resolve_due_at: string | null;
   sla_response_breached: boolean;
