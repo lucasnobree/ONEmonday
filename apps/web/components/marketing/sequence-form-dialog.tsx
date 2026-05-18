@@ -16,6 +16,7 @@ import {
   SEQUENCE_TRIGGER_LABELS,
   SEQUENCE_STATUS_LABELS,
 } from "@/lib/marketing/labels";
+import { sequenceTriggerOptions } from "@/lib/marketing/sequence-triggers";
 import {
   Dialog,
   DialogContent,
@@ -38,15 +39,6 @@ import {
 import { toast } from "sonner";
 
 const NO_SEGMENT = "__none__";
-
-/**
- * Triggers offered when creating a sequence. `segment_entry` is intentionally
- * excluded: there is no scheduled job that auto-enrolls a segment's members,
- * so promising it in the UI would be a broken affordance. Sequences that
- * already use it (created before this change) can still be edited — the value
- * is re-added below so its label renders correctly.
- */
-const SELECTABLE_TRIGGERS: SequenceTrigger[] = ["manual"];
 
 interface SequenceFormDialogProps {
   open: boolean;
@@ -85,11 +77,7 @@ export function SequenceFormDialog({
 
   // Offer only supported triggers, plus the current value when editing a
   // legacy sequence that still uses an unsupported one.
-  const triggerOptions: SequenceTrigger[] = SELECTABLE_TRIGGERS.includes(
-    triggerType
-  )
-    ? SELECTABLE_TRIGGERS
-    : [...SELECTABLE_TRIGGERS, triggerType];
+  const triggerOptions = sequenceTriggerOptions(triggerType);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -112,3 +112,24 @@ export const SEQUENCE_STEP_TYPE_LABELS: Record<SequenceStepType, string> = {
   wait: "Aguardar",
   send_email: "Enviar e-mail",
 };
+
+/** Lifecycle states of a single recipient enrolled in a sequence. */
+export type SequenceEnrollmentStatus = "active" | "completed" | "cancelled";
+
+export const SEQUENCE_ENROLLMENT_STATUS_LABELS: Record<
+  SequenceEnrollmentStatus,
+  string
+> = {
+  active: "Ativa",
+  completed: "Concluída",
+  cancelled: "Cancelada",
+};
+
+export const SEQUENCE_ENROLLMENT_STATUS_VARIANTS: Record<
+  SequenceEnrollmentStatus,
+  BadgeVariant
+> = {
+  active: "default",
+  completed: "secondary",
+  cancelled: "destructive",
+};
