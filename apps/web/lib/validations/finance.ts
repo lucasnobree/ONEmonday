@@ -90,6 +90,8 @@ export const createExpenseSchema = z.object({
   currency: currencySchema,
   status: z.enum(EXPENSE_STATUSES).default("pending"),
   expenseDate: isoDateSchema,
+  // Optional payable due date — drives AP scheduling / aging (audit E7).
+  dueDate: isoDateSchema.optional(),
 });
 
 export const updateExpenseSchema = z.object({
@@ -101,6 +103,7 @@ export const updateExpenseSchema = z.object({
   currency: currencySchema,
   status: z.enum(EXPENSE_STATUSES),
   expenseDate: isoDateSchema,
+  dueDate: isoDateSchema.optional(),
 });
 
 // =============================================
@@ -123,3 +126,47 @@ export const updateBudgetSchema = z.object({
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;
+
+// =============================================
+// Phase 4 — fiscal / banking / payment gateways
+// =============================================
+
+/** Request NF-e / NFS-e emission for an invoice through the fiscal gateway. */
+export const emitFiscalDocumentSchema = z.object({
+  invoiceId: z.string().uuid(),
+  docType: z.enum(["nfe", "nfse"]).default("nfse"),
+});
+
+/** Request a boleto / PIX charge for an invoice through the PSP. */
+export const createPaymentChargeSchema = z.object({
+  invoiceId: z.string().uuid(),
+  billingType: z.enum(["pix", "boleto", "undefined"]).default("pix"),
+});
+
+/** Import an OFX statement's transactions for a sector. */
+export const importOfxSchema = z.object({
+  sectorId: z.string().uuid(),
+  /** Raw OFX file contents — parsed server-side. */
+  ofxContent: z.string().min(1, "Arquivo OFX vazio").max(5_000_000),
+});
+
+/** Reconcile a bank transaction to an invoice or an expense. */
+export const reconcileTransactionSchema = z
+  .object({
+    transactionId: z.string().uuid(),
+    invoiceId: z.string().uuid().optional(),
+    expenseId: z.string().uuid().optional(),
+  })
+  .refine((v) => (v.invoiceId == null) !== (v.expenseId == null), {
+    message: "Informe exatamente uma fatura OU uma despesa",
+    path: ["invoiceId"],
+  });
+
+export type EmitFiscalDocumentInput = z.infer<typeof emitFiscalDocumentSchema>;
+export type CreatePaymentChargeInput = z.infer<
+  typeof createPaymentChargeSchema
+>;
+export type ImportOfxInput = z.infer<typeof importOfxSchema>;
+export type ReconcileTransactionInput = z.infer<
+  typeof reconcileTransactionSchema
+>;

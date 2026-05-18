@@ -23,6 +23,7 @@ export interface Expense {
   currency: Currency;
   status: ExpenseStatus;
   expense_date: string;
+  due_date: string | null;
   paid_at: string | null;
   created_at: string;
 }
@@ -39,7 +40,7 @@ export function useExpenses(sectorId: string | undefined) {
         .from("finance_expenses")
         .select(
           `id, sector_id, vendor_name, description, category, amount_cents,
-           currency, status, expense_date, paid_at, created_at`
+           currency, status, expense_date, due_date, paid_at, created_at`
         )
         .eq("sector_id", sectorId)
         .eq("is_active", true)
