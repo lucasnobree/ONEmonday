@@ -72,9 +72,27 @@ export function formatMetricValue(value: number, unit: MetricUnit): string {
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
-/** Formats a delta percentage like "+12.5%" / "-3%" / "—". */
+/**
+ * Formats a delta percentage like "+12.5%" / "-3%".
+ *
+ * When the previous value is 0 the ratio is undefined (`percent === null`):
+ * a non-flat change from a zero baseline is shown as "novo" (it is genuinely
+ * new activity), and a flat zero-to-zero delta as "—". This avoids the
+ * "↑ — vs. anterior" badge that pairs a direction arrow with no magnitude.
+ */
 export function formatDeltaPercent(delta: KpiDelta): string {
-  if (delta.percent === null) return "—";
+  if (delta.percent === null) {
+    return delta.direction === "flat" ? "—" : "novo";
+  }
   const sign = delta.percent > 0 ? "+" : "";
   return `${sign}${delta.percent}%`;
+}
+
+/**
+ * Whether a delta has a real magnitude to display. `false` when the previous
+ * value is 0 *and* the current value is 0 too (nothing happened in either
+ * window) — the badge should then read a neutral "—" with no direction arrow.
+ */
+export function hasDeltaMagnitude(delta: KpiDelta): boolean {
+  return delta.percent !== null || delta.direction !== "flat";
 }

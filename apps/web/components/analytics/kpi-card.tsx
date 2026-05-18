@@ -34,8 +34,13 @@ export function KpiCard({
   const showDelta = current !== undefined && previous !== undefined;
   const delta = showDelta ? computeDelta(current, previous) : null;
   const favorable = delta ? isFavorableDelta(delta, higherIsBetter) : false;
-  const DeltaIcon =
-    delta?.direction === "up"
+  // A delta from a zero baseline ("novo") has no percentage magnitude — the
+  // "novo" label already conveys direction, so we drop the arrow to avoid the
+  // misleading "↑ — vs. anterior" badge.
+  const hasMagnitude = delta?.percent !== null;
+  const DeltaIcon = !hasMagnitude
+    ? null
+    : delta?.direction === "up"
       ? ArrowUp
       : delta?.direction === "down"
         ? ArrowDown
@@ -61,7 +66,7 @@ export function KpiCard({
                     : "text-red-500"
               )}
             >
-              <DeltaIcon className="h-3 w-3" />
+              {DeltaIcon && <DeltaIcon className="h-3 w-3" />}
               {formatDeltaPercent(delta)}
               <span className="text-muted-foreground"> vs. anterior</span>
             </span>
