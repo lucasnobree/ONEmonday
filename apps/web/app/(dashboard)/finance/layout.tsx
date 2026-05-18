@@ -9,6 +9,8 @@ const financeNav = [
   { label: "Faturas", href: "/finance/invoices" },
   { label: "Despesas", href: "/finance/expenses" },
   { label: "Orçamentos", href: "/finance/budgets" },
+  { label: "Relatórios", href: "/finance/reports" },
+  { label: "Conciliação", href: "/finance/reconciliation" },
 ];
 
 export default function FinanceLayout({

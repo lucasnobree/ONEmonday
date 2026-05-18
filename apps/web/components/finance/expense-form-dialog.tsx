@@ -63,6 +63,7 @@ export function ExpenseFormDialog({
   const [amountCents, setAmountCents] = useState<number | null>(null);
   const [status, setStatus] = useState<ExpenseStatus>("pending");
   const [expenseDate, setExpenseDate] = useState(today());
+  const [dueDate, setDueDate] = useState("");
 
   const formKey = `${open}:${expense?.id ?? "new"}`;
   const [seededKey, setSeededKey] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export function ExpenseFormDialog({
     setAmountCents(expense?.amount_cents ?? null);
     setStatus(expense?.status ?? "pending");
     setExpenseDate(expense?.expense_date ?? today());
+    setDueDate(expense?.due_date ?? "");
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,6 +96,7 @@ export function ExpenseFormDialog({
           currency: expense.currency,
           status,
           expenseDate,
+          dueDate: dueDate || undefined,
         }
       : {
           sectorId,
@@ -104,6 +107,7 @@ export function ExpenseFormDialog({
           currency: "BRL" as const,
           status,
           expenseDate,
+          dueDate: dueDate || undefined,
         };
 
     const result = isEdit
@@ -164,7 +168,7 @@ export function ExpenseFormDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Categoria</Label>
                 <Select
@@ -191,6 +195,16 @@ export function ExpenseFormDialog({
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="expense-due-date">Vencimento</Label>
+                <Input
+                  id="expense-due-date"
+                  type="date"
+                  value={dueDate}
+                  min={expenseDate}
+                  onChange={(e) => setDueDate(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">

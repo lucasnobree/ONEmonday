@@ -35,6 +35,7 @@ export async function createExpense(formData: unknown) {
       currency: parsed.data.currency,
       status: parsed.data.status,
       expense_date: parsed.data.expenseDate,
+      due_date: parsed.data.dueDate ?? null,
       paid_at: parsed.data.status === "paid" ? new Date().toISOString() : null,
       created_by: user.id,
     })
@@ -86,6 +87,7 @@ export async function updateExpense(formData: unknown) {
       currency: parsed.data.currency,
       status: parsed.data.status,
       expense_date: parsed.data.expenseDate,
+      due_date: parsed.data.dueDate ?? null,
       paid_at: paidAt,
     })
     .eq("id", parsed.data.id);
