@@ -11,10 +11,7 @@ import type {
   SequenceTrigger,
   SequenceStatus,
 } from "@/lib/validations/marketing";
-import {
-  SEQUENCE_TRIGGERS,
-  SEQUENCE_STATUSES,
-} from "@/lib/validations/marketing";
+import { SEQUENCE_STATUSES } from "@/lib/validations/marketing";
 import {
   SEQUENCE_TRIGGER_LABELS,
   SEQUENCE_STATUS_LABELS,
@@ -42,6 +39,15 @@ import { toast } from "sonner";
 
 const NO_SEGMENT = "__none__";
 
+/**
+ * Triggers offered when creating a sequence. `segment_entry` is intentionally
+ * excluded: there is no scheduled job that auto-enrolls a segment's members,
+ * so promising it in the UI would be a broken affordance. Sequences that
+ * already use it (created before this change) can still be edited — the value
+ * is re-added below so its label renders correctly.
+ */
+const SELECTABLE_TRIGGERS: SequenceTrigger[] = ["manual"];
+
 interface SequenceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -62,8 +68,7 @@ export function SequenceFormDialog({
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [triggerType, setTriggerType] =
-    useState<SequenceTrigger>("segment_entry");
+  const [triggerType, setTriggerType] = useState<SequenceTrigger>("manual");
   const [status, setStatus] = useState<SequenceStatus>("draft");
   const [segmentId, setSegmentId] = useState<string>(NO_SEGMENT);
 
@@ -73,10 +78,18 @@ export function SequenceFormDialog({
     setSeededKey(formKey);
     setName(sequence?.name ?? "");
     setDescription(sequence?.description ?? "");
-    setTriggerType(sequence?.trigger_type ?? "segment_entry");
+    setTriggerType(sequence?.trigger_type ?? "manual");
     setStatus(sequence?.status ?? "draft");
     setSegmentId(sequence?.segment_id ?? NO_SEGMENT);
   }
+
+  // Offer only supported triggers, plus the current value when editing a
+  // legacy sequence that still uses an unsupported one.
+  const triggerOptions: SequenceTrigger[] = SELECTABLE_TRIGGERS.includes(
+    triggerType
+  )
+    ? SELECTABLE_TRIGGERS
+    : [...SELECTABLE_TRIGGERS, triggerType];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +163,7 @@ export function SequenceFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SEQUENCE_TRIGGERS.map((t) => (
+                    {triggerOptions.map((t) => (
                       <SelectItem key={t} value={t}>
                         {SEQUENCE_TRIGGER_LABELS[t]}
                       </SelectItem>
