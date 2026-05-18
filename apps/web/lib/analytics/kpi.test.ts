@@ -4,6 +4,7 @@ import {
   isFavorableDelta,
   formatMetricValue,
   formatDeltaPercent,
+  hasDeltaMagnitude,
 } from "./kpi";
 
 describe("computeDelta", () => {
@@ -68,7 +69,31 @@ describe("formatDeltaPercent", () => {
     expect(formatDeltaPercent(computeDelta(110, 100))).toBe("+10%");
   });
 
-  it("renders an em dash when the percent is null", () => {
-    expect(formatDeltaPercent(computeDelta(10, 0))).toBe("—");
+  it("renders a negative delta with its sign", () => {
+    expect(formatDeltaPercent(computeDelta(80, 100))).toBe("-20%");
+  });
+
+  it("renders 'novo' for an upward change from a zero baseline", () => {
+    // Regression: previously rendered a bare "—" next to an up arrow,
+    // producing the misleading "↑ — vs. anterior" badge.
+    expect(formatDeltaPercent(computeDelta(10, 0))).toBe("novo");
+  });
+
+  it("renders an em dash for a flat zero-to-zero delta", () => {
+    expect(formatDeltaPercent(computeDelta(0, 0))).toBe("—");
+  });
+});
+
+describe("hasDeltaMagnitude", () => {
+  it("is true for a normal percentage delta", () => {
+    expect(hasDeltaMagnitude(computeDelta(110, 100))).toBe(true);
+  });
+
+  it("is true for a non-flat change from a zero baseline", () => {
+    expect(hasDeltaMagnitude(computeDelta(10, 0))).toBe(true);
+  });
+
+  it("is false for a flat zero-to-zero delta", () => {
+    expect(hasDeltaMagnitude(computeDelta(0, 0))).toBe(false);
   });
 });

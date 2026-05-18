@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatDateFull } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { useCardDetail, type CardDetail } from "@/hooks/use-card-detail";
 import { createComment } from "@/lib/actions/comments";
@@ -61,9 +62,9 @@ const refStatusLabels: Record<string, string> = {
 };
 
 const priorityLabels: Record<string, string> = {
-  critical: "Critico",
+  critical: "Crítico",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
 };
 const priorityColors: Record<string, string> = {
@@ -511,7 +512,7 @@ export function BoardCardDetail({
                 {card.due_date && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {new Date(card.due_date).toLocaleDateString("pt-BR")}
+                    {formatDateFull(card.due_date)}
                   </span>
                 )}
               </div>
@@ -520,7 +521,7 @@ export function BoardCardDetail({
             {/* Description */}
             {card.description && (
               <div>
-                <h3 className="text-sm font-medium mb-2">Descricao</h3>
+                <h3 className="text-sm font-medium mb-2">Descrição</h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {card.description}
                 </p>

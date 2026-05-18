@@ -85,13 +85,32 @@ test.describe("Core — fluxos autenticados", () => {
     await expect(page.getByText(boardName)).toBeVisible({ timeout: 10_000 });
   });
 
+  test("o seletor de ordenacao mostra o rotulo, nao o valor cru", async ({
+    page,
+  }) => {
+    await page.getByRole("link", { name: "Boards" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Boards" })
+    ).toBeVisible();
+
+    const sort = page.getByLabel("Ordenar boards");
+    if ((await sort.count()) === 0) {
+      test.skip(true, "Nenhum board para ordenar no setor atual");
+      return;
+    }
+    // Regression: the trigger used a bare <SelectValue /> and printed the raw
+    // BoardSortKey ("recent") instead of the human label.
+    await expect(sort).toContainText("Atualizados recentemente");
+    await expect(sort).not.toContainText("recent");
+  });
+
   test("o board exibe a barra de filtros e filtra cards por busca", async ({
     page,
   }) => {
     const opened = await openFirstBoard(page);
     test.skip(!opened, "Nenhum board disponivel para o setor atual");
 
-    const search = page.getByPlaceholder("Buscar cards por titulo...");
+    const search = page.getByPlaceholder("Buscar cards por título...");
     await expect(search).toBeVisible();
 
     // Searching for an unlikely string should yield zero cards in the list.

@@ -25,6 +25,8 @@ import { reorderCards } from "@/lib/actions/cards";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BoardColumn } from "./board-column";
 import { BoardCard } from "./board-card";
+import { BoardLaneScroll } from "./board-lane-scroll";
+import { isWipLimitReached, wipLimitMessage } from "./board-wip";
 import { BoardCardDetail } from "./board-card-detail";
 import { BoardListView } from "./board-list-view";
 import { BoardTimelineView } from "./board-timeline-view";
@@ -133,6 +135,20 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
       // Build new card positions for target column
       const movedCard = sourceCol.cards.find((c) => c.id === activeId);
       if (!movedCard) return;
+
+      // Enforce the target column's WIP limit on a cross-column move. A
+      // same-column reorder never changes a column's card count, so it is
+      // always allowed.
+      if (
+        targetCol.id !== sourceCol.id &&
+        isWipLimitReached({
+          wip_limit: targetCol.wip_limit,
+          cardCount: targetCol.cards.length,
+        })
+      ) {
+        toast.warning(wipLimitMessage(targetCol.wip_limit as number));
+        return;
+      }
 
       // Remove card from source and compute target cards
       let targetCards: BoardCardType[];
@@ -273,8 +289,8 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
           {dragDisabled && (
             <p className="mb-3 text-xs text-muted-foreground">
               {groupBy !== "column"
-                ? "Reordenar cards esta desativado enquanto o board esta agrupado."
-                : "Reordenar cards esta desativado enquanto um filtro esta ativo."}
+                ? "Reordenar cards está desativado enquanto o board está agrupado."
+                : "Reordenar cards está desativado enquanto um filtro está ativo."}
             </p>
           )}
           <DndContext
@@ -296,7 +312,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                         {lane.label}
                       </h3>
                     )}
-                    <div className="flex gap-4 overflow-x-auto pb-4">
+                    <BoardLaneScroll>
                       {lane.board.columns.map((column) => (
                         <BoardColumn
                           key={`${lane.id}-${column.id}`}
@@ -312,7 +328,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                           }
                         />
                       ))}
-                    </div>
+                    </BoardLaneScroll>
                   </div>
                 ))
               )}
