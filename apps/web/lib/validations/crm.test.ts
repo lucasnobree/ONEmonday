@@ -4,6 +4,7 @@ import {
   stageDefaultSchema,
   sendWhatsappMessageSchema,
   logEmailSchema,
+  sendEmailSchema,
 } from "./crm";
 
 const UUID = "11111111-1111-4111-8111-111111111111";
@@ -171,6 +172,52 @@ describe("logEmailSchema", () => {
       subject: "Assunto",
       body: "Corpo",
       counterpartEmail: "not-an-email",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("sendEmailSchema", () => {
+  it("accepts a valid send-email payload linked to a deal", () => {
+    const result = sendEmailSchema.safeParse({
+      sectorId: UUID,
+      dealId: UUID,
+      contactId: UUID,
+      to: "cliente@empresa.com",
+      subject: "Proposta comercial",
+      body: "Segue nossa proposta para avaliação.",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a malformed recipient address", () => {
+    const result = sendEmailSchema.safeParse({
+      sectorId: UUID,
+      dealId: UUID,
+      to: "not-an-email",
+      subject: "Assunto",
+      body: "Corpo",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty subject", () => {
+    const result = sendEmailSchema.safeParse({
+      sectorId: UUID,
+      dealId: UUID,
+      to: "cliente@empresa.com",
+      subject: "",
+      body: "Corpo",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a payload with no deal/contact/company link", () => {
+    const result = sendEmailSchema.safeParse({
+      sectorId: UUID,
+      to: "cliente@empresa.com",
+      subject: "Assunto",
+      body: "Corpo",
     });
     expect(result.success).toBe(false);
   });

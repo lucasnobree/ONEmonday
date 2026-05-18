@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
+import { createHmac } from "node:crypto";
 import {
   safeEqual,
   hmacSha256Hex,
   verifyMetaSignature,
   verifyHmacSignature,
   verifyStaticToken,
+  verifySvixSignature,
 } from "./signature";
 
 describe("integration signature verification", () => {
@@ -106,6 +108,100 @@ describe("integration signature verification", () => {
       const body = '{"event":"PAYMENT_RECEIVED"}';
       expect(verifyStaticToken(token, token)).toBe(true);
       expect(verifyHmacSignature(token, body, token)).toBe(false);
+    });
+  });
+
+  describe("verifySvixSignature (Resend inbound-email webhook)", () => {
+    // A `whsec_<base64>` signing secret and the matching v1 signature for a
+    // given id/timestamp/body — computed exactly like Svix does.
+    const rawKey = Buffer.from("resend-inbound-signing-key-0001");
+    const signingSecret = `whsec_${rawKey.toString("base64")}`;
+    const svixId = "msg_2abc";
+    const svixTimestamp = "1747555200";
+    const body = '{"type":"inbound.email.received","data":{"id":"email_1"}}';
+
+    function sign(key: Buffer, id: string, ts: string, b: string): string {
+      return createHmac("sha256", key)
+        .update(`${id}.${ts}.${b}`, "utf8")
+        .digest("base64");
+    }
+    const validSig = `v1,${sign(rawKey, svixId, svixTimestamp, body)}`;
+
+    it("accepts a correctly signed body", () => {
+      expect(
+        verifySvixSignature(
+          signingSecret,
+          svixId,
+          svixTimestamp,
+          body,
+          validSig
+        )
+      ).toBe(true);
+    });
+
+    it("accepts a secret with no `whsec_` prefix", () => {
+      expect(
+        verifySvixSignature(
+          rawKey.toString("base64"),
+          svixId,
+          svixTimestamp,
+          body,
+          validSig
+        )
+      ).toBe(true);
+    });
+
+    it("accepts any matching token among space-separated rotated signatures", () => {
+      const header = `v1,${"A".repeat(44)} ${validSig}`;
+      expect(
+        verifySvixSignature(signingSecret, svixId, svixTimestamp, body, header)
+      ).toBe(true);
+    });
+
+    it("rejects a tampered body", () => {
+      expect(
+        verifySvixSignature(
+          signingSecret,
+          svixId,
+          svixTimestamp,
+          body + "x",
+          validSig
+        )
+      ).toBe(false);
+    });
+
+    it("rejects when the timestamp differs from the signed one", () => {
+      expect(
+        verifySvixSignature(
+          signingSecret,
+          svixId,
+          "1747555999",
+          body,
+          validSig
+        )
+      ).toBe(false);
+    });
+
+    it("rejects a non-v1 signature version", () => {
+      const v0 = `v0,${sign(rawKey, svixId, svixTimestamp, body)}`;
+      expect(
+        verifySvixSignature(signingSecret, svixId, svixTimestamp, body, v0)
+      ).toBe(false);
+    });
+
+    it("fails closed on a missing secret or header (LGPD-safe)", () => {
+      expect(
+        verifySvixSignature("", svixId, svixTimestamp, body, validSig)
+      ).toBe(false);
+      expect(
+        verifySvixSignature(signingSecret, null, svixTimestamp, body, validSig)
+      ).toBe(false);
+      expect(
+        verifySvixSignature(signingSecret, svixId, null, body, validSig)
+      ).toBe(false);
+      expect(
+        verifySvixSignature(signingSecret, svixId, svixTimestamp, body, null)
+      ).toBe(false);
     });
   });
 });

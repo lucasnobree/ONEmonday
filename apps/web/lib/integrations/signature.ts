@@ -16,6 +16,14 @@
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+/**
+ * Computes the base64 HMAC-SHA256 of `body` keyed by a raw key buffer.
+ * Used by the Svix verifier, whose signing secret is a base64-encoded key.
+ */
+function hmacSha256Base64Raw(key: Buffer, body: string): string {
+  return createHmac("sha256", key).update(body, "utf8").digest("base64");
+}
+
 /** Constant-time string comparison that never throws on length mismatch. */
 export function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a, "utf8");
@@ -74,4 +82,57 @@ export function verifyStaticToken(
 ): boolean {
   if (!storedToken || !header) return false;
   return safeEqual(storedToken, header.trim());
+}
+
+/**
+ * Verifies a Svix-style webhook signature — the scheme Resend uses for its
+ * inbound-email and email-event webhooks.
+ *
+ * Svix signs the string `{svix-id}.{svix-timestamp}.{rawBody}` with HMAC-SHA256
+ * keyed by the webhook signing secret, which is delivered as `whsec_<base64>`
+ * (the `whsec_` prefix is stripped and the remainder base64-decoded to the raw
+ * key). The `svix-signature` header carries one or more space-separated
+ * `v1,<base64sig>` tokens — a signed body matches when ANY token's signature
+ * equals the expected one (Svix rotates secrets by sending multiple).
+ *
+ * Fails closed when the secret or any header is missing.
+ */
+export function verifySvixSignature(
+  signingSecret: string,
+  svixId: string | null,
+  svixTimestamp: string | null,
+  rawBody: string,
+  signatureHeader: string | null
+): boolean {
+  if (!signingSecret || !svixId || !svixTimestamp || !signatureHeader) {
+    return false;
+  }
+
+  // The signing secret is `whsec_<base64>`; the raw HMAC key is the decoded
+  // remainder. A secret with no prefix is decoded as-is.
+  const secretB64 = signingSecret.startsWith("whsec_")
+    ? signingSecret.slice("whsec_".length)
+    : signingSecret;
+  let key: Buffer;
+  try {
+    key = Buffer.from(secretB64, "base64");
+  } catch {
+    return false;
+  }
+  if (key.length === 0) return false;
+
+  const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`;
+  const expected = hmacSha256Base64Raw(key, signedContent);
+
+  // The header is space-separated `v<n>,<sig>` tokens — accept any v1 match.
+  for (const token of signatureHeader.trim().split(/\s+/)) {
+    const comma = token.indexOf(",");
+    if (comma === -1) continue;
+    const version = token.slice(0, comma);
+    const sig = token.slice(comma + 1);
+    if (version === "v1" && safeEqual(expected, sig)) {
+      return true;
+    }
+  }
+  return false;
 }
