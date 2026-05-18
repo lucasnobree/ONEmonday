@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useSendEmailCampaign } from "@/hooks/marketing/use-email-campaigns";
+import { Send } from "lucide-react";
+import {
+  useSendEmailCampaign,
+  useSendEmailCampaignTest,
+} from "@/hooks/marketing/use-email-campaigns";
 import type { EmailCampaign } from "@/hooks/marketing/use-email-campaigns";
+import { createClient } from "@/lib/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +50,7 @@ export function EmailSendDialog({
   emailCampaign,
 }: EmailSendDialogProps) {
   const sendEmailCampaign = useSendEmailCampaign();
+  const sendTest = useSendEmailCampaignTest();
   const [recipientsRaw, setRecipientsRaw] = useState("");
 
   const formKey = `${open}:${emailCampaign?.id ?? "none"}`;
@@ -88,6 +94,49 @@ export function EmailSendDialog({
     onOpenChange(false);
   };
 
+  /**
+   * Sends a single preview of the campaign to the signed-in user so they can
+   * eyeball it before a live blast. Never moves the campaign to `sent`.
+   */
+  const handleTestSend = async () => {
+    if (!emailCampaign) return;
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) {
+      toast.error("Não foi possível identificar o seu e-mail");
+      return;
+    }
+
+    const result = await sendTest.mutateAsync({
+      emailCampaignId: emailCampaign.id,
+      recipient: {
+        email: user.email,
+        name: user.user_metadata?.full_name as string | undefined,
+      },
+    });
+
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao enviar e-mail de teste"
+      );
+      return;
+    }
+
+    if (result.noop) {
+      toast.warning(
+        result.message ?? "Gateway de e-mail não configurado.",
+        { duration: 6000 }
+      );
+    } else {
+      toast.success(`E-mail de teste enviado para ${user.email}`);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -115,6 +164,11 @@ export function EmailSendDialog({
               {recipients.length} destinatário(s) detectado(s).
             </p>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Antes de um envio real, use{" "}
+            <span className="font-medium">Enviar teste</span> para receber uma
+            prévia no seu próprio e-mail.
+          </p>
           <p className="rounded-md bg-muted p-2 text-xs text-muted-foreground">
             O envio usa o gateway de e-mail (Resend). Sem credenciais
             configuradas o adaptador opera em modo no-op — os envios são
@@ -122,22 +176,33 @@ export function EmailSendDialog({
           </p>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={handleTestSend}
+            disabled={sendTest.isPending || sendEmailCampaign.isPending}
           >
-            Cancelar
+            <Send className="mr-1 h-4 w-4" />
+            {sendTest.isPending ? "Enviando teste..." : "Enviar teste"}
           </Button>
-          <Button
-            onClick={handleSend}
-            disabled={sendEmailCampaign.isPending || recipients.length === 0}
-          >
-            {sendEmailCampaign.isPending
-              ? "Enviando..."
-              : `Enviar (${recipients.length})`}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSend}
+              disabled={sendEmailCampaign.isPending || recipients.length === 0}
+            >
+              {sendEmailCampaign.isPending
+                ? "Enviando..."
+                : `Enviar (${recipients.length})`}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

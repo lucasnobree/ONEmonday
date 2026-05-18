@@ -193,6 +193,12 @@ export const sendEmailCampaignSchema = z.object({
     .max(5000, "Lista de destinatários muito longa"),
 });
 
+/** Send a single preview ("test") email of a campaign to one recipient. */
+export const sendEmailCampaignTestSchema = z.object({
+  emailCampaignId: uuidSchema,
+  recipient: emailRecipientSchema,
+});
+
 // =============================================
 // Automation sequences — Phase 5 marketing automation
 // =============================================
@@ -264,5 +270,8 @@ export type CreateEmailCampaignInput = z.infer<
   typeof createEmailCampaignSchema
 >;
 export type SendEmailCampaignInput = z.infer<typeof sendEmailCampaignSchema>;
+export type SendEmailCampaignTestInput = z.infer<
+  typeof sendEmailCampaignTestSchema
+>;
 export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;
 export type SequenceStepInput = z.infer<typeof sequenceStepSchema>;

@@ -20,6 +20,7 @@ import {
   createEmailCampaignSchema,
   updateEmailCampaignSchema,
   sendEmailCampaignSchema,
+  sendEmailCampaignTestSchema,
 } from "@/lib/validations/marketing";
 import { loadEmailCredential } from "@/lib/integrations/email-credential-loader";
 import {
@@ -287,6 +288,62 @@ export async function sendEmailCampaign(formData: unknown) {
     message: noop
       ? "Gateway de e-mail não configurado. Os envios foram registrados como ignorados."
       : undefined,
+  };
+}
+
+/**
+ * Sends ONE preview ("test") email of a campaign to a single recipient —
+ * typically the operator themselves — so they can verify the content before a
+ * live blast.
+ *
+ * Unlike `sendEmailCampaign`, this never moves the campaign to `sent` or
+ * touches its roll-up counters: it delegates to the `sendCampaignEmailToRecipient`
+ * primitive. It works on `draft`/`scheduled` campaigns; an already-sent campaign
+ * is rejected so a "test" cannot be used to sneak past the send lock.
+ */
+export async function sendEmailCampaignTest(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const parsed = sendEmailCampaignTestSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: campaign } = await supabase
+    .from("marketing_email_campaigns")
+    .select("id, sector_id, status")
+    .eq("id", parsed.data.emailCampaignId)
+    .eq("is_active", true)
+    .single();
+  if (!campaign) return { error: "Campanha de e-mail não encontrada" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, campaign.sector_id, "email_campaign", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  if (campaign.status === "sent" || campaign.status === "sending") {
+    return { error: "Campanha já enviada" };
+  }
+
+  const result = await sendCampaignEmailToRecipient({
+    emailCampaignId: campaign.id,
+    recipient: parsed.data.recipient,
+  });
+
+  if (result.status === "failed") {
+    return { error: result.error ?? "Falha ao enviar e-mail de teste" };
+  }
+
+  return {
+    success: true,
+    noop: result.status === "skipped",
+    message:
+      result.status === "skipped"
+        ? "Gateway de e-mail não configurado. O e-mail de teste foi registrado como ignorado."
+        : undefined,
   };
 }
 

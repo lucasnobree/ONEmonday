@@ -7,6 +7,7 @@ import {
   updateEmailCampaign,
   deleteEmailCampaign,
   sendEmailCampaign,
+  sendEmailCampaignTest,
 } from "@/lib/actions/marketing/email-campaigns";
 import type { EmailCampaignStatus } from "@/lib/validations/marketing";
 
@@ -90,5 +91,15 @@ export function useSendEmailCampaign() {
   return useMutation({
     mutationFn: (input: unknown) => sendEmailCampaign(input),
     onSuccess: () => invalidate(queryClient),
+  });
+}
+
+/**
+ * Sends a single preview ("test") email of a campaign. Does not invalidate
+ * the campaign list — a test send never mutates the campaign's status.
+ */
+export function useSendEmailCampaignTest() {
+  return useMutation({
+    mutationFn: (input: unknown) => sendEmailCampaignTest(input),
   });
 }
