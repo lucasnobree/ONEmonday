@@ -4,6 +4,10 @@ import {
   stageOrder,
   isForwardMove,
   pipelineSummary,
+  isJobOpeningStatus,
+  allowedStatusTransitions,
+  canTransitionStatus,
+  JOB_OPENING_STATUSES,
 } from "./recruitment";
 
 describe("isTerminalStage", () => {
@@ -80,5 +84,60 @@ describe("pipelineSummary", () => {
       rejected: 2,
       total: 6,
     });
+  });
+});
+
+describe("isJobOpeningStatus", () => {
+  it("recognises every canonical status", () => {
+    for (const status of JOB_OPENING_STATUSES) {
+      expect(isJobOpeningStatus(status)).toBe(true);
+    }
+  });
+
+  it("rejects an unknown status", () => {
+    expect(isJobOpeningStatus("archived")).toBe(false);
+    expect(isJobOpeningStatus("")).toBe(false);
+  });
+});
+
+describe("allowedStatusTransitions", () => {
+  it("lets an open vaga be closed, filled or cancelled", () => {
+    expect(allowedStatusTransitions("open")).toEqual([
+      "closed",
+      "filled",
+      "cancelled",
+    ]);
+  });
+
+  it("only lets a non-open vaga be reopened", () => {
+    expect(allowedStatusTransitions("closed")).toEqual(["open"]);
+    expect(allowedStatusTransitions("filled")).toEqual(["open"]);
+    expect(allowedStatusTransitions("cancelled")).toEqual(["open"]);
+  });
+
+  it("offers nothing for an unknown status", () => {
+    expect(allowedStatusTransitions("archived")).toEqual([]);
+  });
+});
+
+describe("canTransitionStatus", () => {
+  it("allows a legal transition", () => {
+    expect(canTransitionStatus("open", "filled")).toBe(true);
+    expect(canTransitionStatus("closed", "open")).toBe(true);
+  });
+
+  it("rejects re-selecting the current status", () => {
+    expect(canTransitionStatus("open", "open")).toBe(false);
+    expect(canTransitionStatus("filled", "filled")).toBe(false);
+  });
+
+  it("rejects moving directly between two non-open statuses", () => {
+    expect(canTransitionStatus("closed", "filled")).toBe(false);
+    expect(canTransitionStatus("filled", "cancelled")).toBe(false);
+  });
+
+  it("rejects an unknown source or target status", () => {
+    expect(canTransitionStatus("archived", "open")).toBe(false);
+    expect(canTransitionStatus("open", "archived")).toBe(false);
   });
 });

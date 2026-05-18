@@ -8,6 +8,7 @@ import {
   type TimeOffRequest,
 } from "@/hooks/hr/use-time-off-requests";
 import { useTimeOffBalance } from "@/hooks/hr/use-time-off-balance";
+import { balanceYearForDate } from "@/lib/hr/time-off-balance";
 import { TimeOffRequestDialog } from "@/components/hr/time-off-request-dialog";
 import { approveTimeOff, rejectTimeOff } from "@/lib/actions/hr/time-off";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -54,9 +55,21 @@ const STATUS_FILTER_LABELS: Record<string, string> = {
   rejected: "Rejeitados",
 };
 
-function BalanceCell({ employeeId, policyId }: { employeeId: string; policyId: string }) {
-  const currentYear = new Date().getFullYear();
-  const { data: balances } = useTimeOffBalance(employeeId, currentYear);
+function BalanceCell({
+  employeeId,
+  policyId,
+  startDate,
+}: {
+  employeeId: string;
+  policyId: string;
+  startDate: string;
+}) {
+  // Balances are tracked per calendar year; resolve against the year the
+  // request falls in, not whatever year the table is viewed in.
+  const { data: balances } = useTimeOffBalance(
+    employeeId,
+    balanceYearForDate(startDate)
+  );
 
   const balance = balances?.find((b) => b.policy_id === policyId);
   if (!balance) return <span className="text-muted-foreground">--</span>;
@@ -255,6 +268,7 @@ export default function TimeOffPage() {
                           <BalanceCell
                             employeeId={req.employee_id}
                             policyId={req.policy_id}
+                            startDate={req.start_date}
                           />
                         </td>
                         <td className="py-2">

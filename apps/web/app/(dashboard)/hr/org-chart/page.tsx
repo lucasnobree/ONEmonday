@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import {
   useOrgChart,
@@ -64,6 +64,7 @@ function OrgChartNode({
   matchedIds,
   searchHitIds,
   isRoot,
+  cardRef,
   onToggle,
   onClickEmployee,
 }: {
@@ -72,6 +73,7 @@ function OrgChartNode({
   matchedIds: Set<string> | null;
   searchHitIds: Set<string> | null;
   isRoot: boolean;
+  cardRef?: React.Ref<HTMLDivElement>;
   onToggle: (id: string) => void;
   onClickEmployee: (id: string) => void;
 }) {
@@ -88,6 +90,7 @@ function OrgChartNode({
       {!isRoot && <div className="h-4 w-px bg-border" />}
 
       <div
+        ref={cardRef}
         role="button"
         tabIndex={0}
         onClick={() => onClickEmployee(node.employee.id)}
@@ -255,6 +258,23 @@ export default function OrgChartPage() {
     setExpandedSet(new Set(defaultExpandedIds));
   }
 
+  // The chart container is horizontally scrollable and centers a `min-w-max`
+  // row; with a wide level-2 row the single root is pushed off-canvas. Scroll
+  // the first root node into view once the tree has rendered.
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const rootNodeRef = useRef<HTMLDivElement | null>(null);
+  const firstRootId = tree[0]?.employee.id ?? null;
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const rootNode = rootNodeRef.current;
+    if (!container || !rootNode) return;
+    // Center the root node horizontally within the scroll viewport.
+    const target =
+      rootNode.offsetLeft + rootNode.offsetWidth / 2 - container.clientWidth / 2;
+    container.scrollLeft = Math.max(0, target);
+  }, [firstRootId, isLoading]);
+
   function toggleExpand(id: string) {
     setExpandedSet((prev) => {
       const next = new Set(prev);
@@ -340,9 +360,12 @@ export default function OrgChartPage() {
           description="Adicione colaboradores na página de colaboradores para visualizar o organograma."
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-muted/20 p-6">
+        <div
+          ref={scrollContainerRef}
+          className="overflow-x-auto rounded-lg border bg-muted/20 p-6"
+        >
           <div className="flex min-w-max items-start justify-center gap-8">
-            {tree.map((root) => (
+            {tree.map((root, index) => (
               <OrgChartNode
                 key={root.employee.id}
                 node={root}
@@ -350,6 +373,7 @@ export default function OrgChartPage() {
                 matchedIds={matchedIds}
                 searchHitIds={searchHitIds}
                 isRoot
+                cardRef={index === 0 ? rootNodeRef : undefined}
                 onToggle={toggleExpand}
                 onClickEmployee={setSelectedEmployeeId}
               />

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -175,14 +176,21 @@ export function DevelopmentPlanCard({ plan }: { plan: DevelopmentPlan }) {
               >
                 Concluir PDI
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => statusMutation.mutate("cancelled")}
-                disabled={statusMutation.isPending}
+              <ConfirmDialog
+                title="Cancelar PDI"
+                description="Tem certeza que deseja cancelar este PDI? O plano deixará de ser acompanhado e esta ação não pode ser desfeita."
+                onConfirm={async () => {
+                  await statusMutation.mutateAsync("cancelled");
+                }}
               >
-                Cancelar
-              </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={statusMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+              </ConfirmDialog>
             </div>
           </>
         )}
