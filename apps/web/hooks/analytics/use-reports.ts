@@ -20,6 +20,8 @@ export interface AnalyticsReport {
   chart_type: ChartType;
   group_by: GroupBy;
   date_range_days: number;
+  /** True for reports seeded by migration 00183 (vs. user-created). */
+  is_default: boolean;
   created_at: string;
 }
 
@@ -35,10 +37,12 @@ export function useReports(sectorId: string | undefined) {
         .from("analytics_reports")
         .select(
           `id, sector_id, name, description, metric, chart_type,
-           group_by, date_range_days, created_at`
+           group_by, date_range_days, is_default, created_at`
         )
         .eq("sector_id", sectorId)
         .eq("is_active", true)
+        // Default (seeded) reports first, then newest user reports.
+        .order("is_default", { ascending: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
