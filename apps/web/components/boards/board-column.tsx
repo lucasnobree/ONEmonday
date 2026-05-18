@@ -124,7 +124,7 @@ export function BoardColumn({
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Titulo do card"
+              placeholder="Título do card"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAddCard();

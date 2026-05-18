@@ -273,8 +273,8 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
           {dragDisabled && (
             <p className="mb-3 text-xs text-muted-foreground">
               {groupBy !== "column"
-                ? "Reordenar cards esta desativado enquanto o board esta agrupado."
-                : "Reordenar cards esta desativado enquanto um filtro esta ativo."}
+                ? "Reordenar cards está desativado enquanto o board está agrupado."
+                : "Reordenar cards está desativado enquanto um filtro está ativo."}
             </p>
           )}
           <DndContext

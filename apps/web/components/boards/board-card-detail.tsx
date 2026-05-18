@@ -61,9 +61,9 @@ const refStatusLabels: Record<string, string> = {
 };
 
 const priorityLabels: Record<string, string> = {
-  critical: "Critico",
+  critical: "Crítico",
   high: "Alta",
-  medium: "Media",
+  medium: "Média",
   low: "Baixa",
 };
 const priorityColors: Record<string, string> = {
@@ -520,7 +520,7 @@ export function BoardCardDetail({
             {/* Description */}
             {card.description && (
               <div>
-                <h3 className="text-sm font-medium mb-2">Descricao</h3>
+                <h3 className="text-sm font-medium mb-2">Descrição</h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {card.description}
                 </p>

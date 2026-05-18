@@ -231,7 +231,7 @@ export function BoardFilters({
         <Input
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          placeholder="Buscar cards por titulo..."
+          placeholder="Buscar cards por título..."
           className="pl-8"
           aria-label="Buscar cards"
         />
