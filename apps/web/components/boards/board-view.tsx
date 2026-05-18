@@ -25,6 +25,7 @@ import { reorderCards } from "@/lib/actions/cards";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BoardColumn } from "./board-column";
 import { BoardCard } from "./board-card";
+import { BoardLaneScroll } from "./board-lane-scroll";
 import { BoardCardDetail } from "./board-card-detail";
 import { BoardListView } from "./board-list-view";
 import { BoardTimelineView } from "./board-timeline-view";
@@ -296,7 +297,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                         {lane.label}
                       </h3>
                     )}
-                    <div className="flex gap-4 overflow-x-auto pb-4">
+                    <BoardLaneScroll>
                       {lane.board.columns.map((column) => (
                         <BoardColumn
                           key={`${lane.id}-${column.id}`}
@@ -312,7 +313,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                           }
                         />
                       ))}
-                    </div>
+                    </BoardLaneScroll>
                   </div>
                 ))
               )}
