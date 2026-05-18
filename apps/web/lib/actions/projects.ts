@@ -72,15 +72,28 @@ export async function updateProject(formData: unknown) {
   );
   if (!canUpdate) return { error: "Sem permissao" };
 
+  // Only write fields the caller actually supplied so a partial update never
+  // clobbers an unrelated column with `undefined`.
+  const updateData: Record<string, unknown> = {};
+  if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
+  if (parsed.data.description !== undefined)
+    updateData.description = parsed.data.description || null;
+  if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+  if (parsed.data.health !== undefined) updateData.health = parsed.data.health;
+  if (parsed.data.statusNote !== undefined)
+    updateData.status_note = parsed.data.statusNote || null;
+  if (parsed.data.startDate !== undefined)
+    updateData.start_date = parsed.data.startDate || null;
+  if (parsed.data.endDate !== undefined)
+    updateData.target_date = parsed.data.endDate || null;
+
+  if (Object.keys(updateData).length === 0) {
+    return { error: "Nenhuma alteracao informada" };
+  }
+
   const { error } = await supabase
     .from("projects")
-    .update({
-      name: parsed.data.name,
-      description: parsed.data.description,
-      status: parsed.data.status,
-      start_date: parsed.data.startDate,
-      target_date: parsed.data.endDate,
-    })
+    .update(updateData)
     .eq("id", parsed.data.id);
 
   if (error) return { error: error.message };

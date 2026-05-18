@@ -5,11 +5,13 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Plus,
+  Pencil,
   Calendar,
   AlertCircle,
   Link2Off,
   FolderKanban,
   ExternalLink,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -20,6 +22,8 @@ import {
   type ProjectCard,
 } from "@/hooks/use-project-detail";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { usePermissions } from "@/hooks/use-permissions";
+import { PROJECT_HEALTH_CONFIG, type ProjectHealth } from "@/hooks/use-projects";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -34,6 +38,8 @@ import {
 import { PRIORITY_CONFIG, formatDateFull } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { ProjectLinkCardDialog } from "./project-link-card-dialog";
+import { ProjectEditDialog } from "./project-edit-dialog";
+import { ProjectMembersStrip } from "./project-members-strip";
 
 const STATUS_CONFIG = {
   active: {
@@ -66,14 +72,20 @@ interface ProjectDetailProps {
 
 export function ProjectDetail({ projectId, sectorSlug }: ProjectDetailProps) {
   const { currentSector } = useCurrentSector();
+  const { hasPermission } = usePermissions();
   const { data: project, isLoading, error } = useProjectDetail(projectId);
   const unlinkCard = useUnlinkProjectCard(projectId);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const progress = useMemo(
     () => computeProjectProgress(project?.cards ?? []),
     [project?.cards]
   );
+
+  const canUpdateProject = currentSector
+    ? hasPermission(currentSector.id, "project", "update")
+    : false;
 
   if (isLoading) {
     return (
@@ -107,6 +119,9 @@ export function ProjectDetail({ projectId, sectorSlug }: ProjectDetailProps) {
   const statusCfg =
     STATUS_CONFIG[project.status as keyof typeof STATUS_CONFIG] ??
     STATUS_CONFIG.active;
+  const healthCfg =
+    PROJECT_HEALTH_CONFIG[project.health as ProjectHealth] ??
+    PROJECT_HEALTH_CONFIG.on_track;
   const overdue = isProjectOverdue(project.status, project.target_date);
 
   async function handleUnlink(cardId: string) {
@@ -147,15 +162,37 @@ export function ProjectDetail({ projectId, sectorSlug }: ProjectDetailProps) {
               resource="project"
               action="update"
             >
-              <Button onClick={() => setLinkOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Vincular card
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
+                <Button onClick={() => setLinkOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Vincular card
+                </Button>
+              </div>
             </PermissionGate>
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge className={statusCfg.className}>{statusCfg.label}</Badge>
+          <span
+            className="flex items-center gap-1.5 text-xs font-medium"
+          >
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                healthCfg.dotClassName
+              )}
+            />
+            <span className={healthCfg.textClassName}>
+              {healthCfg.label}
+            </span>
+          </span>
           {(project.start_date || project.target_date) && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
@@ -204,6 +241,34 @@ export function ProjectDetail({ projectId, sectorSlug }: ProjectDetailProps) {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="flex-row items-center gap-2 space-y-0">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-base">Membros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProjectMembersStrip
+            projectId={projectId}
+            sectorIds={project.sectorIds}
+            members={project.members}
+            canManage={canUpdateProject}
+          />
+        </CardContent>
+      </Card>
+
+      {project.status_note && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Nota de status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              {project.status_note}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div>
         <h2 className="mb-3 text-lg font-semibold">
           Cards vinculados
@@ -239,6 +304,12 @@ export function ProjectDetail({ projectId, sectorSlug }: ProjectDetailProps) {
         projectId={projectId}
         sectorIds={project.sectorIds}
         linkedCardIds={project.cards.map((c) => c.id)}
+      />
+
+      <ProjectEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        project={project}
       />
     </div>
   );

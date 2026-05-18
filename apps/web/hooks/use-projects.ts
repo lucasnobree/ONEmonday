@@ -25,6 +25,51 @@ export interface ProjectSummary {
   updated_at: string | null;
 }
 
+/** Project lifecycle status -> pt-BR label + badge classes. */
+export const PROJECT_STATUS_CONFIG = {
+  active: {
+    label: "Ativo",
+    className:
+      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  },
+  paused: {
+    label: "Pausado",
+    className:
+      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  completed: {
+    label: "Concluído",
+    className:
+      "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  },
+  archived: {
+    label: "Arquivado",
+    className:
+      "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400",
+  },
+} as const;
+
+/** Project health (RYG) -> pt-BR label + dot/text classes. */
+export const PROJECT_HEALTH_CONFIG = {
+  on_track: {
+    label: "No prazo",
+    dotClassName: "bg-emerald-500",
+    textClassName: "text-emerald-600 dark:text-emerald-400",
+  },
+  at_risk: {
+    label: "Em risco",
+    dotClassName: "bg-amber-500",
+    textClassName: "text-amber-600 dark:text-amber-400",
+  },
+  off_track: {
+    label: "Atrasado",
+    dotClassName: "bg-red-500",
+    textClassName: "text-red-600 dark:text-red-400",
+  },
+} as const;
+
+export type ProjectHealth = keyof typeof PROJECT_HEALTH_CONFIG;
+
 /** A project tile enriched with its linked-card rollup. */
 export interface ProjectListItem extends ProjectSummary {
   cardCount: number;

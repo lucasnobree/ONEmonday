@@ -34,20 +34,39 @@ const PROJECT_STATUS_OPTIONS = [
   { value: "archived", label: "Arquivado" },
 ] as const;
 
+const PROJECT_HEALTH_OPTIONS = [
+  { value: "on_track", label: "No prazo" },
+  { value: "at_risk", label: "Em risco" },
+  { value: "off_track", label: "Atrasado" },
+] as const;
+
 const editProjectSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(100),
   description: z.string().max(2000).optional(),
   status: z.enum(["active", "paused", "completed", "archived"]),
+  health: z.enum(["on_track", "at_risk", "off_track"]),
+  statusNote: z.string().max(2000).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });
 
 type EditProjectFormInput = z.infer<typeof editProjectSchema>;
 
+/**
+ * A project the edit dialog can seed from. `health` / `status_note` only
+ * exist on the full {@link ProjectDetail}; the index tile passes a plain
+ * {@link ProjectSummary}, so both are optional here and fall back to the
+ * defaults when absent.
+ */
+export type EditableProject = ProjectSummary & {
+  health?: string | null;
+  status_note?: string | null;
+};
+
 interface ProjectEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project: ProjectSummary;
+  project: EditableProject;
 }
 
 /**
@@ -74,6 +93,9 @@ export function ProjectEditDialog({
       name: project.name,
       description: project.description ?? "",
       status: project.status as EditProjectFormInput["status"],
+      health: (project.health ??
+        "on_track") as EditProjectFormInput["health"],
+      statusNote: project.status_note ?? "",
       startDate: project.start_date ?? "",
       endDate: project.target_date ?? "",
     },
@@ -86,6 +108,9 @@ export function ProjectEditDialog({
         name: project.name,
         description: project.description ?? "",
         status: project.status as EditProjectFormInput["status"],
+        health: (project.health ??
+          "on_track") as EditProjectFormInput["health"],
+        statusNote: project.status_note ?? "",
         startDate: project.start_date ?? "",
         endDate: project.target_date ?? "",
       });
@@ -96,6 +121,8 @@ export function ProjectEditDialog({
     project.name,
     project.description,
     project.status,
+    project.health,
+    project.status_note,
     project.start_date,
     project.target_date,
     reset,
@@ -107,6 +134,8 @@ export function ProjectEditDialog({
       name: data.name,
       description: data.description || undefined,
       status: data.status,
+      health: data.health,
+      statusNote: data.statusNote ?? "",
       startDate: data.startDate || undefined,
       endDate: data.endDate || undefined,
     });
@@ -180,6 +209,42 @@ export function ProjectEditDialog({
                 {errors.status.message}
               </p>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label>Saúde</Label>
+            <Controller
+              control={control}
+              name="health"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value: string | null) => {
+                    if (value) field.onChange(value);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione a saúde" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROJECT_HEALTH_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-project-note">
+              Nota de status (opcional)
+            </Label>
+            <Textarea
+              id="edit-project-note"
+              placeholder="Onde o projeto está, riscos e próximos passos"
+              {...register("statusNote")}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

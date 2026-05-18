@@ -3,6 +3,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { linkProjectCard, unlinkProjectCard } from "@/lib/actions/projects";
+import {
+  addProjectMember,
+  removeProjectMember,
+} from "@/lib/actions/project-members";
 import type { ProjectSummary } from "@/hooks/use-projects";
 
 /** A card linked to a project, with just the fields the detail page renders. */
@@ -17,9 +21,22 @@ export interface ProjectCard {
   column: { name: string; is_done_column: boolean } | null;
 }
 
+/** A member of a project's roster. */
+export interface ProjectMember {
+  user_id: string;
+  role: "lead" | "member";
+  full_name: string;
+  avatar_url: string | null;
+}
+
 export interface ProjectDetail extends ProjectSummary {
   sectorIds: string[];
   cards: ProjectCard[];
+  members: ProjectMember[];
+  /** Coarse RYG health signal (defaults to "on_track"). */
+  health: "on_track" | "at_risk" | "off_track";
+  /** Free-text "where things stand" note, or null. */
+  status_note: string | null;
 }
 
 /** Pure progress rollup over a project's linked cards. Exported for tests. */
@@ -77,7 +94,7 @@ export function useProjectDetail(projectId: string | undefined) {
       const { data: project, error: projectError } = await supabase
         .from("projects")
         .select(
-          "id, name, description, status, start_date, target_date, created_by, is_active, created_at, updated_at"
+          "id, name, description, status, health, status_note, start_date, target_date, created_by, is_active, created_at, updated_at"
         )
         .eq("id", projectId)
         .eq("is_active", true)
@@ -87,6 +104,11 @@ export function useProjectDetail(projectId: string | undefined) {
       const { data: sectors } = await supabase
         .from("project_sectors")
         .select("sector_id")
+        .eq("project_id", projectId);
+
+      const { data: memberRows } = await supabase
+        .from("project_members")
+        .select("user_id, role, users ( full_name, avatar_url )")
         .eq("project_id", projectId);
 
       const { data: links, error: linksError } = await supabase
@@ -125,14 +147,37 @@ export function useProjectDetail(projectId: string | undefined) {
             : null,
         }));
 
+      const members = (
+        (memberRows ?? []) as unknown as RawProjectMemberRow[]
+      ).map<ProjectMember>((row) => ({
+        user_id: row.user_id,
+        role: (row.role === "lead" ? "lead" : "member") as ProjectMember["role"],
+        full_name: row.users?.full_name ?? "",
+        avatar_url: row.users?.avatar_url ?? null,
+      }));
+
+      const raw = project as ProjectSummary & {
+        health: string | null;
+        status_note: string | null;
+      };
+
       return {
         ...(project as ProjectSummary),
         sectorIds: (sectors ?? []).map((s) => s.sector_id),
         cards,
+        members,
+        health: (raw.health ?? "on_track") as ProjectDetail["health"],
+        status_note: raw.status_note ?? null,
       };
     },
     enabled: !!projectId,
   });
+}
+
+interface RawProjectMemberRow {
+  user_id: string;
+  role: string;
+  users: { full_name: string; avatar_url: string | null } | null;
 }
 
 /** Board cards in the project's sectors that are not yet linked. */
@@ -197,6 +242,32 @@ export function useUnlinkProjectCard(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (cardId: string) => unlinkProjectCard({ projectId, cardId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["project-detail", projectId],
+      });
+    },
+  });
+}
+
+export function useAddProjectMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { userId: string; role: "lead" | "member" }) =>
+      addProjectMember({ projectId, ...input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["project-detail", projectId],
+      });
+    },
+  });
+}
+
+export function useRemoveProjectMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      removeProjectMember({ projectId, userId }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["project-detail", projectId],
