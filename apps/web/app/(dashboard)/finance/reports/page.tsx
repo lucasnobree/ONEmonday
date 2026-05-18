@@ -45,7 +45,9 @@ export default function FinanceReportsPage() {
     from,
     to
   );
-  const { data: aging } = useFinanceAging(currentSector?.id);
+  const { data: aging, isLoading: agingLoading } = useFinanceAging(
+    currentSector?.id
+  );
   const { data: invoices } = useInvoices(currentSector?.id);
   const { data: expenses } = useExpenses(currentSector?.id);
 
@@ -230,16 +232,21 @@ export default function FinanceReportsPage() {
         </CardContent>
       </Card>
 
-      {/* AR / AP aging */}
+      {/* AR / AP aging — always reflects the current position, not the
+          De/Até period above (the aging RPC takes no date argument). */}
       <AgingTable
         title="Aging de Recebíveis (Contas a Receber)"
         items={receivableItems}
         emptyLabel="Nenhuma fatura em aberto."
+        isLoading={agingLoading}
+        caption="Posição atual — não considera o período selecionado acima."
       />
       <AgingTable
         title="Aging de Pagáveis (Contas a Pagar)"
         items={payableItems}
         emptyLabel="Nenhuma despesa em aberto."
+        isLoading={agingLoading}
+        caption="Posição atual — não considera o período selecionado acima."
       />
 
       {/* Accountant export */}

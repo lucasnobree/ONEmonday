@@ -16,15 +16,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  * An AR / AP aging table — one row per customer / vendor, columns are the
  * 0-30 / 31-60 / 61-90 / 90+ buckets, with a totals footer. Pure presentation
  * over {@link AgingItem}s computed by `lib/finance/aging.ts`.
+ *
+ * `isLoading` renders skeleton rows so the empty label is never shown before
+ * data has arrived (a false "you have no overdue invoices" negative).
+ * `caption` clarifies, e.g., that the figures are the current position and not
+ * the report's selected period.
  */
 export function AgingTable({
   title,
   items,
   emptyLabel,
+  isLoading = false,
+  caption,
 }: {
   title: string;
   items: AgingItem[];
   emptyLabel: string;
+  isLoading?: boolean;
+  caption?: string;
 }) {
   const rows = useMemo(() => agingByParty(items), [items]);
   const totals = useMemo(() => agingTotals(items), [items]);
@@ -34,9 +43,21 @@ export function AgingTable({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
+        {caption && (
+          <p className="text-xs text-muted-foreground">{caption}</p>
+        )}
       </CardHeader>
       <CardContent>
-        {rows.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-9 rounded-md bg-muted animate-pulse"
+              />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
             {emptyLabel}
           </p>
