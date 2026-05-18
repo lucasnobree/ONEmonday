@@ -5,6 +5,9 @@ import {
   createSLARuleSchema,
   createArticleSchema,
   createCannedResponseSchema,
+  updateTicketStatusSchema,
+  bulkUpdateTicketStatusSchema,
+  createTicketAttachmentSchema,
 } from "./support";
 
 const UUID = "3826e880-b077-4930-a676-7c5b96d10f63";
@@ -136,6 +139,85 @@ describe("createCannedResponseSchema", () => {
       sectorId: UUID,
       title: "Saudacao",
       content: "",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("updateTicketStatusSchema", () => {
+  it("accepts every valid status", () => {
+    for (const status of ["new", "open", "pending", "on_hold", "resolved"]) {
+      const result = updateTicketStatusSchema.safeParse({
+        ticketId: UUID,
+        status,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects an unknown status", () => {
+    const result = updateTicketStatusSchema.safeParse({
+      ticketId: UUID,
+      status: "closed",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("bulkUpdateTicketStatusSchema", () => {
+  it("accepts a list of ticket ids", () => {
+    const result = bulkUpdateTicketStatusSchema.safeParse({
+      ticketIds: [UUID, UUID2],
+      status: "pending",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty selection", () => {
+    const result = bulkUpdateTicketStatusSchema.safeParse({
+      ticketIds: [],
+      status: "open",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a selection over 100 tickets", () => {
+    const result = bulkUpdateTicketStatusSchema.safeParse({
+      ticketIds: Array.from({ length: 101 }, () => UUID),
+      status: "open",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("createTicketAttachmentSchema", () => {
+  it("accepts a complete attachment payload", () => {
+    const result = createTicketAttachmentSchema.safeParse({
+      ticketId: UUID,
+      filePath: "user/ticket/file.png",
+      fileName: "file.png",
+      fileSize: 1024,
+      mimeType: "image/png",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("allows an optional mime type", () => {
+    const result = createTicketAttachmentSchema.safeParse({
+      ticketId: UUID,
+      filePath: "user/ticket/file.bin",
+      fileName: "file.bin",
+      fileSize: 0,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty file path", () => {
+    const result = createTicketAttachmentSchema.safeParse({
+      ticketId: UUID,
+      filePath: "",
+      fileName: "file.png",
+      fileSize: 10,
     });
     expect(result.success).toBe(false);
   });

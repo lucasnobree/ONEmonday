@@ -219,6 +219,25 @@ BEGIN
     now() - interval '9 days 20 hours', now() - interval '8 days', now() - interval '9 days 22 hours',
     now() - interval '6 days', true, 2, 'Demorou muito para resolver. Tivemos que usar Chrome enquanto isso.', now() - interval '5 days')
   ON CONFLICT (card_id) DO NOTHING;
+
+  -- Align the multi-state status (migration 00168) with the seeded signals.
+  UPDATE support_tickets st
+  SET status = CASE
+    WHEN st.resolved_at IS NOT NULL THEN 'resolved'
+    WHEN st.first_response_at IS NOT NULL THEN 'open'
+    ELSE 'new'
+  END
+  WHERE st.sector_id = v_sector_id
+    AND st.card_id IN (
+      'cd100000-f001-0000-0000-000000000001'::uuid,
+      'cd100000-f002-0000-0000-000000000002'::uuid,
+      'cd100000-f003-0000-0000-000000000003'::uuid,
+      'cd100000-f004-0000-0000-000000000004'::uuid,
+      'cd100000-f005-0000-0000-000000000005'::uuid,
+      'cd100000-f006-0000-0000-000000000006'::uuid,
+      'cd100000-f007-0000-0000-000000000007'::uuid,
+      'cd100000-f008-0000-0000-000000000008'::uuid
+    );
 END;
 $$;
 

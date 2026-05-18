@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Search, FileText, Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { stripMarkdown } from "@/lib/support/markdown";
 
 const filterTabs: { label: string; value: PublishedFilter }[] = [
   { label: "Todos", value: "all" },
@@ -228,7 +229,7 @@ export default function KnowledgeBasePage() {
                   </div>
                   {article.content && (
                     <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                      {article.content}
+                      {stripMarkdown(article.content)}
                     </p>
                   )}
                   <div className="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
