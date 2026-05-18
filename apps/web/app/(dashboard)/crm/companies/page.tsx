@@ -20,13 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FilterSelect } from "@/components/shared/filter-select";
 import {
   Plus,
   Search,
@@ -177,35 +171,29 @@ export default function CompaniesPage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={sizeFilter} onValueChange={(v) => setSizeFilter(v ?? "all")}>
-          <SelectTrigger className="h-8 w-40 text-sm">
-            <SelectValue placeholder="Porte" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todo porte</SelectItem>
-            {Object.entries(sizeLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
+        <FilterSelect
+          value={sizeFilter}
+          onValueChange={setSizeFilter}
+          className="w-40"
+          aria-label="Filtrar por porte"
+          options={[
+            { value: "all", label: "Todo porte" },
+            ...Object.entries(sizeLabels).map(([value, label]) => ({
+              value,
+              label,
+            })),
+          ]}
+        />
+        <FilterSelect
           value={industryFilter}
-          onValueChange={(v) => setIndustryFilter(v ?? "all")}
-        >
-          <SelectTrigger className="h-8 w-48 text-sm">
-            <SelectValue placeholder="Indústria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toda indústria</SelectItem>
-            {industries.map((ind) => (
-              <SelectItem key={ind} value={ind}>
-                {ind}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onValueChange={setIndustryFilter}
+          className="w-48"
+          aria-label="Filtrar por indústria"
+          options={[
+            { value: "all", label: "Toda indústria" },
+            ...industries.map((ind) => ({ value: ind, label: ind })),
+          ]}
+        />
         {hasActiveFilter && (
           <Button
             variant="ghost"
