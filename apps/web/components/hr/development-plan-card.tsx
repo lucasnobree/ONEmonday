@@ -179,7 +179,9 @@ export function DevelopmentPlanCard({ plan }: { plan: DevelopmentPlan }) {
               <ConfirmDialog
                 title="Cancelar PDI"
                 description="Tem certeza que deseja cancelar este PDI? O plano deixará de ser acompanhado e esta ação não pode ser desfeita."
-                onConfirm={() => statusMutation.mutateAsync("cancelled")}
+                onConfirm={async () => {
+                  await statusMutation.mutateAsync("cancelled");
+                }}
               >
                 <Button
                   size="sm"

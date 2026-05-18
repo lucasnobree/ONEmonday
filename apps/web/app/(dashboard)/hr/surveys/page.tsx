@@ -127,12 +127,12 @@ export default function SurveysPage() {
                         <ConfirmDialog
                           title="Encerrar pesquisa"
                           description="Tem certeza que deseja encerrar esta pesquisa? Ela não poderá mais receber respostas e não será possível reabri-la."
-                          onConfirm={() =>
-                            statusMutation.mutateAsync({
+                          onConfirm={async () => {
+                            await statusMutation.mutateAsync({
                               surveyId: survey.id,
                               status: "closed",
-                            })
-                          }
+                            });
+                          }}
                         >
                           <Button
                             size="sm"
