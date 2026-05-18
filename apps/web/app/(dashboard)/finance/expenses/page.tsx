@@ -13,6 +13,7 @@ import type {
 } from "@/hooks/finance/use-expenses";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
 import { ExpenseReceiptsDialog } from "@/components/finance/expense-receipts-dialog";
+import { ExpenseDetailSheet } from "@/components/finance/expense-detail-sheet";
 import { ExpenseApprovalMenu } from "@/components/finance/expense-approval-menu";
 import {
   CATEGORY_LABELS,
@@ -43,6 +44,7 @@ export default function ExpensesPage() {
   const [editing, setEditing] = useState<Expense | undefined>();
   const [receiptsOpen, setReceiptsOpen] = useState(false);
   const [receiptsExpense, setReceiptsExpense] = useState<Expense | undefined>();
+  const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "all">(
     "all"
   );
@@ -246,7 +248,11 @@ export default function ExpensesPage() {
                 </thead>
                 <tbody>
                   {filtered.map((exp) => (
-                    <tr key={exp.id} className="border-b last:border-0">
+                    <tr
+                      key={exp.id}
+                      className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setDetailExpense(exp)}
+                    >
                       <td className="p-3 font-medium">{exp.vendor_name}</td>
                       <td className="p-3 text-muted-foreground">
                         {CATEGORY_LABELS[exp.category]}
@@ -270,7 +276,7 @@ export default function ExpensesPage() {
                           </p>
                         )}
                       </td>
-                      <td className="p-3">
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <ExpenseApprovalMenu expense={exp} />
                           <Button
@@ -335,6 +341,12 @@ export default function ExpensesPage() {
         open={receiptsOpen}
         onOpenChange={setReceiptsOpen}
         expense={receiptsExpense}
+      />
+
+      <ExpenseDetailSheet
+        expense={detailExpense}
+        open={!!detailExpense}
+        onOpenChange={(o) => !o && setDetailExpense(null)}
       />
     </div>
   );

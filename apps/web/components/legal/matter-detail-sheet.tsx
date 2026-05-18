@@ -5,6 +5,9 @@ import type { Matter } from "@/hooks/legal/use-matters";
 import { useContracts } from "@/hooks/legal/use-contracts";
 import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { MatterFormDialog } from "./matter-form-dialog";
+import { MatterCommentThread } from "./matter-comment-thread";
+import { MatterStatusControl } from "./matter-status-control";
+import { StatusHistoryTimeline } from "./status-history-timeline";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +15,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +24,7 @@ import {
   MATTER_TYPE_LABELS,
   MATTER_PRIORITY_LABELS,
 } from "@/lib/legal/labels";
+import { useMatterComments } from "@/hooks/legal/use-matter-comments";
 import { formatDateOnly, formatTimestamp } from "@/lib/legal/dates";
 import { matterDueStatus } from "@/lib/legal/matters";
 import { Gavel, Pencil } from "lucide-react";
@@ -48,6 +53,7 @@ export function MatterDetailSheet({
   const [showEdit, setShowEdit] = useState(false);
   const { data: members } = useSectorMembers(matter?.sector_id);
   const { data: contracts } = useContracts(matter?.sector_id);
+  const { data: comments } = useMatterComments(matter?.id);
 
   if (!matter) return null;
 
@@ -106,55 +112,90 @@ export function MatterDetailSheet({
             </div>
           </SheetHeader>
 
-          <div className="px-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Responsável" value={assignee} />
-              <Field label="Solicitante" value={requester} />
-              <Field
-                label="Prazo"
-                value={
-                  matter.due_date ? (
-                    <span className="flex items-center gap-1.5">
-                      {formatDateOnly(matter.due_date)}
-                      {due.label && due.variant && (
-                        <Badge variant={due.variant}>{due.label}</Badge>
-                      )}
-                    </span>
-                  ) : (
-                    "-"
-                  )
-                }
-              />
-              <Field
-                label="Criada em"
-                value={formatTimestamp(matter.created_at)}
-              />
-              <Field
-                label="Contrato relacionado"
-                value={relatedContract ? relatedContract.title : "-"}
-              />
-              <Field
-                label="Resolvida em"
-                value={
-                  matter.resolved_at
-                    ? formatTimestamp(matter.resolved_at)
-                    : "-"
-                }
-              />
-            </div>
+          <Tabs defaultValue="info" className="px-4">
+            <TabsList variant="line" className="w-full justify-start">
+              <TabsTrigger value="info">Informações</TabsTrigger>
+              <TabsTrigger value="comments">
+                Comentários ({comments?.length ?? 0})
+              </TabsTrigger>
+              <TabsTrigger value="history">Histórico</TabsTrigger>
+            </TabsList>
 
-            {matter.description && (
-              <>
-                <Separator />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium">Descrição</h4>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {matter.description}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
+            <TabsContent value="info" className="mt-4 space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Mudar status</p>
+                <MatterStatusControl
+                  matterId={matter.id}
+                  status={matter.status}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Responsável" value={assignee} />
+                <Field label="Solicitante" value={requester} />
+                <Field
+                  label="Prazo"
+                  value={
+                    matter.due_date ? (
+                      <span className="flex items-center gap-1.5">
+                        {formatDateOnly(matter.due_date)}
+                        {due.label && due.variant && (
+                          <Badge variant={due.variant}>{due.label}</Badge>
+                        )}
+                      </span>
+                    ) : (
+                      "-"
+                    )
+                  }
+                />
+                <Field
+                  label="Criada em"
+                  value={formatTimestamp(matter.created_at)}
+                />
+                <Field
+                  label="Contrato relacionado"
+                  value={relatedContract ? relatedContract.title : "-"}
+                />
+                <Field
+                  label="Resolvida em"
+                  value={
+                    matter.resolved_at
+                      ? formatTimestamp(matter.resolved_at)
+                      : "-"
+                  }
+                />
+              </div>
+
+              {matter.description && (
+                <>
+                  <Separator />
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-medium">Descrição</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {matter.description}
+                    </p>
+                  </div>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="comments" className="mt-4">
+              <MatterCommentThread
+                matterId={matter.id}
+                sectorId={matter.sector_id}
+              />
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-4">
+              <StatusHistoryTimeline
+                entityType="matter"
+                entityId={matter.id}
+                sectorId={matter.sector_id}
+              />
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
 

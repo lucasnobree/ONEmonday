@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseDateOnly, formatDateOnly, formatTimestamp } from "./dates";
+import {
+  parseDateOnly,
+  formatDateOnly,
+  formatTimestamp,
+  formatDateTime,
+} from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a date-only string at local midnight (no UTC shift)", () => {
@@ -57,5 +62,21 @@ describe("formatTimestamp", () => {
     expect(formatTimestamp(undefined)).toBe("");
     expect(formatTimestamp("")).toBe("");
     expect(formatTimestamp("not-a-timestamp")).toBe("");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("includes both the date and a HH:MM time component", () => {
+    const result = formatDateTime("2026-05-15T12:30:00Z");
+    // pt-BR date is dd/mm/aaaa; the time is appended as HH:MM.
+    expect(result).toMatch(/15\/05\/2026/);
+    expect(result).toMatch(/\d{2}:\d{2}/);
+  });
+
+  it("returns an empty string for missing or invalid input", () => {
+    expect(formatDateTime(null)).toBe("");
+    expect(formatDateTime(undefined)).toBe("");
+    expect(formatDateTime("")).toBe("");
+    expect(formatDateTime("not-a-timestamp")).toBe("");
   });
 });

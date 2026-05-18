@@ -60,3 +60,21 @@ export function formatTimestamp(input: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return "";
   return DATE_FORMAT.format(date);
 }
+
+/**
+ * Formats a full ISO timestamp as a localized `pt-BR` date *and time*. Used by
+ * the status-history timeline and the matter comment thread, where the time of
+ * day matters (multiple transitions / comments can happen the same day).
+ */
+export function formatDateTime(input: string | null | undefined): string {
+  if (typeof input !== "string" || input.length === 0) return "";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

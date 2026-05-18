@@ -145,6 +145,45 @@ export const linkClauseSchema = z.object({
   clauseId: z.string().uuid(),
 });
 
+/** A lightweight contract-approval action (see lib/legal/status-history). */
+export const CONTRACT_APPROVAL_ACTIONS = [
+  "submit_for_approval",
+  "approve",
+  "reject",
+] as const;
+
+/** Apply an approval action to a contract; `note` is the reject reason. */
+export const contractApprovalSchema = z.object({
+  contractId: z.string().uuid(),
+  action: z.enum(CONTRACT_APPROVAL_ACTIONS),
+  note: z.string().max(500).optional(),
+});
+
+/** Change a matter's status, recording a history entry. */
+export const matterStatusChangeSchema = z.object({
+  matterId: z.string().uuid(),
+  status: z.enum(MATTER_STATUSES),
+  note: z.string().max(500).optional(),
+});
+
+/** Post a comment to a matter's thread. */
+export const createMatterCommentSchema = z.object({
+  matterId: z.string().uuid(),
+  body: z.string().min(1, "Comentário não pode ser vazio").max(5000),
+});
+
+/** Edit an existing matter comment. */
+export const updateMatterCommentSchema = z.object({
+  id: z.string().uuid(),
+  body: z.string().min(1, "Comentário não pode ser vazio").max(5000),
+});
+
+export type ContractApprovalInput = z.infer<typeof contractApprovalSchema>;
+export type MatterStatusChangeInput = z.infer<typeof matterStatusChangeSchema>;
+export type CreateMatterCommentInput = z.infer<
+  typeof createMatterCommentSchema
+>;
+
 export type CreateContractInput = z.infer<typeof createContractSchema>;
 export type CreateMatterInput = z.infer<typeof createMatterSchema>;
 export type CreateClauseInput = z.infer<typeof createClauseSchema>;

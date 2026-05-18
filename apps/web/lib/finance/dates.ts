@@ -43,6 +43,25 @@ export function formatDateOnly(input: string | null | undefined): string {
   return date.toLocaleDateString("pt-BR");
 }
 
+/**
+ * Formats a full ISO timestamp (e.g. a `created_at` / `paid_at` column) as a
+ * localized `pt-BR` date and time. Unlike {@link formatDateOnly} this trusts
+ * `new Date` because a timestamp carries an explicit offset. Falls back to an
+ * empty string when the input is missing or unparseable.
+ */
+export function formatTimestamp(input: string | null | undefined): string {
+  if (typeof input !== "string" || input.length === 0) return "";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /** Today's date as a date-only `YYYY-MM-DD` string in the local timezone. */
 export function todayDateOnly(): string {
   const now = new Date();
