@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import {
   useReviewCycles,
@@ -113,6 +114,9 @@ export default function PerformancePage() {
           <div className="md:col-span-2">
             <EvaluationsPanel
               cycleId={activeCycleId}
+              cycleStatus={
+                cycles?.find((c) => c.id === activeCycleId)?.status ?? null
+              }
               sectorId={currentSector.id}
             />
           </div>
@@ -144,9 +148,11 @@ export default function PerformancePage() {
 
 function EvaluationsPanel({
   cycleId,
+  cycleStatus,
   sectorId,
 }: {
   cycleId: string | null;
+  cycleStatus: string | null;
   sectorId: string;
 }) {
   const { data: evaluations, isLoading } = useEvaluations(cycleId);
@@ -169,16 +175,29 @@ function EvaluationsPanel({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Avaliações do ciclo</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Nova avaliação
-        </Button>
+        <div className="flex items-center gap-2">
+          {cycleStatus === "active" && (
+            <Button
+              size="sm"
+              variant="outline"
+              render={
+                <Link href={`/hr/performance/${cycleId}/autoavaliacao`} />
+              }
+            >
+              Minha autoavaliação
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Nova avaliação
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

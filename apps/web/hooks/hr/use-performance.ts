@@ -129,6 +129,86 @@ export function useNineBoxGrid(cycleId: string | null) {
   });
 }
 
+export interface SelfAssessment {
+  id: string;
+  cycle_id: string;
+  sector_id: string;
+  employee_id: string;
+  status: string;
+  performance_score: number | null;
+  potential_score: number | null;
+  overall_rating: number | null;
+  achievements: string | null;
+  challenges: string | null;
+  goals: string | null;
+  submitted_at: string | null;
+}
+
+export interface SelfAssessmentContext {
+  found: boolean;
+  cycle?: {
+    id: string;
+    name: string;
+    status: string;
+    start_date: string;
+    end_date: string;
+  };
+  employee_id?: string;
+  employee_name?: string;
+  assessment?: SelfAssessment | null;
+}
+
+/**
+ * Loads the self-assessment context for the calling employee in a cycle: the
+ * cycle, the employee row, and their existing self-assessment (if any). Backed
+ * by the `get_self_assessment_context` RPC.
+ */
+export function useSelfAssessmentContext(cycleId: string | null) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["hr-self-assessment", cycleId],
+    queryFn: async (): Promise<SelfAssessmentContext> => {
+      if (!cycleId) return { found: false };
+
+      const { data, error } = await supabase.rpc(
+        "get_self_assessment_context",
+        { p_cycle_id: cycleId }
+      );
+
+      if (error) throw error;
+      return (data as SelfAssessmentContext) ?? { found: false };
+    },
+    enabled: !!cycleId,
+  });
+}
+
+/** Loads a single employee's self-assessment for a cycle (manager read). */
+export function useEvaluationSelfAssessment(
+  cycleId: string | null,
+  employeeId: string | null
+) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["hr-self-assessment-for-eval", cycleId, employeeId],
+    queryFn: async (): Promise<SelfAssessment | null> => {
+      if (!cycleId || !employeeId) return null;
+
+      const { data, error } = await supabase
+        .from("hr_self_assessments")
+        .select("*")
+        .eq("cycle_id", cycleId)
+        .eq("employee_id", employeeId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return (data as SelfAssessment | null) ?? null;
+    },
+    enabled: !!cycleId && !!employeeId,
+  });
+}
+
 export interface DevelopmentAction {
   id: string;
   plan_id: string;
