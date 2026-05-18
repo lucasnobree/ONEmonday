@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatDateFull } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { useCardDetail, type CardDetail } from "@/hooks/use-card-detail";
 import { createComment } from "@/lib/actions/comments";
@@ -511,7 +512,7 @@ export function BoardCardDetail({
                 {card.due_date && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {new Date(card.due_date).toLocaleDateString("pt-BR")}
+                    {formatDateFull(card.due_date)}
                   </span>
                 )}
               </div>
