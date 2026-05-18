@@ -25,10 +25,21 @@ export interface ProjectSummary {
   updated_at: string | null;
 }
 
+/** A project tile enriched with its linked-card rollup. */
+export interface ProjectListItem extends ProjectSummary {
+  cardCount: number;
+  doneCount: number;
+}
+
+interface RawProjectCardCount {
+  project_id: string;
+  cards: { completed_at: string | null; is_active: boolean } | null;
+}
+
 export function useProjects(sectorId: string | undefined) {
   const supabase = createClient();
 
-  return useQuery<ProjectSummary[]>({
+  return useQuery<ProjectListItem[]>({
     queryKey: ["projects", sectorId],
     queryFn: async () => {
       if (!sectorId) return [];
@@ -47,11 +58,37 @@ export function useProjects(sectorId: string | undefined) {
         .eq("projects.is_active", true);
 
       if (error) throw error;
-      return (
-        (data ?? []).flatMap((ps) =>
-          ps.projects ? [ps.projects as unknown as ProjectSummary] : []
-        )
+
+      const projects = (data ?? []).flatMap((ps) =>
+        ps.projects ? [ps.projects as unknown as ProjectSummary] : []
       );
+      if (projects.length === 0) return [];
+
+      // Resolve a done/total rollup per project from project_cards. A
+      // separate query (not an !inner join) so RLS on cards never silently
+      // collapses the tile list.
+      const { data: links } = await supabase
+        .from("project_cards")
+        .select("project_id, cards ( completed_at, is_active )")
+        .in(
+          "project_id",
+          projects.map((p) => p.id)
+        );
+
+      const counts = new Map<string, { total: number; done: number }>();
+      for (const row of (links ?? []) as unknown as RawProjectCardCount[]) {
+        if (!row.cards || !row.cards.is_active) continue;
+        const entry = counts.get(row.project_id) ?? { total: 0, done: 0 };
+        entry.total += 1;
+        if (row.cards.completed_at != null) entry.done += 1;
+        counts.set(row.project_id, entry);
+      }
+
+      return projects.map<ProjectListItem>((p) => ({
+        ...p,
+        cardCount: counts.get(p.id)?.total ?? 0,
+        doneCount: counts.get(p.id)?.done ?? 0,
+      }));
     },
     enabled: !!sectorId,
   });

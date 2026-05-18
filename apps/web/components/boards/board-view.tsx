@@ -33,8 +33,15 @@ import {
   EMPTY_BOARD_FILTERS,
   applyBoardFilters,
   countBoardCards,
+  isBoardFiltered,
   type BoardFilterState,
+  type BoardGroupBy,
 } from "./board-filters";
+import {
+  buildSwimlanes,
+  collectAssigneeOptions,
+  collectTagOptions,
+} from "./board-grouping";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface BoardViewProps {
@@ -51,13 +58,26 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   const [filters, setFilters] = useState<BoardFilterState>(
     EMPTY_BOARD_FILTERS
   );
+  const [groupBy, setGroupBy] = useState<BoardGroupBy>("column");
 
-  const isFiltered =
-    filters.search.trim() !== "" || filters.priority !== "all";
+  // Reordering is disabled while a filter is active OR while the board is
+  // grouped into swimlanes — in both cases a lane only ever holds a partial
+  // card set, so positions cannot be safely recomputed from it.
+  const isFiltered = isBoardFiltered(filters);
+  const dragDisabled = isFiltered || groupBy !== "column";
 
   const filteredBoard = useMemo(
     () => (board ? applyBoardFilters(board, filters) : board),
     [board, filters]
+  );
+
+  const assigneeOptions = useMemo(
+    () => (board ? collectAssigneeOptions(board) : []),
+    [board]
+  );
+  const tagOptions = useMemo(
+    () => (board ? collectTagOptions(board) : []),
+    [board]
   );
 
   const sensors = useSensors(
@@ -88,9 +108,9 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
     async (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveCard(null);
-      // Reordering is disabled while a filter is active so positions are
-      // never recomputed from a partial (filtered) card set.
-      if (!over || !board || isFiltered) return;
+      // Reordering is disabled while a filter is active or the board is
+      // grouped, so positions are never recomputed from a partial card set.
+      if (!over || !board || dragDisabled) return;
 
       const activeId = active.id as string;
       const overId = over.id as string;
@@ -197,7 +217,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
         queryClient.invalidateQueries({ queryKey: ["board", boardId] });
       }
     },
-    [board, boardId, queryClient, isFiltered]
+    [board, boardId, queryClient, dragDisabled]
   );
 
   if (isLoading) {
@@ -219,6 +239,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   }
 
   const viewBoard = filteredBoard ?? board;
+  const swimlanes = buildSwimlanes(viewBoard, groupBy);
 
   return (
     <div>
@@ -241,13 +262,19 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
         <BoardFilters
           filters={filters}
           onChange={setFilters}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
+          assigneeOptions={assigneeOptions}
+          tagOptions={tagOptions}
           resultCount={countBoardCards(viewBoard)}
         />
 
         <TabsContent value={0}>
-          {isFiltered && (
+          {dragDisabled && (
             <p className="mb-3 text-xs text-muted-foreground">
-              Reordenar cards esta desativado enquanto um filtro esta ativo.
+              {groupBy !== "column"
+                ? "Reordenar cards esta desativado enquanto o board esta agrupado."
+                : "Reordenar cards esta desativado enquanto um filtro esta ativo."}
             </p>
           )}
           <DndContext
@@ -256,22 +283,39 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              {viewBoard.columns.map((column) => (
-                <BoardColumn
-                  key={column.id}
-                  column={column}
-                  boardId={boardId}
-                  sectorId={sectorId}
-                  dragDisabled={isFiltered}
-                  onCardClick={(cardId) => setSelectedCardId(cardId)}
-                  onCardCreated={() =>
-                    queryClient.invalidateQueries({
-                      queryKey: ["board", boardId],
-                    })
-                  }
-                />
-              ))}
+            <div className="space-y-4">
+              {swimlanes.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Nenhum card para exibir.
+                </p>
+              ) : (
+                swimlanes.map((lane) => (
+                  <div key={lane.id}>
+                    {lane.label && (
+                      <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+                        {lane.label}
+                      </h3>
+                    )}
+                    <div className="flex gap-4 overflow-x-auto pb-4">
+                      {lane.board.columns.map((column) => (
+                        <BoardColumn
+                          key={`${lane.id}-${column.id}`}
+                          column={column}
+                          boardId={boardId}
+                          sectorId={sectorId}
+                          dragDisabled={dragDisabled}
+                          onCardClick={(cardId) => setSelectedCardId(cardId)}
+                          onCardCreated={() =>
+                            queryClient.invalidateQueries({
+                              queryKey: ["board", boardId],
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <DragOverlay dropAnimation={null}>
