@@ -112,3 +112,107 @@ export function useSurveyResults(surveyId: string | null) {
     enabled: !!surveyId,
   });
 }
+
+export interface SurveyForRespondent {
+  survey: {
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+  };
+  questions: SurveyQuestion[];
+}
+
+/**
+ * Loads a single survey plus its questions for the employee answering page.
+ * Distinct from `useSurveys` (admin list, sector-scoped + counts).
+ */
+export function useSurveyForRespondent(surveyId: string | null) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["hr-survey-respondent", surveyId],
+    queryFn: async (): Promise<SurveyForRespondent | null> => {
+      if (!surveyId) return null;
+
+      const { data: survey, error } = await supabase
+        .from("hr_surveys")
+        .select("id, title, description, status")
+        .eq("id", surveyId)
+        .single();
+      if (error) throw error;
+
+      const { data: questions, error: qError } = await supabase
+        .from("hr_survey_questions")
+        .select("*")
+        .eq("survey_id", surveyId)
+        .order("position", { ascending: true });
+      if (qError) throw qError;
+
+      return {
+        survey,
+        questions: (questions as SurveyQuestion[]) ?? [],
+      };
+    },
+    enabled: !!surveyId,
+  });
+}
+
+export interface SurveyEmployeeContext {
+  found: boolean;
+  employee_id?: string;
+  employee_name?: string;
+  already_responded?: boolean;
+}
+
+/**
+ * Resolves the calling user's hr_employee row for a survey, and whether they
+ * have already responded. Backed by the `get_survey_employee` RPC so the
+ * employee directory is not exposed to every authenticated user.
+ */
+export function useSurveyEmployee(surveyId: string | null) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["hr-survey-employee", surveyId],
+    queryFn: async (): Promise<SurveyEmployeeContext> => {
+      if (!surveyId) return { found: false };
+
+      const { data, error } = await supabase.rpc("get_survey_employee", {
+        p_survey_id: surveyId,
+      });
+
+      if (error) throw error;
+      return (data as SurveyEmployeeContext) ?? { found: false };
+    },
+    enabled: !!surveyId,
+  });
+}
+
+export interface SurveyParticipation {
+  eligible: number;
+  responded: number;
+}
+
+/**
+ * Loads the participation rate (responded / eligible) for a survey. Returns
+ * counts only — never individual identities.
+ */
+export function useSurveyParticipation(surveyId: string | null) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["hr-survey-participation", surveyId],
+    queryFn: async (): Promise<SurveyParticipation> => {
+      if (!surveyId) return { eligible: 0, responded: 0 };
+
+      const { data, error } = await supabase.rpc("get_survey_participation", {
+        p_survey_id: surveyId,
+      });
+
+      if (error) throw error;
+      return (data as SurveyParticipation) ?? { eligible: 0, responded: 0 };
+    },
+    enabled: !!surveyId,
+  });
+}

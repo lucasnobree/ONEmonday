@@ -94,7 +94,15 @@ export async function updateSurveyStatus(formData: unknown) {
   return { success: true };
 }
 
-/** Submit an anonymous response to an open survey. */
+/**
+ * Submit an anonymous response to an open survey on behalf of an employee.
+ *
+ * The whole submission — the anonymous response, its answers and the
+ * participation record — is written atomically by the `submit_survey_response`
+ * SECURITY DEFINER RPC (migration 00190). The participation record enforces a
+ * one-response-per-employee guard, while the response row carries no identity:
+ * the two are deliberately unlinkable so the answers stay anonymous.
+ */
 export async function submitSurveyResponse(formData: unknown) {
   const supabase = await createClient();
   const {
@@ -105,43 +113,20 @@ export async function submitSurveyResponse(formData: unknown) {
   const parsed = submitSurveyResponseSchema.safeParse(formData);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
-  const { data: survey } = await supabase
-    .from("hr_surveys")
-    .select("sector_id, status")
-    .eq("id", parsed.data.surveyId)
-    .single();
-  if (!survey) return { error: "Pesquisa nao encontrada" };
-  if (survey.status !== "open") {
-    return { error: "Esta pesquisa não está aberta para respostas" };
-  }
-
-  // The response itself is anonymous: it stores no user/employee reference.
-  const { data: response, error } = await supabase
-    .from("hr_survey_responses")
-    .insert({
-      survey_id: parsed.data.surveyId,
-      sector_id: survey.sector_id,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("submit_survey_response", {
+    p_survey_id: parsed.data.surveyId,
+    p_employee_id: parsed.data.employeeId,
+    p_answers: parsed.data.answers.map((a) => ({
+      question_id: a.questionId,
+      score_value: a.scoreValue ?? null,
+      text_value: a.textValue ?? null,
+    })),
+  });
 
   if (error) return { error: error.message };
 
-  const answerRows = parsed.data.answers.map((a) => ({
-    response_id: response.id,
-    question_id: a.questionId,
-    score_value: a.scoreValue ?? null,
-    text_value: a.textValue || null,
-  }));
-
-  const { error: aError } = await supabase
-    .from("hr_survey_answers")
-    .insert(answerRows);
-
-  if (aError) {
-    await supabase.from("hr_survey_responses").delete().eq("id", response.id);
-    return { error: aError.message };
-  }
+  const result = (data ?? {}) as { error?: string; success?: boolean };
+  if (result.error) return { error: result.error };
 
   revalidatePath("/hr/surveys");
   return { success: true };
