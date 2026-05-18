@@ -10,7 +10,7 @@
  * Server-only.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WebhookPorts } from "./webhook";
+import type { WebhookPorts, WebhookEventStatus } from "./webhook";
 
 /** Postgres unique-violation error code. */
 const UNIQUE_VIOLATION = "23505";
@@ -29,11 +29,29 @@ export function makeWebhookPorts(client: SupabaseClient): WebhookPorts {
       });
       if (error) {
         if (error.code === UNIQUE_VIOLATION) {
-          return { state: "duplicate" };
+          // Read back the stored row's status: a prior `failed` attempt is
+          // re-processable, any other status is a true idempotent replay.
+          const { data } = await client
+            .from("webhook_events")
+            .select("status")
+            .eq("provider", input.provider)
+            .eq("external_id", input.externalId)
+            .maybeSingle<{ status: WebhookEventStatus }>();
+          return {
+            state: "duplicate",
+            status: data?.status ?? "received",
+          };
         }
         throw new Error(error.message);
       }
       return { state: "new" };
+    },
+    async resetEvent(input) {
+      await client
+        .from("webhook_events")
+        .update({ status: "received", error: null, processed_at: null })
+        .eq("provider", input.provider)
+        .eq("external_id", input.externalId);
     },
     async finalizeEvent(input) {
       await client
