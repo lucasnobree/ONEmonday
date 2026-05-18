@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Finance & fiscal gateways (migration Phase 4)
+- Internal financial management ONEmonday can own: AR/AP aging reports, a
+  management DRE/P&L, and a categorized accountant export, on new
+  `/finance/reports` and `/finance/reconciliation` pages.
+- Fiscal/banking/payment gateway adapters on the Phase 1 integration layer:
+  Focus NFe (NF-e/NFS-e emission), Pluggy (Open Finance bank sync, with a
+  manual OFX-import fallback) and Asaas (boleto/PIX charges) — each runs in
+  a safe no-op mode until real credentials are configured.
+- Honest scope: ONEmonday owns the internal financial layer; SPED, the
+  official accounting books and tax filings stay with the accountant, and
+  fiscal emission needs an A1 certificate + provider accounts to go live.
+
 ### HR people-management (migration Phase 3)
 - Builds the HR module toward Sólides people-management parity: a working
   recruitment ATS (candidate pipeline, stages, detail, interview notes),
