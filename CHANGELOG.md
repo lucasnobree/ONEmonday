@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### UX audit & quick wins (Wave 4)
+- A second screen-by-screen UX & market audit, this time of all 50
+  dashboard screens (the migration-phase and module-backlog screens that
+  Wave 3 predated) — reports in `docs/research/ux-audit-*-wave4.md`,
+  screenshots in `screenshots/audit-wave4/` — followed by the quick-win
+  fixes across every module:
+  - Filter and sort dropdowns now show localized labels everywhere — a
+    shared `FilterSelect` kills the raw `all` token across CRM; Core sort
+    triggers, Settings → Integrações event/channel slugs and Finance
+    fiscal-status tokens were showing raw values too.
+  - pt-BR accents restored again across Core, Support and Finance copy.
+  - Destructive actions wrapped in the shared confirmation dialog (CRM
+    form delete, integration-credential delete, HR survey close, PDI
+    cancel).
+  - Bug fixes: Analytics KPI delta badge paired an arrow with an empty
+    value; the Support dashboard SLA banner and KPI card disagreed; HR
+    time-off balances resolved against the wrong year; the org chart
+    opened with its root scrolled off-screen; Legal date-only fields
+    shifted a day in UTC-3; column WIP limits are now enforced on create
+    and move.
+  - Reachability: hover-only Support card actions now work by keyboard
+    and touch; the Settings sub-tabs render on every settings page.
+
 ### Module deferred backlogs (post-migration polish)
 - The deferred-feature backlog of the five non-migration modules, built and
   integrated together:
