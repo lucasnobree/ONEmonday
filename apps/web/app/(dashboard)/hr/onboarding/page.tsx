@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import {
   useOnboardingInstances,
   useOnboardingTemplates,
   useCompleteOnboardingItem,
   useDeleteOnboardingTemplate,
+  useStartOnboarding,
   type OnboardingTemplate,
 } from "@/hooks/hr/use-onboarding";
+import { useEmployees, type Employee } from "@/hooks/hr/use-employees";
 import { OnboardingTemplateFormDialog } from "@/components/hr/onboarding-template-form-dialog";
 import { OnboardingDetailSheet } from "@/components/hr/onboarding-detail-sheet";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -18,8 +20,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
@@ -28,6 +46,7 @@ import {
   UserCog,
   Calendar,
   Briefcase,
+  Play,
   Plus,
   Pencil,
   Trash2,
@@ -58,6 +77,7 @@ export default function OnboardingPage() {
 
   const [activeTab, setActiveTab] = useState<"ativos" | "templates">("ativos");
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [editTemplate, setEditTemplate] = useState<OnboardingTemplate | undefined>();
   const [detailInstanceId, setDetailInstanceId] = useState<string | null>(null);
 
@@ -115,7 +135,12 @@ export default function OnboardingPage() {
           </button>
         </div>
 
-        {activeTab === "templates" && (
+        {activeTab === "ativos" ? (
+          <Button size="sm" onClick={() => setStartDialogOpen(true)}>
+            <Play className="h-4 w-4 mr-1" />
+            Iniciar Onboarding
+          </Button>
+        ) : (
           <Button
             size="sm"
             onClick={() => {
@@ -156,6 +181,13 @@ export default function OnboardingPage() {
         onOpenChange={setTemplateDialogOpen}
         sectorId={currentSector.id}
         template={editTemplate}
+      />
+
+      <StartOnboardingDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        sectorId={currentSector.id}
+        templates={templates ?? []}
       />
 
       <OnboardingDetailSheet
@@ -430,5 +462,133 @@ function TemplatesList({
         </Card>
       ))}
     </div>
+  );
+}
+
+/**
+ * Dialog to start an onboarding checklist for a colaborador. Mirrors the
+ * "Iniciar Offboarding" dialog so the two sibling screens behave the same and
+ * onboarding can be started from this page instead of only the employee sheet.
+ */
+function StartOnboardingDialog({
+  open,
+  onOpenChange,
+  sectorId,
+  templates,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sectorId: string;
+  templates: OnboardingTemplate[];
+}) {
+  const { data: employees } = useEmployees(sectorId);
+  const startOnboarding = useStartOnboarding();
+
+  const [employeeId, setEmployeeId] = useState("");
+  const [templateId, setTemplateId] = useState("");
+
+  const eligibleEmployees = useMemo(
+    () => (employees ?? []).filter((e: Employee) => e.status !== "terminated"),
+    [employees]
+  );
+
+  function resetForm() {
+    setEmployeeId("");
+    setTemplateId("");
+  }
+
+  async function handleStart() {
+    if (!employeeId || !templateId) return;
+    const result = await startOnboarding.mutateAsync({
+      employeeId,
+      templateId,
+    });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao iniciar onboarding"
+      );
+      return;
+    }
+    toast.success("Onboarding iniciado");
+    resetForm();
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) resetForm();
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Iniciar Onboarding</DialogTitle>
+          <DialogDescription>
+            Crie um checklist de integração para um colaborador.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid gap-2">
+            <Label>Colaborador</Label>
+            <Select
+              value={employeeId}
+              onValueChange={(v) => setEmployeeId(v ?? "")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o colaborador" />
+              </SelectTrigger>
+              <SelectContent>
+                {eligibleEmployees.map((emp: Employee) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Template</Label>
+            <Select
+              value={templateId}
+              onValueChange={(v) => setTemplateId(v ?? "")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione um template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {templates.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nenhum template disponível. Crie um na aba Templates.
+              </p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleStart}
+            disabled={
+              startOnboarding.isPending || !employeeId || !templateId
+            }
+          >
+            {startOnboarding.isPending ? "Iniciando..." : "Iniciar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
