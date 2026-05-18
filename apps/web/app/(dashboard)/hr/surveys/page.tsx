@@ -6,8 +6,8 @@ import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useSurveys, type Survey } from "@/hooks/hr/use-surveys";
 import { updateSurveyStatus } from "@/lib/actions/hr/surveys";
 import { SurveyFormDialog } from "@/components/hr/survey-form-dialog";
-import { SurveyResponseDialog } from "@/components/hr/survey-response-dialog";
 import { SurveyResultsSheet } from "@/components/hr/survey-results-sheet";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -33,7 +33,6 @@ export default function SurveysPage() {
   const { currentSector } = useCurrentSector();
   const queryClient = useQueryClient();
   const { data: surveys, isLoading } = useSurveys(currentSector?.id);
-  const [respondTo, setRespondTo] = useState<Survey | null>(null);
   const [resultsFor, setResultsFor] = useState<Survey | null>(null);
 
   const statusMutation = useMutation({
@@ -125,28 +124,24 @@ export default function SurveysPage() {
                         </Button>
                       )}
                       {survey.status === "open" && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setRespondTo(survey)}
-                          >
-                            Responder
-                          </Button>
+                        <ConfirmDialog
+                          title="Encerrar pesquisa"
+                          description="Tem certeza que deseja encerrar esta pesquisa? Ela não poderá mais receber respostas e não será possível reabri-la."
+                          onConfirm={() =>
+                            statusMutation.mutateAsync({
+                              surveyId: survey.id,
+                              status: "closed",
+                            })
+                          }
+                        >
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() =>
-                              statusMutation.mutate({
-                                surveyId: survey.id,
-                                status: "closed",
-                              })
-                            }
                             disabled={statusMutation.isPending}
                           >
                             Encerrar
                           </Button>
-                        </>
+                        </ConfirmDialog>
                       )}
                       <Button
                         size="sm"
@@ -163,15 +158,6 @@ export default function SurveysPage() {
           )}
         </CardContent>
       </Card>
-
-      <SurveyResponseDialog
-        surveyId={respondTo?.id ?? null}
-        surveyTitle={respondTo?.title ?? ""}
-        open={!!respondTo}
-        onOpenChange={(o) => {
-          if (!o) setRespondTo(null);
-        }}
-      />
 
       <SurveyResultsSheet
         surveyId={resultsFor?.id ?? null}
