@@ -89,6 +89,95 @@ export async function updateProject(formData: unknown) {
   return { success: true };
 }
 
+/**
+ * Links an existing card to a project (`project_cards` join row). The card
+ * must belong to a sector the project is in, so a project never collects
+ * cards from sectors its members cannot see. Idempotent: a duplicate link
+ * is treated as success.
+ */
+export async function linkProjectCard(formData: unknown) {
+  const parsed = z
+    .object({ projectId: z.string().uuid(), cardId: z.string().uuid() })
+    .safeParse(formData);
+  if (!parsed.success) return { error: "Dados invalidos" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: projectSectors } = await supabase
+    .from("project_sectors")
+    .select("sector_id")
+    .eq("project_id", parsed.data.projectId);
+
+  const perms = await getUserPermissions(user.id);
+  const canUpdate = projectSectors?.some((ps) =>
+    hasPermission(perms, ps.sector_id, "project", "update")
+  );
+  if (!canUpdate) return { error: "Sem permissao" };
+
+  const { data: card } = await supabase
+    .from("cards")
+    .select("sector_id")
+    .eq("id", parsed.data.cardId)
+    .eq("is_active", true)
+    .single();
+  if (!card) return { error: "Card nao encontrado" };
+
+  const projectSectorIds = new Set(
+    (projectSectors ?? []).map((ps) => ps.sector_id)
+  );
+  if (!projectSectorIds.has(card.sector_id)) {
+    return { error: "O card pertence a um setor fora deste projeto" };
+  }
+
+  const { error } = await supabase.from("project_cards").upsert(
+    { project_id: parsed.data.projectId, card_id: parsed.data.cardId },
+    { onConflict: "project_id,card_id", ignoreDuplicates: true }
+  );
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+/** Removes a card from a project. */
+export async function unlinkProjectCard(formData: unknown) {
+  const parsed = z
+    .object({ projectId: z.string().uuid(), cardId: z.string().uuid() })
+    .safeParse(formData);
+  if (!parsed.success) return { error: "Dados invalidos" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: projectSectors } = await supabase
+    .from("project_sectors")
+    .select("sector_id")
+    .eq("project_id", parsed.data.projectId);
+
+  const perms = await getUserPermissions(user.id);
+  const canUpdate = projectSectors?.some((ps) =>
+    hasPermission(perms, ps.sector_id, "project", "update")
+  );
+  if (!canUpdate) return { error: "Sem permissao" };
+
+  const { error } = await supabase
+    .from("project_cards")
+    .delete()
+    .eq("project_id", parsed.data.projectId)
+    .eq("card_id", parsed.data.cardId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  return { success: true };
+}
+
 export async function deleteProject(projectId: string) {
   try {
     z.string().uuid().parse(projectId);
