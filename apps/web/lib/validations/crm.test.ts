@@ -5,6 +5,8 @@ import {
   sendWhatsappMessageSchema,
   logEmailSchema,
   sendEmailSchema,
+  messageTemplateSchema,
+  leadFormSchema,
 } from "./crm";
 
 const UUID = "11111111-1111-4111-8111-111111111111";
@@ -220,5 +222,89 @@ describe("sendEmailSchema", () => {
       body: "Corpo",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("messageTemplateSchema", () => {
+  it("accepts a WhatsApp template with no subject", () => {
+    const result = messageTemplateSchema.safeParse({
+      sectorId: UUID,
+      channel: "whatsapp",
+      name: "Follow-up",
+      body: "Olá {{contato.nome}}",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an email template with a subject", () => {
+    const result = messageTemplateSchema.safeParse({
+      sectorId: UUID,
+      channel: "email",
+      name: "Proposta",
+      subject: "Sua proposta",
+      body: "Segue em anexo",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an email template with no subject", () => {
+    const result = messageTemplateSchema.safeParse({
+      sectorId: UUID,
+      channel: "email",
+      name: "Proposta",
+      body: "Segue em anexo",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty body", () => {
+    const result = messageTemplateSchema.safeParse({
+      sectorId: UUID,
+      channel: "whatsapp",
+      name: "Vazio",
+      body: "",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("leadFormSchema field-to-property mapping", () => {
+  const base = {
+    sectorId: UUID,
+    name: "Contato do site",
+    successMessage: "Obrigado!",
+  };
+
+  it("accepts distinct map targets across fields", () => {
+    const result = leadFormSchema.safeParse({
+      ...base,
+      fields: [
+        { key: "nome", label: "Nome", type: "text", map: "name" },
+        { key: "email", label: "E-mail", type: "email", map: "email" },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects two fields mapped to the same lead property", () => {
+    const result = leadFormSchema.safeParse({
+      ...base,
+      fields: [
+        { key: "email1", label: "E-mail 1", type: "email", map: "email" },
+        { key: "email2", label: "E-mail 2", type: "email", map: "email" },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("allows multiple unmapped (none) fields", () => {
+    const result = leadFormSchema.safeParse({
+      ...base,
+      fields: [
+        { key: "obs1", label: "Obs 1", type: "text", map: "none" },
+        { key: "obs2", label: "Obs 2", type: "text", map: "none" },
+      ],
+    });
+    expect(result.success).toBe(true);
   });
 });

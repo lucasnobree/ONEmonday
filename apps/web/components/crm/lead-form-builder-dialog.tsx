@@ -8,8 +8,10 @@ import {
 } from "@/hooks/crm/use-lead-forms";
 import {
   LEAD_FORM_FIELD_TYPES,
+  LEAD_FIELD_MAP_TARGETS,
   type LeadFormField,
   type LeadFormFieldType,
+  type LeadFieldMapTarget,
 } from "@/lib/validations/crm";
 import {
   Dialog,
@@ -51,6 +53,19 @@ const FIELD_TYPE_LABELS: Record<LeadFormFieldType, string> = {
   select: "Seleção",
 };
 
+/**
+ * pt-BR labels for the lead-property a field can be mapped onto. Mapping a
+ * field feeds the matching `crm_leads` column instead of the raw `payload`,
+ * so qualifying the lead carries structured contact/deal data.
+ */
+const MAP_TARGET_LABELS: Record<LeadFieldMapTarget, string> = {
+  none: "Sem mapeamento (payload)",
+  name: "Nome do lead",
+  email: "E-mail do lead",
+  phone: "Telefone do lead",
+  company: "Empresa do lead",
+};
+
 /** Derives a safe field key from a label (lowercase, ascii, underscores). */
 function keyFromLabel(label: string): string {
   return label
@@ -62,10 +77,10 @@ function keyFromLabel(label: string): string {
     .slice(0, 60);
 }
 
-/** A starter field list every new form begins with. */
+/** A starter field list every new form begins with — pre-mapped. */
 const DEFAULT_FIELDS: LeadFormField[] = [
-  { key: "nome", label: "Nome", type: "text", required: true },
-  { key: "email", label: "E-mail", type: "email", required: true },
+  { key: "nome", label: "Nome", type: "text", required: true, map: "name" },
+  { key: "email", label: "E-mail", type: "email", required: true, map: "email" },
 ];
 
 export function LeadFormBuilderDialog({
@@ -132,6 +147,8 @@ export function LeadFormBuilderDialog({
         f.type === "select"
           ? (f.options ?? []).map((o) => o.trim()).filter(Boolean)
           : undefined,
+      // Drop a 'none' map so a clean form payload has no redundant key.
+      map: f.map && f.map !== "none" ? f.map : undefined,
     }));
 
     if (normalised.some((f) => !f.label.trim() || !f.key)) {
@@ -148,6 +165,14 @@ export function LeadFormBuilderDialog({
       )
     ) {
       toast.error("Campos de seleção precisam de ao menos uma opção");
+      return;
+    }
+    // A lead property may be fed by at most one field.
+    const mapped = normalised
+      .map((f) => f.map)
+      .filter((m): m is NonNullable<typeof m> => !!m);
+    if (new Set(mapped).size !== mapped.length) {
+      toast.error("Cada propriedade do lead só pode ser mapeada uma vez");
       return;
     }
 
@@ -351,6 +376,34 @@ export function LeadFormBuilderDialog({
                       aria-label="Opções"
                     />
                   )}
+
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Mapear para
+                    </Label>
+                    <Select
+                      value={field.map ?? "none"}
+                      onValueChange={(v) =>
+                        updateField(index, {
+                          map: (v as LeadFieldMapTarget) ?? "none",
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        className="w-full"
+                        aria-label="Mapear campo para propriedade do lead"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LEAD_FIELD_MAP_TARGETS.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {MAP_TARGET_LABELS[t]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <label className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Switch

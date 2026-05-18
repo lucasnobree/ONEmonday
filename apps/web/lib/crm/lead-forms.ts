@@ -85,53 +85,80 @@ export interface MappedLead {
   payload: Record<string, string>;
 }
 
+/** The structured lead columns a form field can feed. */
+type MapTarget = "name" | "email" | "phone" | "company";
+
+/** Conventional key fallbacks, used when a field carries no explicit `map`. */
+const CONVENTIONAL_KEYS: Record<MapTarget, string[]> = {
+  name: ["name", "nome", "full_name", "nome_completo"],
+  email: ["email", "e_mail"],
+  phone: ["phone", "telefone", "celular", "whatsapp"],
+  company: ["company", "empresa", "organizacao"],
+};
+
 /**
  * Map validated submission values onto the `crm_leads` columns.
  *
- * A form's fields are matched to the structured lead columns by a small set of
- * conventional keys (`name`/`nome`, `email`, `phone`/`telefone`, `company`/
- * `empresa`); everything else goes into the free-form `payload`. This lets a
- * sector design any field list while still populating the columns the inbox
- * and conversion rely on.
+ * A field can be **explicitly tagged** with `map: name|email|phone|company` in
+ * the form builder — that field then feeds the matching structured column.
+ * Fields with no `map` tag (or `map: 'none'`) fall back to the legacy
+ * conventional-key matching (`nome`, `email`, `telefone`, `empresa`); anything
+ * still unmatched lands in the free-form `payload`. Explicit mapping always
+ * wins over the conventional fallback, so a sector can design any field list
+ * and decide exactly which field populates which lead property.
+ *
+ * @param values  The validated key/value submission.
+ * @param fields  The form's field definitions (carry the explicit `map` tag).
+ *                Omitting them yields the legacy conventional-key behaviour.
  */
 export function mapSubmissionToLead(
-  values: Record<string, string>
+  values: Record<string, string>,
+  fields: LeadFormField[] = []
 ): MappedLead {
-  const NAME_KEYS = ["name", "nome", "full_name", "nome_completo"];
-  const EMAIL_KEYS = ["email", "e_mail"];
-  const PHONE_KEYS = ["phone", "telefone", "celular", "whatsapp"];
-  const COMPANY_KEYS = ["company", "empresa", "organizacao"];
+  // 1. Explicit mapping — a field tagged `map: <target>` claims that target.
+  const explicit: Partial<Record<MapTarget, string>> = {};
+  const consumed = new Set<string>();
+  for (const field of fields) {
+    const target = field.map;
+    if (!target || target === "none") continue;
+    const value = values[field.key];
+    if (value === undefined || value === "") continue;
+    // First field wins if (defensively) two share a target.
+    if (explicit[target] === undefined) {
+      explicit[target] = value;
+      consumed.add(field.key);
+    }
+  }
 
-  const pick = (keys: string[]): { key: string; value: string } | null => {
-    for (const key of keys) {
-      if (values[key] !== undefined && values[key] !== "") {
-        return { key, value: values[key] };
+  // 2. Conventional-key fallback for any target an explicit map left unset.
+  const resolve = (target: MapTarget): string | null => {
+    if (explicit[target] !== undefined) return explicit[target] as string;
+    for (const key of CONVENTIONAL_KEYS[target]) {
+      const value = values[key];
+      if (value !== undefined && value !== "") {
+        consumed.add(key);
+        return value;
       }
     }
     return null;
   };
 
-  const name = pick(NAME_KEYS);
-  const email = pick(EMAIL_KEYS);
-  const phone = pick(PHONE_KEYS);
-  const company = pick(COMPANY_KEYS);
+  const name = resolve("name");
+  const email = resolve("email");
+  const phone = resolve("phone");
+  const company = resolve("company");
 
-  const consumed = new Set(
-    [name, email, phone, company]
-      .filter((m): m is { key: string; value: string } => m !== null)
-      .map((m) => m.key)
-  );
-
+  // 3. Everything not consumed by a structured column stays in `payload`.
   const payload: Record<string, string> = {};
   for (const [key, value] of Object.entries(values)) {
     if (!consumed.has(key)) payload[key] = value;
   }
 
   return {
-    name: name?.value ?? "Lead sem nome",
-    email: email?.value ?? null,
-    phone: phone?.value ?? null,
-    company: company?.value ?? null,
+    name: name ?? "Lead sem nome",
+    email,
+    phone,
+    company,
     payload,
   };
 }

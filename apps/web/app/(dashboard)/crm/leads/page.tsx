@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useLeads, useLeadStats, type Lead } from "@/hooks/crm/use-leads";
+import {
+  useLeads,
+  useLeadStats,
+  useLeadAging,
+  type Lead,
+} from "@/hooks/crm/use-leads";
 import { LeadDetailSheet } from "@/components/crm/lead-detail-sheet";
 import { LeadCreateDialog } from "@/components/crm/lead-create-dialog";
 import {
@@ -10,6 +15,8 @@ import {
   leadStatusLabel,
   leadStatusVariant,
 } from "@/lib/crm/lead-ui";
+import { classifyLeadAging } from "@/lib/crm/lead-aging";
+import { AlertTriangle } from "lucide-react";
 import { LEAD_STATUSES, type LeadStatus } from "@/lib/validations/crm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +40,9 @@ export default function LeadsInboxPage() {
   const { currentSector } = useCurrentSector();
   const { data: leads, isLoading } = useLeads(currentSector?.id);
   const { data: stats } = useLeadStats(currentSector?.id);
+  const { data: aging } = useLeadAging(currentSector?.id);
+
+  const slaHours = aging?.sla_hours ?? 0;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
@@ -98,7 +108,7 @@ export default function LeadsInboxPage() {
     <div className="space-y-6">
       {/* KPI cards */}
       {stats && (
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
           <Card>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm text-muted-foreground">
@@ -147,6 +157,25 @@ export default function LeadsInboxPage() {
             </CardHeader>
             <CardContent className="text-2xl font-bold">
               {stats.avg_score}
+            </CardContent>
+          </Card>
+          <Card className={aging && aging.overdue > 0 ? "border-red-300" : ""}>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-sm text-muted-foreground">
+                Sem contato (SLA)
+              </CardTitle>
+            </CardHeader>
+            <CardContent
+              className={`text-2xl font-bold ${
+                aging && aging.overdue > 0 ? "text-red-600" : ""
+              }`}
+            >
+              {aging?.overdue ?? 0}
+              {slaHours > 0 && (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  &gt; {slaHours}h
+                </span>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -248,46 +277,65 @@ export default function LeadsInboxPage() {
                 <th className="py-2.5 font-medium">Lead</th>
                 <th className="py-2.5 font-medium">Empresa</th>
                 <th className="py-2.5 font-medium">Origem</th>
+                <th className="py-2.5 font-medium">Responsável</th>
                 <th className="py-2.5 font-medium">Status</th>
                 <th className="py-2.5 pr-3 font-medium">Recebido</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((lead) => (
-                <tr
-                  key={lead.id}
-                  className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedLead(lead)}
-                >
-                  <td className="py-2.5 pl-3">
-                    <Badge className={leadBandClass(lead.score)}>
-                      {lead.score}
-                    </Badge>
-                  </td>
-                  <td className="py-2.5">
-                    <div className="font-medium">{lead.name}</div>
-                    {lead.email && (
-                      <div className="text-xs text-muted-foreground">
-                        {lead.email}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2.5 text-muted-foreground">
-                    {lead.company ?? "—"}
-                  </td>
-                  <td className="py-2.5 text-muted-foreground">
-                    {leadSourceLabel(lead.source)}
-                  </td>
-                  <td className="py-2.5">
-                    <Badge variant={leadStatusVariant(lead.status)}>
-                      {leadStatusLabel(lead.status)}
-                    </Badge>
-                  </td>
-                  <td className="py-2.5 pr-3 text-muted-foreground">
-                    {dateFormat.format(new Date(lead.created_at))}
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((lead) => {
+                const leadAging = classifyLeadAging(lead, slaHours);
+                return (
+                  <tr
+                    key={lead.id}
+                    className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedLead(lead)}
+                  >
+                    <td className="py-2.5 pl-3">
+                      <Badge className={leadBandClass(lead.score)}>
+                        {lead.score}
+                      </Badge>
+                    </td>
+                    <td className="py-2.5">
+                      <div className="font-medium">{lead.name}</div>
+                      {lead.email && (
+                        <div className="text-xs text-muted-foreground">
+                          {lead.email}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-muted-foreground">
+                      {lead.company ?? "—"}
+                    </td>
+                    <td className="py-2.5 text-muted-foreground">
+                      {leadSourceLabel(lead.source)}
+                    </td>
+                    <td className="py-2.5 text-muted-foreground">
+                      {lead.owner?.full_name ?? "—"}
+                    </td>
+                    <td className="py-2.5">
+                      <Badge variant={leadStatusVariant(lead.status)}>
+                        {leadStatusLabel(lead.status)}
+                      </Badge>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {leadAging.state === "overdue" ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600">
+                          <AlertTriangle className="size-3.5" />
+                          {leadAging.label} sem contato
+                        </span>
+                      ) : (
+                        <span
+                          className="text-muted-foreground"
+                          title={dateFormat.format(new Date(lead.created_at))}
+                        >
+                          {leadAging.label}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

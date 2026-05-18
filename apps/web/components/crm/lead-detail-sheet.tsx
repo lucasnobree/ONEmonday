@@ -32,10 +32,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, Building2, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { leadBandClass } from "@/lib/crm/lead-ui";
 import { leadSourceLabel } from "@/lib/crm/lead-sources";
+import { useLeadAging } from "@/hooks/crm/use-leads";
+import { classifyLeadAging, agingLabel } from "@/lib/crm/lead-aging";
 
 interface LeadDetailSheetProps {
   lead: Lead | null;
@@ -47,6 +56,9 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
 });
+
+/** Owner-select sentinel for "no owner" (Select cannot use an empty value). */
+const UNASSIGNED = "__unassigned__";
 
 export function LeadDetailSheet({
   lead,
@@ -60,6 +72,7 @@ export function LeadDetailSheet({
 
   const { data: boards } = useBoards(lead?.sector_id);
   const { data: members } = useCrmMembers(lead?.sector_id);
+  const { data: aging } = useLeadAging(lead?.sector_id);
 
   const [mode, setMode] = useState<"view" | "discard" | "qualify">("view");
   const [discardReason, setDiscardReason] = useState("");
@@ -114,6 +127,10 @@ export function LeadDetailSheet({
   const isTerminal =
     lead.status === "qualified" || lead.status === "discarded";
 
+  // SLA aging — flags an untouched lead past the sector's first-contact SLA.
+  const sla = aging?.sla_hours ?? 0;
+  const leadAgingState = classifyLeadAging(lead, sla);
+
   const handleStatus = async (status: "new" | "working") => {
     const result = await updateLead.mutateAsync({ id: lead.id, status });
     if (result.error) {
@@ -123,6 +140,24 @@ export function LeadDetailSheet({
       return;
     }
     toast.success("Lead atualizado");
+  };
+
+  // Reassign the lead's owner. The UNASSIGNED sentinel maps to a null owner —
+  // the Select component cannot carry an empty-string value for a real item.
+  const handleAssign = async (value: string | null) => {
+    const result = await updateLead.mutateAsync({
+      id: lead.id,
+      ownerId: !value || value === UNASSIGNED ? null : value,
+    });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao reatribuir"
+      );
+      return;
+    }
+    toast.success("Responsável atualizado");
   };
 
   const handleDiscard = async () => {
@@ -193,6 +228,17 @@ export function LeadDetailSheet({
         </SheetHeader>
 
         <div className="px-4 pb-4 space-y-4">
+          {/* SLA aging banner — flags an untouched lead past its SLA window. */}
+          {leadAgingState.state === "overdue" && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 p-2.5 text-sm text-red-700">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span>
+                Lead sem contato {leadAgingState.label} — acima do SLA de{" "}
+                {sla}h. Inicie o trabalho.
+              </span>
+            </div>
+          )}
+
           {/* Contact info */}
           <div className="space-y-2 text-sm">
             {lead.email && (
@@ -213,7 +259,41 @@ export function LeadDetailSheet({
                 <span>{lead.company}</span>
               </div>
             )}
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Recebido {agingLabel(lead.created_at)}</span>
+            </div>
           </div>
+
+          {/* Owner assignment — a lead with no owner has nobody accountable. */}
+          {!isTerminal && (
+            <div className="grid gap-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Responsável
+              </Label>
+              <Select
+                value={lead.owner_id ?? UNASSIGNED}
+                onValueChange={handleAssign}
+                disabled={updateLead.isPending}
+              >
+                <SelectTrigger className="w-full" aria-label="Responsável">
+                  <SelectValue placeholder="Sem responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>Sem responsável</SelectItem>
+                  {(members ?? []).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {isTerminal && lead.owner && (
+            <div className="text-sm text-muted-foreground">
+              Responsável: {lead.owner.full_name}
+            </div>
+          )}
 
           {payloadEntries.length > 0 && (
             <>

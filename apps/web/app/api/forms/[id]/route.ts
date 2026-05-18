@@ -139,7 +139,7 @@ export async function POST(
     );
   }
 
-  const mapped = mapSubmissionToLead(validation.values);
+  const mapped = mapSubmissionToLead(validation.values, form.fields);
   // Score the lead server-side — the public path never trusts a client score.
   const { score } = scoreLead({
     name: mapped.name,

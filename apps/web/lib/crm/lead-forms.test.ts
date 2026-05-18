@@ -4,6 +4,7 @@ import {
   mapSubmissionToLead,
   type LeadFormDefinition,
 } from "./lead-forms";
+import type { LeadFormField } from "@/lib/validations/crm";
 
 const form: LeadFormDefinition = {
   id: "form-1",
@@ -135,5 +136,64 @@ describe("mapSubmissionToLead", () => {
     expect(mapped.name).toBe("John");
     expect(mapped.company).toBe("Corp");
     expect(mapped.payload).toEqual({});
+  });
+
+  describe("explicit field-to-property mapping", () => {
+    it("maps a tagged field onto its lead column even with an unconventional key", () => {
+      const fields: LeadFormField[] = [
+        { key: "q1", label: "Seu nome", type: "text", required: true, map: "name" },
+        { key: "q2", label: "Seu e-mail", type: "email", required: true, map: "email" },
+        { key: "q3", label: "Telefone", type: "tel", required: false, map: "phone" },
+        { key: "q4", label: "Onde trabalha", type: "text", required: false, map: "company" },
+      ];
+      const mapped = mapSubmissionToLead(
+        { q1: "Bia", q2: "bia@x.com", q3: "11999990000", q4: "ACME" },
+        fields
+      );
+      expect(mapped.name).toBe("Bia");
+      expect(mapped.email).toBe("bia@x.com");
+      expect(mapped.phone).toBe("11999990000");
+      expect(mapped.company).toBe("ACME");
+      // Mapped fields are consumed — nothing leaks into the payload.
+      expect(mapped.payload).toEqual({});
+    });
+
+    it("explicit mapping wins over a conventional-key collision", () => {
+      const fields: LeadFormField[] = [
+        { key: "email", label: "Contato", type: "text", required: false },
+        { key: "work_email", label: "E-mail", type: "email", required: true, map: "email" },
+      ];
+      const mapped = mapSubmissionToLead(
+        { email: "pessoal@gmail.com", work_email: "bia@acme.com" },
+        fields
+      );
+      expect(mapped.email).toBe("bia@acme.com");
+      // The conventional `email` key was not claimed — it stays in payload.
+      expect(mapped.payload).toEqual({ email: "pessoal@gmail.com" });
+    });
+
+    it("falls back to conventional keys for untagged fields", () => {
+      const fields: LeadFormField[] = [
+        { key: "nome", label: "Nome", type: "text", required: true },
+        { key: "setor", label: "Setor", type: "text", required: false, map: "company" },
+      ];
+      const mapped = mapSubmissionToLead(
+        { nome: "Caio", setor: "TI", email: "caio@x.com" },
+        fields
+      );
+      // `nome` resolves via the conventional fallback, `setor` via the tag.
+      expect(mapped.name).toBe("Caio");
+      expect(mapped.company).toBe("TI");
+      expect(mapped.email).toBe("caio@x.com");
+      expect(mapped.payload).toEqual({});
+    });
+
+    it("ignores a 'none' map and keeps the field in payload", () => {
+      const fields: LeadFormField[] = [
+        { key: "obs", label: "Observação", type: "textarea", required: false, map: "none" },
+      ];
+      const mapped = mapSubmissionToLead({ obs: "qualquer" }, fields);
+      expect(mapped.payload).toEqual({ obs: "qualquer" });
+    });
   });
 });
