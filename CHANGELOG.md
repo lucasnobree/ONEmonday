@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CRM email integration (migration Phase 2/6)
+- Send email to a deal's contact from the "Comunicação" panel via the Resend
+  adapter, logged as an `email` activity on the timeline.
+- Inbound email webhook (`/api/webhooks/email`, Svix-signature verified) that
+  matches the sender to a contact, threads onto their open deal, and logs an
+  inbound `email` activity — closing RD Station CRM's email side for teams
+  that send from ONEmonday (full IMAP two-way sync remains deferred).
+
 ### CRM lead lifecycle (migration Phase 2/6)
 - Lead capture: sector users define field-list capture forms; each published
   form exposes a public, unauthenticated URL (`/f/<token>`) that creates a
