@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ReportChart } from "./report-chart";
@@ -52,7 +53,14 @@ export function ReportCard({ report, sectorId, onEdit }: ReportCardProps) {
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
         <div className="min-w-0">
-          <CardTitle className="text-base">{report.name}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">{report.name}</CardTitle>
+            {report.is_default && (
+              <Badge variant="secondary" className="shrink-0 text-xs">
+                Padrão
+              </Badge>
+            )}
+          </div>
           <CardDescription>
             {report.description || metric?.label}
           </CardDescription>
