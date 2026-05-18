@@ -44,10 +44,9 @@ import {
   formatFileSize,
 } from "@/lib/legal/labels";
 import { getRenewalStatus, noticeDeadline } from "@/lib/legal/renewal";
+import { formatDateOnly, formatTimestamp } from "@/lib/legal/dates";
 import { FileText, Download, Trash2, Pencil, ScrollText } from "lucide-react";
 import { toast } from "sonner";
-
-const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
 interface ContractDetailSheetProps {
   contract: Contract | null;
@@ -226,7 +225,7 @@ export function ContractDetailSheet({
                   label="Data de início"
                   value={
                     contract.effective_date
-                      ? dateFormat.format(new Date(contract.effective_date))
+                      ? formatDateOnly(contract.effective_date)
                       : "-"
                   }
                 />
@@ -234,7 +233,7 @@ export function ContractDetailSheet({
                   label="Data de término"
                   value={
                     contract.expiry_date
-                      ? dateFormat.format(new Date(contract.expiry_date))
+                      ? formatDateOnly(contract.expiry_date)
                       : "-"
                   }
                 />
@@ -244,9 +243,7 @@ export function ContractDetailSheet({
                 />
                 <Field
                   label="Prazo de decisão"
-                  value={
-                    deadline ? dateFormat.format(new Date(deadline)) : "-"
-                  }
+                  value={deadline ? formatDateOnly(deadline) : "-"}
                 />
               </div>
 
@@ -286,7 +283,7 @@ export function ContractDetailSheet({
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatFileSize(doc.file_size)} -{" "}
-                          {dateFormat.format(new Date(doc.created_at))}
+                          {formatTimestamp(doc.created_at)}
                         </p>
                       </div>
                       <Button

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Clause } from "@/hooks/legal/use-clauses";
+import { useClauseUsage } from "@/hooks/legal/use-contract-clauses";
 import { ClauseFormDialog } from "./clause-form-dialog";
 import {
   Sheet,
@@ -14,10 +15,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CLAUSE_CATEGORY_LABELS } from "@/lib/legal/labels";
+import { CLAUSE_CATEGORY_LABELS, clauseUsageLabel } from "@/lib/legal/labels";
+import { formatTimestamp } from "@/lib/legal/dates";
 import { ScrollText, Pencil, Copy, CheckCircle2 } from "lucide-react";
-
-const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
 interface ClauseDetailSheetProps {
   clause: Clause | null;
@@ -35,8 +35,11 @@ export function ClauseDetailSheet({
   onOpenChange,
 }: ClauseDetailSheetProps) {
   const [showEdit, setShowEdit] = useState(false);
+  const { data: clauseUsage } = useClauseUsage(clause?.sector_id);
 
   if (!clause) return null;
+
+  const usageCount = clauseUsage?.get(clause.id) ?? 0;
 
   async function handleCopy() {
     try {
@@ -97,9 +100,14 @@ export function ClauseDetailSheet({
               </p>
             </div>
             <Separator />
-            <p className="text-xs text-muted-foreground">
-              Criada em {dateFormat.format(new Date(clause.created_at))}
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                {clauseUsageLabel(usageCount)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Criada em {formatTimestamp(clause.created_at)}
+              </p>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
