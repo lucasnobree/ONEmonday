@@ -10,6 +10,7 @@ import {
 import {
   sendWhatsappMessage,
   logEmail,
+  sendEmail,
 } from "@/lib/actions/crm/communication";
 
 export interface Activity {
@@ -151,6 +152,18 @@ export function useLogEmail() {
 
   return useMutation({
     mutationFn: (input: unknown) => logEmail(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
+    },
+  });
+}
+
+/** Sends an email through the ESP and logs it on the deal timeline. */
+export function useSendEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: unknown) => sendEmail(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
     },

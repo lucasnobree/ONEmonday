@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import type { Activity } from "@/hooks/crm/use-activities";
-import { useSendWhatsapp, useLogEmail } from "@/hooks/crm/use-activities";
+import {
+  useSendWhatsapp,
+  useLogEmail,
+  useSendEmail,
+} from "@/hooks/crm/use-activities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +42,8 @@ interface DealCommunicationPanelProps {
   companyId?: string | null;
   /** Default WhatsApp number — usually the linked contact's phone. */
   contactPhone?: string | null;
+  /** Default recipient address — usually the linked contact's email. */
+  contactEmail?: string | null;
   /** All activities for the deal; this panel filters to communication ones. */
   activities: Activity[] | undefined;
 }
@@ -50,7 +56,11 @@ interface DealCommunicationPanelProps {
  *    inbound vs outbound, ordered by `occurred_at`.
  *  - "Enviar WhatsApp" sends a message through the Phase-1 WhatsApp adapter;
  *    the sent message is logged back as an outbound activity.
- *  - "Registrar e-mail" logs a manual email exchange (sync is out of scope).
+ *  - "Enviar e-mail" sends an email through the Phase-5 Resend ESP adapter;
+ *    the sent email is logged back as an outbound activity.
+ *  - "Registrar e-mail" logs a manual email exchange that happened outside
+ *    ONEmonday. Inbound emails are logged automatically by the inbound-email
+ *    webhook; a full IMAP two-way sync is out of scope.
  */
 export function DealCommunicationPanel({
   sectorId,
@@ -58,14 +68,23 @@ export function DealCommunicationPanel({
   contactId,
   companyId,
   contactPhone,
+  contactEmail,
   activities,
 }: DealCommunicationPanelProps) {
   const sendWhatsapp = useSendWhatsapp();
+  const sendEmail = useSendEmail();
   const logEmail = useLogEmail();
 
-  const [mode, setMode] = useState<"whatsapp" | "email">("whatsapp");
+  const [mode, setMode] = useState<"whatsapp" | "send-email" | "log-email">(
+    "whatsapp"
+  );
   const [waTo, setWaTo] = useState(contactPhone ?? "");
   const [waBody, setWaBody] = useState("");
+  // "Enviar e-mail" composer.
+  const [sendTo, setSendTo] = useState(contactEmail ?? "");
+  const [sendSubject, setSendSubject] = useState("");
+  const [sendBody, setSendBody] = useState("");
+  // "Registrar e-mail" manual-log form.
   const [emailDirection, setEmailDirection] = useState<
     "inbound" | "outbound"
   >("outbound");
@@ -110,6 +129,34 @@ export function DealCommunicationPanel({
         : "WhatsApp enviado e registrado no histórico"
     );
     setWaBody("");
+  }
+
+  async function handleSendEmail() {
+    if (!sendTo.trim() || !sendSubject.trim() || !sendBody.trim()) return;
+    const result = await sendEmail.mutateAsync({
+      sectorId,
+      dealId,
+      contactId: contactId || undefined,
+      companyId: companyId || undefined,
+      to: sendTo.trim(),
+      subject: sendSubject.trim(),
+      body: sendBody.trim(),
+    });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Verifique o destinatário e a mensagem."
+      );
+      return;
+    }
+    toast.success(
+      result.noop
+        ? "E-mail registrado (provedor não configurado — modo demo)"
+        : "E-mail enviado e registrado no histórico"
+    );
+    setSendSubject("");
+    setSendBody("");
   }
 
   async function handleLogEmail() {
@@ -212,16 +259,26 @@ export function DealCommunicationPanel({
         <Button
           type="button"
           size="sm"
-          variant={mode === "email" ? "default" : "outline"}
+          variant={mode === "send-email" ? "default" : "outline"}
           className="flex-1"
-          onClick={() => setMode("email")}
+          onClick={() => setMode("send-email")}
+        >
+          <Send className="h-3.5 w-3.5 mr-1" />
+          Enviar e-mail
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "log-email" ? "default" : "outline"}
+          className="flex-1"
+          onClick={() => setMode("log-email")}
         >
           <Mail className="h-3.5 w-3.5 mr-1" />
           Registrar e-mail
         </Button>
       </div>
 
-      {mode === "whatsapp" ? (
+      {mode === "whatsapp" && (
         <div className="space-y-2">
           <div className="space-y-1">
             <Label htmlFor="wa-to" className="text-xs">
@@ -258,7 +315,68 @@ export function DealCommunicationPanel({
             {sendWhatsapp.isPending ? "Enviando..." : "Enviar WhatsApp"}
           </Button>
         </div>
-      ) : (
+      )}
+
+      {mode === "send-email" && (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label htmlFor="send-to" className="text-xs">
+              Para (e-mail)
+            </Label>
+            <Input
+              id="send-to"
+              type="email"
+              value={sendTo}
+              onChange={(e) => setSendTo(e.target.value)}
+              placeholder="contato@email.com"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="send-subject" className="text-xs">
+              Assunto
+            </Label>
+            <Input
+              id="send-subject"
+              value={sendSubject}
+              onChange={(e) => setSendSubject(e.target.value)}
+              placeholder="Assunto do e-mail"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="send-body" className="text-xs">
+              Mensagem
+            </Label>
+            <Textarea
+              id="send-body"
+              value={sendBody}
+              onChange={(e) => setSendBody(e.target.value)}
+              placeholder="Escreva o e-mail..."
+              rows={4}
+            />
+          </div>
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={handleSendEmail}
+            disabled={
+              sendEmail.isPending ||
+              !sendTo.trim() ||
+              !sendSubject.trim() ||
+              !sendBody.trim()
+            }
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            {sendEmail.isPending ? "Enviando..." : "Enviar e-mail"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            Enviado pelo provedor de e-mail (Resend) e registrado no histórico.
+            E-mails recebidos são registrados automaticamente pelo webhook de
+            entrada — a sincronização IMAP completa está fora do escopo.
+          </p>
+        </div>
+      )}
+
+      {mode === "log-email" && (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
@@ -330,8 +448,8 @@ export function DealCommunicationPanel({
             {logEmail.isPending ? "Registrando..." : "Registrar e-mail"}
           </Button>
           <p className="text-[11px] text-muted-foreground leading-tight">
-            Registro manual. A sincronização automática de e-mail depende de um
-            provedor (ESP) — fora do escopo desta fase.
+            Registro manual de um e-mail trocado fora do ONEmonday. Para enviar
+            pelo sistema use &quot;Enviar e-mail&quot;.
           </p>
         </div>
       )}

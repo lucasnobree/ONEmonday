@@ -638,6 +638,7 @@ export function DealDetailSheet({
                   contactId={deal.contact?.id}
                   companyId={deal.company?.id}
                   contactPhone={deal.contact?.phone}
+                  contactEmail={deal.contact?.email}
                   activities={activities}
                 />
               </TabsContent>

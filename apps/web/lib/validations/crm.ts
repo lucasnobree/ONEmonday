@@ -122,6 +122,29 @@ export const logEmailSchema = z
     message: "Vincule o e-mail a um deal, contato ou empresa",
   });
 
+/**
+ * Send an email to a deal/contact from the deal detail sheet.
+ *
+ * The email is delivered through the existing Phase-5 Resend ESP adapter and
+ * the sent message is logged as an OUTBOUND `email`-channel `crm_activities`
+ * entry on the deal timeline. This replaces RD Station CRM's "send email from
+ * a deal" — a real send, not the manual `logEmail` log entry.
+ */
+export const sendEmailSchema = z
+  .object({
+    sectorId: z.string().uuid(),
+    dealId: z.string().uuid().optional(),
+    contactId: z.string().uuid().optional(),
+    companyId: z.string().uuid().optional(),
+    // Recipient address — usually the linked contact's email.
+    to: z.string().email("E-mail de destino inválido"),
+    subject: z.string().min(1, "Assunto é obrigatório").max(300),
+    body: z.string().min(1, "Conteúdo é obrigatório").max(20000),
+  })
+  .refine((d) => d.dealId || d.contactId || d.companyId, {
+    message: "Vincule o e-mail a um deal, contato ou empresa",
+  });
+
 export const createProposalSchema = z.object({
   dealId: z.string().uuid(),
   sectorId: z.string().uuid(),
