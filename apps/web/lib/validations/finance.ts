@@ -21,7 +21,29 @@ export const INVOICE_STATUSES = [
   "void",
 ] as const;
 
-export const EXPENSE_STATUSES = ["pending", "paid", "void"] as const;
+/**
+ * Expense statuses — must mirror the CHECK constraint in 00140.
+ * `submitted` / `approved` / `rejected` are the approval-workflow states added
+ * by migration 00140; `pending` / `paid` / `void` are the original set.
+ */
+export const EXPENSE_STATUSES = [
+  "pending",
+  "submitted",
+  "approved",
+  "rejected",
+  "paid",
+  "void",
+] as const;
+
+/** Workflow transitions a user can apply to an expense (see expense-approval.ts). */
+export const EXPENSE_TRANSITIONS = [
+  "submit",
+  "approve",
+  "reject",
+  "pay",
+  "void",
+  "reopen",
+] as const;
 
 const currencySchema = z.enum(SUPPORTED_CURRENCIES).default("BRL");
 
@@ -42,6 +64,31 @@ const isoDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Data invalida");
 
 // =============================================
+// Invoice line items
+// =============================================
+/**
+ * One invoice line. `quantityMilli` is the quantity in integer milli-units
+ * (1000 = 1.000); `unitPriceCents` is integer cents. The line total is
+ * derived server-side — never trusted from the client.
+ */
+export const invoiceLineItemSchema = z.object({
+  description: z.string().min(1, "Descricao obrigatoria").max(500),
+  quantityMilli: z
+    .number()
+    .int("Quantidade invalida")
+    .min(1, "Quantidade deve ser maior que zero")
+    .max(1_000_000_000),
+  unitPriceCents: z
+    .number()
+    .int("Preco unitario invalido")
+    .min(0, "Preco unitario nao pode ser negativo")
+    .max(99_999_999_999, "Preco unitario muito alto"),
+});
+
+/** At most 100 lines per invoice — a generous, abuse-resistant cap. */
+const invoiceLineItemsSchema = z.array(invoiceLineItemSchema).max(100);
+
+// =============================================
 // Invoices
 // =============================================
 export const createInvoiceSchema = z
@@ -55,6 +102,9 @@ export const createInvoiceSchema = z
     status: z.enum(INVOICE_STATUSES).default("draft"),
     issueDate: isoDateSchema,
     dueDate: isoDateSchema,
+    // Optional itemization. When present the server derives amountCents from
+    // the sum of the lines and persists them (audit item I2).
+    lineItems: invoiceLineItemsSchema.optional(),
   })
   .refine((v) => v.dueDate >= v.issueDate, {
     message: "Vencimento nao pode ser anterior a emissao",
@@ -72,6 +122,7 @@ export const updateInvoiceSchema = z
     status: z.enum(INVOICE_STATUSES),
     issueDate: isoDateSchema,
     dueDate: isoDateSchema,
+    lineItems: invoiceLineItemsSchema.optional(),
   })
   .refine((v) => v.dueDate >= v.issueDate, {
     message: "Vencimento nao pode ser anterior a emissao",
@@ -123,9 +174,22 @@ export const updateBudgetSchema = z.object({
   amountCents: amountCentsSchema,
 });
 
+// =============================================
+// Expense approval workflow
+// =============================================
+/** Apply a workflow transition to an expense (see lib/finance/expense-approval). */
+export const expenseTransitionSchema = z.object({
+  id: z.string().uuid(),
+  transition: z.enum(EXPENSE_TRANSITIONS),
+  // Required by the UI when transition === "reject" (an audit-friendly reason).
+  reason: z.string().max(500).optional(),
+});
+
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;
+export type InvoiceLineItemInput = z.infer<typeof invoiceLineItemSchema>;
+export type ExpenseTransitionInput = z.infer<typeof expenseTransitionSchema>;
 
 // =============================================
 // Phase 4 — fiscal / banking / payment gateways

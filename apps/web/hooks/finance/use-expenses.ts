@@ -7,11 +7,14 @@ import {
   updateExpense,
   deleteExpense,
 } from "@/lib/actions/finance/expenses";
+import { transitionExpense } from "@/lib/actions/finance/expense-approval";
 import type { Currency } from "@/lib/finance/money";
 import type { EXPENSE_CATEGORIES } from "@/lib/validations/finance";
+import type { ExpenseStatus as WorkflowExpenseStatus } from "@/lib/finance/expense-approval";
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
-export type ExpenseStatus = "pending" | "paid" | "void";
+/** Expense status — includes the approval-workflow states (migration 00140). */
+export type ExpenseStatus = WorkflowExpenseStatus;
 
 export interface Expense {
   id: string;
@@ -25,6 +28,9 @@ export interface Expense {
   expense_date: string;
   due_date: string | null;
   paid_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
   created_at: string;
 }
 
@@ -40,7 +46,8 @@ export function useExpenses(sectorId: string | undefined) {
         .from("finance_expenses")
         .select(
           `id, sector_id, vendor_name, description, category, amount_cents,
-           currency, status, expense_date, due_date, paid_at, created_at`
+           currency, status, expense_date, due_date, paid_at, approved_by,
+           approved_at, rejection_reason, created_at`
         )
         .eq("sector_id", sectorId)
         .eq("is_active", true)
@@ -79,6 +86,18 @@ export function useDeleteExpense() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (expenseId: string) => deleteExpense(expenseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
+    },
+  });
+}
+
+/** Applies an approval-workflow transition (submit / approve / reject / …). */
+export function useTransitionExpense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: unknown) => transitionExpense(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
