@@ -1039,6 +1039,24 @@ ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
+-- HR OFFBOARDING TEMPLATE (1 with 5 items stored in items jsonb)
+-- ============================================================
+
+INSERT INTO hr_offboarding_templates (id, sector_id, name, description, items) VALUES
+  ('0f000002-fe9d-0000-0000-000000000002', '3826e880-b077-4930-a676-7c5b96d10f63',
+   'Offboarding Padrao',
+   'Checklist completo de desligamento: revogacao de acessos, devolucao de equipamentos e entrevista de saida.',
+   '[
+     {"title": "Entrevista de desligamento", "description": "Conduzir entrevista de saida e registrar feedback", "responsible_role": "RH", "due_days_offset": -3},
+     {"title": "Plano de transicao de atividades", "description": "Documentar e repassar responsabilidades ao time", "responsible_role": "Gestor", "due_days_offset": -2},
+     {"title": "Revogar acessos (email, Slack, GitHub, ONEmonday)", "description": "Desativar todas as contas corporativas", "responsible_role": "TI", "due_days_offset": 0},
+     {"title": "Devolucao de equipamentos", "description": "Recolher notebook, cracha e demais ativos da empresa", "responsible_role": "TI", "due_days_offset": 0},
+     {"title": "Rescisao e documentacao final", "description": "Processar rescisao contratual e arquivar documentos", "responsible_role": "RH", "due_days_offset": 5}
+   ]')
+ON CONFLICT (id) DO NOTHING;
+
+
+-- ============================================================
 -- DONE!
 -- Run: psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/sample_data_modules.sql
 -- ============================================================

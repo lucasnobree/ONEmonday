@@ -190,3 +190,40 @@ export const createOnboardingTemplateSchema = z.object({
     dueDaysAfterHire: z.number().int().min(0).optional(),
   })).default([]),
 });
+
+// ---------------------------------------------------------------------------
+// Offboarding — peer of onboarding for departing employees
+// ---------------------------------------------------------------------------
+
+export const OFFBOARDING_REASONS = [
+  "voluntary",
+  "involuntary",
+  "retirement",
+  "end_of_contract",
+  "other",
+] as const;
+
+export const createOffboardingTemplateSchema = z.object({
+  sectorId: z.string().uuid(),
+  name: z.string().min(1, "Nome é obrigatório").max(200),
+  description: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        title: z.string().min(1, "Título da etapa é obrigatório"),
+        description: z.string().optional(),
+        responsibleRole: z.string().optional(),
+        // Days relative to the termination date — may be negative for steps
+        // that must happen before the last working day.
+        dueDaysOffset: z.number().int().min(-365).max(365).optional(),
+      })
+    )
+    .min(1, "Adicione ao menos uma etapa"),
+});
+
+export const startOffboardingSchema = z.object({
+  employeeId: z.string().uuid(),
+  templateId: z.string().uuid(),
+  terminationDate: z.string().min(1, "Data de desligamento é obrigatória"),
+  reason: z.enum(OFFBOARDING_REASONS).optional(),
+});
