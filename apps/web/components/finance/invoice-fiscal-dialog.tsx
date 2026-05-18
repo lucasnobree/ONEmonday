@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { FileText, QrCode, Barcode } from "lucide-react";
+import { FISCAL_DOC_STATUS_LABELS, CHARGE_STATUS_LABELS } from "./labels";
 
 /**
  * Per-invoice fiscal-emission and payment-charge controls — Phase 4.
@@ -153,7 +154,7 @@ export function InvoiceFiscalDialog({
                           : "secondary"
                     }
                   >
-                    {d.status}
+                    {FISCAL_DOC_STATUS_LABELS[d.status] ?? d.status}
                   </Badge>
                 </li>
               ))}
@@ -205,7 +206,7 @@ export function InvoiceFiscalDialog({
                           : "secondary"
                     }
                   >
-                    {c.status}
+                    {CHARGE_STATUS_LABELS[c.status] ?? c.status}
                   </Badge>
                 </li>
               ))}
