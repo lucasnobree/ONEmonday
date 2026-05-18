@@ -13,6 +13,11 @@ import { addTicketComment } from "@/lib/actions/support/comments";
 import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
 import { TicketTagEditor } from "@/components/support/ticket-tag-editor";
 import { TicketAssigneePicker } from "@/components/support/ticket-assignee-picker";
+import { TicketStatusSelect } from "@/components/support/ticket-status-select";
+import { TicketAttachments } from "@/components/support/ticket-attachments";
+import { TICKET_STATUS_META } from "@/lib/support/status";
+import { normalizeTicketStatus } from "@/lib/support/status";
+import { isSlaPausedStatus } from "@/lib/support/sla";
 import {
   Sheet,
   SheetContent,
@@ -193,11 +198,11 @@ function EscalationHistory({ ticketId }: { ticketId: string }) {
           Historico de Escalacao
         </h4>
         <div className="relative">
-          <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+          <div className="absolute left-1.75 top-2 bottom-2 w-px bg-border" />
           <div className="space-y-3">
             {logs.map((log) => (
               <div key={log.id} className="relative pl-6">
-                <div className="absolute left-0 top-1 size-[14px] rounded-full border-2 border-background bg-orange-500" />
+                <div className="absolute left-0 top-1 size-3.5 rounded-full border-2 border-background bg-orange-500" />
                 <div className="space-y-0.5">
                   <p className="text-sm">
                     <span className="font-medium">{log.from_sector?.name}</span>
@@ -250,10 +255,37 @@ function DetailsTab({
 
       <Separator />
 
+      {/* Status */}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h4 className="text-xs font-medium text-muted-foreground">Status</h4>
+          {isSlaPausedStatus(normalizeTicketStatus(ticket.status)) && (
+            <span className="text-xs text-muted-foreground">SLA pausado</span>
+          )}
+        </div>
+        <TicketStatusSelect
+          ticketId={ticket.id}
+          status={ticket.status}
+          className="w-44"
+        />
+      </div>
+
+      <Separator />
+
       {/* Tags */}
       <div>
         <h4 className="text-xs font-medium text-muted-foreground mb-2">Tags</h4>
         <TicketTagEditor ticketId={ticket.id} sectorId={ticket.sector_id} />
+      </div>
+
+      <Separator />
+
+      {/* Attachments */}
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">
+          Anexos
+        </h4>
+        <TicketAttachments ticketId={ticket.id} />
       </div>
 
       <Separator />
@@ -521,7 +553,7 @@ function ActivityTab({
   return (
     <div className="relative">
       {/* Vertical timeline line */}
-      <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+      <div className="absolute left-1.75 top-2 bottom-2 w-px bg-border" />
 
       <div className="space-y-4">
         {activities.map((activity) => {
@@ -534,7 +566,7 @@ function ActivityTab({
             <div key={activity.id} className="relative pl-6">
               {/* Dot */}
               <div
-                className={`absolute left-0 top-1 size-[14px] rounded-full border-2 border-background ${dotColor}`}
+                className={`absolute left-0 top-1 size-3.5 rounded-full border-2 border-background ${dotColor}`}
               />
 
               <div className="space-y-0.5">
@@ -684,16 +716,18 @@ export function TicketDetailSheet({
                   {priorityLabels[ticket.card?.priority || ""] ||
                     ticket.card?.priority}
                 </Badge>
-                {ticket.resolved_at ? (
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                  >
-                    Resolvido
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">Aberto</Badge>
-                )}
+                <Badge
+                  variant="secondary"
+                  className={
+                    TICKET_STATUS_META[normalizeTicketStatus(ticket.status)]
+                      .badgeClass
+                  }
+                >
+                  {
+                    TICKET_STATUS_META[normalizeTicketStatus(ticket.status)]
+                      .label
+                  }
+                </Badge>
                 {ticket.escalated_to_sector_id && (
                   <Badge
                     variant="secondary"
