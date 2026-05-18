@@ -177,3 +177,18 @@ export function scoreBandLabel(band: LeadScore["band"]): string {
       return "Frio";
   }
 }
+
+/**
+ * A one-line, plain-language verdict for a score band — gives a non-analytical
+ * SDR an actionable read of the lead instead of a bare number/badge.
+ */
+export function leadVerdict(band: LeadScore["band"]): string {
+  switch (band) {
+    case "hot":
+      return "Lead quente — priorize o contato hoje.";
+    case "warm":
+      return "Lead morno — vale uma abordagem nos próximos dias.";
+    case "cold":
+      return "Lead frio — nutra antes de investir tempo de venda.";
+  }
+}
