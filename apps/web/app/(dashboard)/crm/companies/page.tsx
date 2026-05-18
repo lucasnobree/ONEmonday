@@ -2,9 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useCompanies } from "@/hooks/crm/use-companies";
+import { useCompanies, type Company } from "@/hooks/crm/use-companies";
 import { CompanyFormDialog } from "@/components/crm/company-form-dialog";
 import { CompanyDetailSheet } from "@/components/crm/company-detail-sheet";
+import {
+  nextSortState,
+  sortRows,
+  type SortState,
+} from "@/lib/crm/list-sort";
+import { SortHeader } from "@/components/crm/sort-header";
 import {
   Card,
   CardContent,
@@ -14,7 +20,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Globe, Users, MapPin, Building2, Download } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Plus,
+  Search,
+  Globe,
+  Users,
+  MapPin,
+  Building2,
+  Download,
+  LayoutGrid,
+  Table as TableIcon,
+} from "lucide-react";
 import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -26,24 +49,60 @@ const sizeLabels: Record<string, string> = {
   enterprise: "Enterprise",
 };
 
+type CompanySortKey = "name" | "industry" | "city" | "contacts_count";
+
+function companyValue(company: Company, key: CompanySortKey): unknown {
+  if (key === "contacts_count") return company.contacts_count;
+  return company[key];
+}
+
 export default function CompaniesPage() {
   const { currentSector } = useCurrentSector();
   const { data: companies, isLoading } = useCompanies(currentSector?.id);
   const [search, setSearch] = useState("");
+  const [sizeFilter, setSizeFilter] = useState("all");
+  const [industryFilter, setIndustryFilter] = useState("all");
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const [sort, setSort] = useState<SortState<CompanySortKey>>({
+    key: "name",
+    direction: "asc",
+  });
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null
+  );
+
+  // Distinct industries present, for the filter dropdown.
+  const industries = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of companies ?? []) {
+      if (c.industry) set.add(c.industry);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [companies]);
 
   const filtered = useMemo(() => {
-    if (!companies) return [];
-    if (!search.trim()) return companies;
-    const q = search.toLowerCase();
-    return companies.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.industry?.toLowerCase().includes(q) ||
-        c.city?.toLowerCase().includes(q)
-    );
-  }, [companies, search]);
+    let result = companies ?? [];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.industry?.toLowerCase().includes(q) ||
+          c.city?.toLowerCase().includes(q)
+      );
+    }
+    if (sizeFilter !== "all") {
+      result = result.filter((c) => c.size === sizeFilter);
+    }
+    if (industryFilter !== "all") {
+      result = result.filter((c) => c.industry === industryFilter);
+    }
+    return sortRows(result, sort, companyValue);
+  }, [companies, search, sizeFilter, industryFilter, sort]);
+
+  const hasActiveFilter =
+    search.trim() !== "" || sizeFilter !== "all" || industryFilter !== "all";
 
   if (!currentSector) {
     return (
@@ -65,6 +124,9 @@ export default function CompaniesPage() {
       </div>
     );
   }
+
+  const toggleSort = (key: CompanySortKey) =>
+    setSort((s) => nextSortState(s, key));
 
   return (
     <div className="space-y-6">
@@ -113,7 +175,80 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {!companies?.length && !search ? (
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={sizeFilter} onValueChange={(v) => setSizeFilter(v ?? "all")}>
+          <SelectTrigger className="h-8 w-40 text-sm">
+            <SelectValue placeholder="Porte" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todo porte</SelectItem>
+            {Object.entries(sizeLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={industryFilter}
+          onValueChange={(v) => setIndustryFilter(v ?? "all")}
+        >
+          <SelectTrigger className="h-8 w-48 text-sm">
+            <SelectValue placeholder="Indústria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toda indústria</SelectItem>
+            {industries.map((ind) => (
+              <SelectItem key={ind} value={ind}>
+                {ind}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasActiveFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              setSearch("");
+              setSizeFilter("all");
+              setIndustryFilter("all");
+            }}
+          >
+            Limpar filtros
+          </Button>
+        )}
+        <div className="ml-auto inline-flex h-8 items-center rounded-lg bg-muted p-0.75">
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            className={`inline-flex items-center justify-center rounded-md px-2 py-1 transition-all ${
+              view === "grid"
+                ? "bg-background shadow-sm"
+                : "text-muted-foreground"
+            }`}
+            title="Cards"
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            className={`inline-flex items-center justify-center rounded-md px-2 py-1 transition-all ${
+              view === "table"
+                ? "bg-background shadow-sm"
+                : "text-muted-foreground"
+            }`}
+            title="Tabela"
+          >
+            <TableIcon className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      {!companies?.length && !hasActiveFilter ? (
         <EmptyState
           icon={Building2}
           title="Nenhuma empresa cadastrada"
@@ -127,8 +262,75 @@ export default function CompaniesPage() {
         />
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
-          Nenhuma empresa encontrada para a busca.
+          Nenhuma empresa encontrada para os filtros.
         </p>
+      ) : view === "table" ? (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <SortHeader
+                  label="Nome"
+                  sortKey="name"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                  className="pl-3"
+                />
+                <SortHeader
+                  label="Indústria"
+                  sortKey="industry"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Cidade"
+                  sortKey="city"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Contatos"
+                  sortKey="contacts_count"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                />
+                <th className="pb-2 pr-3 font-medium">Porte</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((company) => (
+                <tr
+                  key={company.id}
+                  className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedCompanyId(company.id)}
+                >
+                  <td className="py-2.5 pl-3 font-medium">{company.name}</td>
+                  <td className="py-2.5 text-muted-foreground">
+                    {company.industry ?? "—"}
+                  </td>
+                  <td className="py-2.5 text-muted-foreground">
+                    {[company.city, company.state].filter(Boolean).join(", ") ||
+                      "—"}
+                  </td>
+                  <td className="py-2.5">{company.contacts_count}</td>
+                  <td className="py-2.5 pr-3">
+                    {company.size ? (
+                      <Badge variant="outline">
+                        {sizeLabels[company.size] ?? company.size}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((company) => (
