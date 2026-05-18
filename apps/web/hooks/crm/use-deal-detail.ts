@@ -18,6 +18,8 @@ export interface DealDetail {
   last_stage_change_at: string | null;
   source: string | null;
   created_at: string;
+  owner_id: string | null;
+  owner: { id: string; full_name: string } | null;
   card: {
     id: string;
     title: string;
@@ -56,6 +58,7 @@ export function useDealDetail(dealId: string | null) {
           expected_close_date, actual_close_date,
           win_probability, probability_locked, lost_reason,
           lost_reason_category, last_stage_change_at, source, created_at,
+          owner_id,
           cards!inner (
             id, title, description, priority, due_date, created_at,
             board_columns (name, color),
@@ -63,7 +66,8 @@ export function useDealDetail(dealId: string | null) {
           ),
           crm_companies (id, name, domain, industry),
           crm_contacts (id, full_name, email, phone, position),
-          crm_proposals (id, title, value, status, sent_at, expires_at)
+          crm_proposals (id, title, value, status, sent_at, expires_at),
+          owner:users!crm_deals_owner_id_fkey (id, full_name)
         `
         )
         .eq("id", dealId)
@@ -89,6 +93,7 @@ export function useDealDetail(dealId: string | null) {
         company: data.crm_companies,
         contact: data.crm_contacts,
         proposals: data.crm_proposals || [],
+        owner: data.owner,
       } as unknown as DealDetail;
     },
     enabled: !!dealId,

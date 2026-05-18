@@ -2,7 +2,17 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
-import { createDealSchema, closeDealLostSchema } from "@/lib/validations/crm";
+import {
+  createDealSchema,
+  closeDealLostSchema,
+  assignDealOwnerSchema,
+} from "@/lib/validations/crm";
+import { enqueueCrmEvent } from "@/lib/actions/crm/crm-dispatch";
+import {
+  buildDealWonEvent,
+  buildDealLostEvent,
+} from "@/lib/crm/crm-events";
+import { lostReasonLabel } from "@/lib/crm/lost-reasons";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -56,6 +66,9 @@ export async function createDeal(formData: unknown) {
       sector_id: parsed.data.sectorId,
       company_id: parsed.data.companyId || null,
       contact_id: parsed.data.contactId || null,
+      // Default the owner to the creator when none was picked, so a new deal
+      // is never silently unassigned.
+      owner_id: parsed.data.ownerId || user.id,
       value: parsed.data.value || null,
       currency: parsed.data.currency,
       expected_close_date: parsed.data.expectedCloseDate || null,
@@ -90,7 +103,12 @@ export async function closeDealWon(dealId: string) {
 
   const { data: deal } = await supabase
     .from("crm_deals")
-    .select("sector_id, card_id")
+    .select(
+      `sector_id, card_id, value,
+       cards!inner (title),
+       crm_companies (name),
+       owner:users!crm_deals_owner_id_fkey (full_name)`
+    )
     .eq("id", dealId)
     .single();
 
@@ -112,6 +130,21 @@ export async function closeDealWon(dealId: string) {
     .eq("id", dealId);
 
   if (dealError) return { error: dealError.message };
+
+  // Fan the "deal won" event out to Teams / WhatsApp via the Phase-1 outbox.
+  const wonCard = deal.cards as unknown as { title: string } | null;
+  const wonCompany = deal.crm_companies as unknown as { name: string } | null;
+  const wonOwner = deal.owner as unknown as { full_name: string } | null;
+  await enqueueCrmEvent(supabase, {
+    sectorId: deal.sector_id,
+    userId: user.id,
+    event: buildDealWonEvent({
+      dealTitle: wonCard?.title ?? "Deal",
+      value: deal.value,
+      companyName: wonCompany?.name ?? null,
+      ownerName: wonOwner?.full_name ?? null,
+    }),
+  });
 
   const { data: card } = await supabase
     .from("cards")
@@ -158,7 +191,11 @@ export async function closeDealLost(input: {
 
   const { data: deal } = await supabase
     .from("crm_deals")
-    .select("sector_id")
+    .select(
+      `sector_id, value,
+       cards!inner (title),
+       crm_companies (name)`
+    )
     .eq("id", parsed.data.dealId)
     .single();
 
@@ -176,6 +213,60 @@ export async function closeDealLost(input: {
       lost_reason_category: parsed.data.category,
       actual_close_date: new Date().toISOString().split("T")[0],
     })
+    .eq("id", parsed.data.dealId);
+
+  if (error) return { error: error.message };
+
+  // Fan the "deal lost" event out to Teams / WhatsApp via the Phase-1 outbox.
+  const lostCard = deal.cards as unknown as { title: string } | null;
+  const lostCompany = deal.crm_companies as unknown as { name: string } | null;
+  await enqueueCrmEvent(supabase, {
+    sectorId: deal.sector_id,
+    userId: user.id,
+    event: buildDealLostEvent({
+      dealTitle: lostCard?.title ?? "Deal",
+      value: deal.value,
+      companyName: lostCompany?.name ?? null,
+      lostReason: `${lostReasonLabel(parsed.data.category)} — ${parsed.data.reason}`,
+    }),
+  });
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+/**
+ * Reassigns a deal's owner (the responsible salesperson). Passing a null
+ * `ownerId` clears the owner. Requires the `deal:update` permission.
+ */
+export async function assignDealOwner(input: unknown) {
+  const parsed = assignDealOwnerSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados invalidos" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: deal } = await supabase
+    .from("crm_deals")
+    .select("sector_id")
+    .eq("id", parsed.data.dealId)
+    .single();
+
+  if (!deal) return { error: "Deal nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, deal.sector_id, "deal", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  const { error } = await supabase
+    .from("crm_deals")
+    .update({ owner_id: parsed.data.ownerId })
     .eq("id", parsed.data.dealId);
 
   if (error) return { error: error.message };

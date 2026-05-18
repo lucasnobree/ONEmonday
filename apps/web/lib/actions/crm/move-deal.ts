@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
+import { enqueueCrmEvent } from "@/lib/actions/crm/crm-dispatch";
+import { buildDealStageChangedEvent } from "@/lib/crm/crm-events";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -25,7 +27,11 @@ export async function moveDealToColumn(input: {
 
   const { data: deal } = await supabase
     .from("crm_deals")
-    .select("sector_id, card_id, probability_locked")
+    .select(
+      `sector_id, card_id, probability_locked,
+       cards!inner (title),
+       owner:users!crm_deals_owner_id_fkey (full_name)`
+    )
     .eq("id", parsed.data.dealId)
     .single();
 
@@ -119,6 +125,22 @@ export async function moveDealToColumn(input: {
         changed_by: user.id,
       });
     if (historyError) return { error: historyError.message };
+  }
+
+  // Fan the stage-change event out to Teams / WhatsApp via the Phase-1 outbox.
+  if (column?.name) {
+    const moveCard = deal.cards as unknown as { title: string } | null;
+    const moveOwner = deal.owner as unknown as { full_name: string } | null;
+    await enqueueCrmEvent(supabase, {
+      sectorId: deal.sector_id,
+      userId: user.id,
+      event: buildDealStageChangedEvent({
+        dealTitle: moveCard?.title ?? "Deal",
+        fromStage: fromStageName,
+        toStage: column.name,
+        ownerName: moveOwner?.full_name ?? null,
+      }),
+    });
   }
 
   revalidatePath("/");

@@ -37,11 +37,19 @@ export const createDealSchema = z.object({
   priority: z.enum(["critical", "high", "medium", "low"]).default("medium"),
   companyId: z.string().uuid().optional(),
   contactId: z.string().uuid().optional(),
+  ownerId: z.string().uuid().optional(),
   value: z.number().min(0).optional(),
   currency: z.string().default("BRL"),
   expectedCloseDate: z.string().optional(),
   winProbability: z.number().int().min(0).max(100).optional(),
   source: z.string().optional(),
+});
+
+/** Reassign a deal's owner (the responsible salesperson). */
+export const assignDealOwnerSchema = z.object({
+  dealId: z.string().uuid(),
+  // null clears the owner (deal back to "unassigned").
+  ownerId: z.string().uuid().nullable(),
 });
 
 export const createActivitySchema = z.object({
@@ -53,7 +61,21 @@ export const createActivitySchema = z.object({
   subject: z.string().min(1, "Assunto é obrigatório"),
   description: z.string().optional(),
   scheduledAt: z.string().optional(),
+  assignedTo: z.string().uuid().optional(),
   durationMin: z.number().int().min(1).optional(),
+});
+
+/** Mark a scheduled activity/task as complete (or reopen it). */
+export const completeActivitySchema = z.object({
+  activityId: z.string().uuid(),
+  // false reopens a previously completed task.
+  completed: z.boolean(),
+});
+
+/** Reschedule a task to a new due date/time. */
+export const rescheduleActivitySchema = z.object({
+  activityId: z.string().uuid(),
+  scheduledAt: z.string().min(1, "Data é obrigatória"),
 });
 
 export const createProposalSchema = z.object({

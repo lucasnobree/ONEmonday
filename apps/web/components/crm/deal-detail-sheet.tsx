@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useDealDetail } from "@/hooks/crm/use-deal-detail";
 import { useActivities } from "@/hooks/crm/use-activities";
-import { useCloseDealWon, useCloseDealLost } from "@/hooks/crm/use-deals";
+import {
+  useCloseDealWon,
+  useCloseDealLost,
+  useAssignDealOwner,
+} from "@/hooks/crm/use-deals";
+import { useCrmMembers } from "@/hooks/crm/use-crm-members";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toggleProbabilityLock } from "@/lib/actions/crm/stage-defaults";
 import {
@@ -118,8 +123,10 @@ export function DealDetailSheet({
     sectorId,
     dealId: dealId ?? undefined,
   });
+  const { data: members } = useCrmMembers(sectorId);
   const closeDealWon = useCloseDealWon();
   const closeDealLost = useCloseDealLost();
+  const assignOwner = useAssignDealOwner();
   const queryClient = useQueryClient();
   const toggleLock = useMutation({
     mutationFn: ({ id, locked }: { id: string; locked: boolean }) =>
@@ -370,6 +377,52 @@ export function DealDetailSheet({
                     </div>
                   </>
                 )}
+
+                <Separator />
+                <div className="space-y-1.5">
+                  <h4 className="text-sm font-medium flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" />
+                    Responsável pelo deal
+                  </h4>
+                  <Select
+                    value={deal.owner_id ?? "none"}
+                    onValueChange={(v) =>
+                      dealId &&
+                      assignOwner.mutate(
+                        {
+                          dealId,
+                          ownerId: !v || v === "none" ? null : v,
+                        },
+                        {
+                          onSuccess: (r) => {
+                            if (r && "error" in r && r.error) {
+                              toast.error(
+                                typeof r.error === "string"
+                                  ? r.error
+                                  : "Erro ao atribuir responsável"
+                              );
+                            } else {
+                              toast.success("Responsável atualizado");
+                            }
+                          },
+                        }
+                      )
+                    }
+                    disabled={assignOwner.isPending || isClosed}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Não atribuído" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não atribuído</SelectItem>
+                      {(members || []).map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {deal.card.assignees.length > 0 && (
                   <>

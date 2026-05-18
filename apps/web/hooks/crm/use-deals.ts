@@ -2,7 +2,12 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { createDeal, closeDealWon, closeDealLost } from "@/lib/actions/crm/deals";
+import {
+  createDeal,
+  closeDealWon,
+  closeDealLost,
+  assignDealOwner,
+} from "@/lib/actions/crm/deals";
 
 export interface Deal {
   id: string;
@@ -10,6 +15,7 @@ export interface Deal {
   sector_id: string;
   company_id: string | null;
   contact_id: string | null;
+  owner_id: string | null;
   value: number | null;
   currency: string;
   expected_close_date: string | null;
@@ -19,6 +25,7 @@ export interface Deal {
   last_stage_change_at: string | null;
   source: string | null;
   created_at: string;
+  owner: { id: string; full_name: string } | null;
   card: {
     id: string;
     title: string;
@@ -59,7 +66,7 @@ export function useDeals(sectorId: string | undefined) {
         .from("crm_deals")
         .select(
           `
-          id, card_id, sector_id, company_id, contact_id,
+          id, card_id, sector_id, company_id, contact_id, owner_id,
           value, currency, expected_close_date, actual_close_date,
           win_probability, lost_reason, last_stage_change_at, source, created_at,
           cards!inner (
@@ -69,7 +76,8 @@ export function useDeals(sectorId: string | undefined) {
             users (id, full_name)
           ),
           crm_companies (id, name),
-          crm_contacts (id, full_name)
+          crm_contacts (id, full_name),
+          owner:users!crm_deals_owner_id_fkey (id, full_name)
         `
         )
         .eq("sector_id", sectorId)
@@ -83,6 +91,7 @@ export function useDeals(sectorId: string | undefined) {
         card: d.cards,
         company: d.crm_companies,
         contact: d.crm_contacts,
+        owner: d.owner,
       })) as unknown as Deal[];
     },
     enabled: !!sectorId,
@@ -125,6 +134,19 @@ export function useCloseDealLost() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-deals"] });
       queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
+    },
+  });
+}
+
+export function useAssignDealOwner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { dealId: string; ownerId: string | null }) =>
+      assignDealOwner(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-deals"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-deal-detail"] });
     },
   });
 }
