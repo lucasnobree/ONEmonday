@@ -147,7 +147,9 @@ export function BoardList() {
               onValueChange={(v) => v && setSort(v as BoardSortKey)}
             >
               <SelectTrigger className="w-56" aria-label="Ordenar boards">
-                <SelectValue />
+                <SelectValue>
+                  {SORT_OPTIONS.find((opt) => opt.value === sort)?.label}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {SORT_OPTIONS.map((opt) => (

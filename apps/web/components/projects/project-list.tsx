@@ -170,7 +170,9 @@ export function ProjectList() {
               onValueChange={(v) => v && setSort(v as ProjectSortKey)}
             >
               <SelectTrigger className="w-48" aria-label="Ordenar projetos">
-                <SelectValue />
+                <SelectValue>
+                  {SORT_OPTIONS.find((opt) => opt.value === sort)?.label}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {SORT_OPTIONS.map((opt) => (
