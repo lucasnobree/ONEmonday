@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Module deferred backlogs (post-migration polish)
+- The deferred-feature backlog of the five non-migration modules, built and
+  integrated together:
+  - **Core**: project detail pages with project↔card linking, search/sort on
+    the boards and projects indexes, and Kanban group-by swimlanes with
+    assignee/tag/due-date filters.
+  - **Finance**: invoice line items, invoice PDF/print, expense receipt
+    storage, and an expense approval workflow (migrations `00138`–`00140`).
+  - **HR**: offboarding checklists (templates/instances/items), a top-down
+    org chart with a connected department filter, headcount/turnover
+    analytics, and a negative time-off-balance guard (migrations
+    `00148`–`00150`).
+  - **Support**: a multi-state ticket status (`new`/`open`/`pending`/
+    `on_hold`/`resolved`) with SLA-clock pause, ticket attachments, Markdown
+    rendering in KB articles, and ticket-queue bulk actions + sorting
+    (migrations `00168`–`00169`).
+  - **Legal**: contract document storage, automated contract-renewal
+    notifications via the outbox + `/api/cron/legal-renewals`, read-only
+    detail views, and clause↔contract linking (migrations `00178`–`00179`).
+
 ### Scheduled automation runtime
 - `pg_cron` jobs (migration `00137`) periodically POST to secret-guarded
   `/api/cron/*` routes that drain the notification outbox and run due
