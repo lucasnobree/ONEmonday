@@ -70,7 +70,9 @@ export type Action =
   | "export"
   | "manage"
   | "invite"
-  | "deactivate";
+  | "deactivate"
+  // Finance: approving an expense is a distinct capability from editing it.
+  | "approve";
 
 export interface SectorRole {
   sectorId: string;
