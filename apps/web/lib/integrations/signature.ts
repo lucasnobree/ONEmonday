@@ -58,3 +58,20 @@ export function verifyHmacSignature(
   const provided = header.trim().replace(/^sha256=/i, "");
   return safeEqual(expected, provided);
 }
+
+/**
+ * Verifies an Asaas payment-gateway webhook.
+ *
+ * Unlike Meta / Teams, Asaas does NOT HMAC-sign the request body: it sends a
+ * *static* shared token in the `asaas-access-token` header — the value the
+ * operator configured in the Asaas webhook settings. Authentication is a
+ * constant-time direct compare of that header against the stored token; there
+ * is no body digest to compute. Fails closed when either side is empty.
+ */
+export function verifyStaticToken(
+  storedToken: string,
+  header: string | null
+): boolean {
+  if (!storedToken || !header) return false;
+  return safeEqual(storedToken, header.trim());
+}
