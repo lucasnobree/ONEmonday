@@ -32,7 +32,8 @@ export async function updateSession(request: NextRequest) {
   // Public, unauthenticated routes. `/f` is a hosted lead-capture form page and
   // `/api/forms` is its submission endpoint — both must be reachable by a
   // visitor with no session (CRM lead lifecycle, migration 00128). `/api/webhooks`
-  // is reached by external providers, never a logged-in user.
+  // is reached by external providers and `/api/cron` by the pg_cron scheduler —
+  // never a logged-in user; both enforce their own secret/signature guard.
   const publicRoutes = [
     "/login",
     "/invite",
@@ -40,6 +41,7 @@ export async function updateSession(request: NextRequest) {
     "/f/",
     "/api/forms/",
     "/api/webhooks/",
+    "/api/cron/",
   ];
   const isPublicRoute = publicRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
