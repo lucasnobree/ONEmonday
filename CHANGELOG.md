@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CRM lead lifecycle (migration Phase 2/6)
+- Lead capture: sector users define field-list capture forms; each published
+  form exposes a public, unauthenticated URL (`/f/<token>`) that creates a
+  lead. The submission endpoint (`/api/forms/[id]`) stays inside RLS via an
+  anon client, is rate-limited, honeypot-protected and strips unknown fields.
+- Leads inbox (`/crm/leads`): triage inbound leads by status and source,
+  sorted by score; qualify a lead to convert it into a `crm_contacts` +
+  `crm_deals` pair on the pipeline, or discard it with a reason.
+- Lead scoring: a rule-based model (points per attribute) shown in the inbox
+  and used as the sort key, with a per-lead breakdown explaining the score.
+- Honest scope: this is a focused field-list capture MVP — a drag-and-drop
+  landing-page builder is deferred. It closes inbound lead capture/triage/
+  scoring; email nurturing and sending still need the Marketing ESP track.
+
 ### Marketing automation & CRM communication (migration Phase 5)
 - Marketing automation MVP: a Resend email adapter on the integration layer,
   email campaigns to audience segments, and linear trigger→step automation
