@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Scheduled automation runtime
+- `pg_cron` jobs (migration `00137`) periodically POST to secret-guarded
+  `/api/cron/*` routes that drain the notification outbox and run due
+  marketing-sequence steps — the runners that earlier phases left as manual
+  buttons now run automatically. Activation needs `CRON_SECRET` and a
+  `cron_settings` base URL in production.
+- A migration go-live runbook: `docs/research/migration-go-live-runbook.md`.
+
 ### CRM email integration (migration Phase 2/6)
 - Send email to a deal's contact from the "Comunicação" panel via the Resend
   adapter, logged as an `email` activity on the timeline.
