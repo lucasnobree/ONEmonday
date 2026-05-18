@@ -49,6 +49,16 @@ export async function createMatter(formData: unknown) {
 
   if (error) return { error: error.message };
 
+  // Seed the status history with the creation entry (from_status NULL).
+  await supabase.from("legal_status_history").insert({
+    entity_type: "matter",
+    entity_id: matter.id,
+    sector_id: parsed.data.sectorId,
+    from_status: null,
+    to_status: matter.status,
+    changed_by: user.id,
+  });
+
   revalidatePath("/legal");
   revalidatePath("/legal/matters");
   return { data: matter };
@@ -66,7 +76,7 @@ export async function updateMatter(formData: unknown) {
 
   const { data: existing } = await supabase
     .from("legal_matters")
-    .select("sector_id, resolved_at")
+    .select("sector_id, resolved_at, status")
     .eq("id", parsed.data.id)
     .single();
   if (!existing) return { error: "Demanda não encontrada" };
@@ -99,6 +109,18 @@ export async function updateMatter(formData: unknown) {
     .eq("id", parsed.data.id);
 
   if (error) return { error: error.message };
+
+  // Record a status-history entry when the edit changed the status (audit C1).
+  if (existing.status !== parsed.data.status) {
+    await supabase.from("legal_status_history").insert({
+      entity_type: "matter",
+      entity_id: parsed.data.id,
+      sector_id: existing.sector_id,
+      from_status: existing.status,
+      to_status: parsed.data.status,
+      changed_by: user.id,
+    });
+  }
 
   revalidatePath("/legal");
   revalidatePath("/legal/matters");

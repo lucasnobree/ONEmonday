@@ -54,6 +54,16 @@ export async function createContract(formData: unknown) {
 
   if (error) return { error: error.message };
 
+  // Seed the status history with the creation entry (from_status NULL).
+  await supabase.from("legal_status_history").insert({
+    entity_type: "contract",
+    entity_id: contract.id,
+    sector_id: parsed.data.sectorId,
+    from_status: null,
+    to_status: contract.status,
+    changed_by: user.id,
+  });
+
   revalidatePath("/legal");
   revalidatePath("/legal/contracts");
   return { data: contract };
@@ -71,7 +81,7 @@ export async function updateContract(formData: unknown) {
 
   const { data: existing } = await supabase
     .from("legal_contracts")
-    .select("sector_id")
+    .select("sector_id, status")
     .eq("id", parsed.data.id)
     .single();
   if (!existing) return { error: "Contrato não encontrado" };
@@ -87,6 +97,18 @@ export async function updateContract(formData: unknown) {
     .eq("id", parsed.data.id);
 
   if (error) return { error: error.message };
+
+  // Record a status-history entry when the edit changed the status (audit C1).
+  if (existing.status !== parsed.data.status) {
+    await supabase.from("legal_status_history").insert({
+      entity_type: "contract",
+      entity_id: parsed.data.id,
+      sector_id: existing.sector_id,
+      from_status: existing.status,
+      to_status: parsed.data.status,
+      changed_by: user.id,
+    });
+  }
 
   revalidatePath("/legal");
   revalidatePath("/legal/contracts");

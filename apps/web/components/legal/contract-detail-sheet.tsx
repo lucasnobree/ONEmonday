@@ -20,6 +20,8 @@ import {
 import { unlinkClauseFromContract } from "@/lib/actions/legal/contract-clauses";
 import { ContractFormDialog } from "./contract-form-dialog";
 import { ContractDocumentUpload } from "./contract-document-upload";
+import { ContractApprovalControls } from "./contract-approval-controls";
+import { StatusHistoryTimeline } from "./status-history-timeline";
 import { ClausePicker } from "./clause-picker";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
@@ -168,7 +170,7 @@ export function ContractDetailSheet({
               <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
               <Badge variant={renewalInfo.variant}>{renewalInfo.label}</Badge>
             </div>
-            <div className="pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <Button
                 size="sm"
                 variant="outline"
@@ -177,6 +179,10 @@ export function ContractDetailSheet({
                 <Pencil className="h-4 w-4 mr-1" />
                 Editar
               </Button>
+              <ContractApprovalControls
+                contractId={contract.id}
+                status={contract.status}
+              />
             </div>
           </SheetHeader>
 
@@ -192,6 +198,7 @@ export function ContractDetailSheet({
               <TabsTrigger value="matters">
                 Demandas ({relatedMatters.length})
               </TabsTrigger>
+              <TabsTrigger value="history">Histórico</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="mt-4 space-y-4">
@@ -398,6 +405,14 @@ export function ContractDetailSheet({
                   })}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-4">
+              <StatusHistoryTimeline
+                entityType="contract"
+                entityId={contract.id}
+                sectorId={contract.sector_id}
+              />
             </TabsContent>
           </Tabs>
         </SheetContent>
