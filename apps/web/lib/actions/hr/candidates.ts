@@ -2,7 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
-import { addCandidateSchema } from "@/lib/validations/hr";
+import {
+  addCandidateSchema,
+  moveCandidateSchema,
+  updateCandidateSchema,
+  addCandidateNoteSchema,
+} from "@/lib/validations/hr";
 import { revalidatePath } from "next/cache";
 
 export async function addCandidate(formData: unknown) {
@@ -96,4 +101,128 @@ export async function addCandidate(formData: unknown) {
 
   revalidatePath("/hr/recruitment");
   return { data: candidate };
+}
+
+/** Move a candidate to a different pipeline stage. */
+export async function moveCandidate(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const parsed = moveCandidateSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: candidate } = await supabase
+    .from("hr_candidates")
+    .select("sector_id")
+    .eq("id", parsed.data.candidateId)
+    .single();
+  if (!candidate) return { error: "Candidato nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, candidate.sector_id, "candidate", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  const { error } = await supabase
+    .from("hr_candidates")
+    .update({
+      stage: parsed.data.stage,
+      stage_changed_at: new Date().toISOString(),
+    })
+    .eq("id", parsed.data.candidateId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/hr/recruitment");
+  return { success: true };
+}
+
+/** Update a candidate's profile fields. */
+export async function updateCandidate(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const parsed = updateCandidateSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: candidate } = await supabase
+    .from("hr_candidates")
+    .select("sector_id")
+    .eq("id", parsed.data.candidateId)
+    .single();
+  if (!candidate) return { error: "Candidato nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, candidate.sector_id, "candidate", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  const { error } = await supabase
+    .from("hr_candidates")
+    .update({
+      full_name: parsed.data.fullName,
+      email: parsed.data.email,
+      phone: parsed.data.phone || null,
+      resume_url: parsed.data.resumeUrl || null,
+      linkedin_url: parsed.data.linkedinUrl || null,
+      source: parsed.data.source || null,
+      current_company: parsed.data.currentCompany || null,
+      current_position: parsed.data.currentPosition || null,
+      expected_salary: parsed.data.expectedSalary ?? null,
+      rating: parsed.data.rating ?? null,
+      notes: parsed.data.notes || null,
+    })
+    .eq("id", parsed.data.candidateId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/hr/recruitment");
+  return { success: true };
+}
+
+/** Add an interview note / scorecard entry to a candidate. */
+export async function addCandidateNote(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const parsed = addCandidateNoteSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: candidate } = await supabase
+    .from("hr_candidates")
+    .select("sector_id")
+    .eq("id", parsed.data.candidateId)
+    .single();
+  if (!candidate) return { error: "Candidato nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, candidate.sector_id, "candidate", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  const { data: note, error } = await supabase
+    .from("hr_candidate_notes")
+    .insert({
+      candidate_id: parsed.data.candidateId,
+      sector_id: candidate.sector_id,
+      author_id: user.id,
+      rating: parsed.data.rating ?? null,
+      body: parsed.data.body,
+    })
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/hr/recruitment");
+  return { data: note };
 }

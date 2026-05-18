@@ -127,6 +127,7 @@ export default function RecruitmentPage() {
       <RecruitmentBoardSheet
         openingId={selectedOpeningId}
         openingTitle={selectedOpeningTitle}
+        sectorId={currentSector.id}
         open={!!selectedOpeningId}
         onOpenChange={(open) => {
           if (!open) setSelectedOpeningId(null);
