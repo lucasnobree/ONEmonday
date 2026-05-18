@@ -13,6 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LEAD_SOURCES, leadSourceLabel } from "@/lib/crm/lead-sources";
 import { toast } from "sonner";
 
 interface LeadCreateDialogProps {
@@ -115,11 +123,25 @@ export function LeadCreateDialog({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="lead-source">Origem</Label>
-                <Input
-                  id="lead-source"
+                <Select
                   value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                />
+                  onValueChange={(v) => setSource(v ?? "manual")}
+                >
+                  <SelectTrigger id="lead-source" className="w-full">
+                    <SelectValue>
+                      {(value: string | null) =>
+                        value ? leadSourceLabel(value) : "Origem"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEAD_SOURCES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {leadSourceLabel(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

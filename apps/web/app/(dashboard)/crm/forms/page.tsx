@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Plus,
   ClipboardList,
@@ -78,7 +79,6 @@ export default function LeadFormsPage() {
   };
 
   const handleDelete = async (form: LeadForm) => {
-    if (!confirm(`Excluir o formulário "${form.name}"?`)) return;
     const result = await deleteForm.mutateAsync(form.id);
     if (result.error) {
       toast.error(
@@ -87,6 +87,18 @@ export default function LeadFormsPage() {
       return;
     }
     toast.success("Formulário excluído");
+  };
+
+  /** Extra warning shown when deleting a form whose public URL is in use. */
+  const deleteWarning = (form: LeadForm): string => {
+    const base = `O formulário "${form.name}" será excluído permanentemente.`;
+    if (form.is_published && form.lead_count > 0) {
+      return `${base} A URL pública deixará de funcionar e os ${form.lead_count} leads já capturados continuarão na caixa de entrada.`;
+    }
+    if (form.is_published) {
+      return `${base} A URL pública deixará de funcionar.`;
+    }
+    return base;
   };
 
   if (!currentSector) {
@@ -198,14 +210,20 @@ export default function LeadFormsPage() {
                     <Pencil className="size-3.5 mr-1" />
                     Editar
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(form)}
-                    disabled={deleteForm.isPending}
+                  <ConfirmDialog
+                    title="Excluir formulário"
+                    description={deleteWarning(form)}
+                    onConfirm={() => handleDelete(form)}
                   >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={deleteForm.isPending}
+                      aria-label={`Excluir formulário ${form.name}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </ConfirmDialog>
                 </div>
               </CardContent>
             </Card>

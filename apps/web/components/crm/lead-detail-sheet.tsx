@@ -11,7 +11,7 @@ import {
 import { useBoards } from "@/hooks/use-boards";
 import { useBoardData } from "@/hooks/use-board-data";
 import { useCrmMembers } from "@/hooks/crm/use-crm-members";
-import { scoreLead, scoreBandLabel } from "@/lib/crm/lead-scoring";
+import { scoreLead, scoreBandLabel, leadVerdict } from "@/lib/crm/lead-scoring";
 import {
   Sheet,
   SheetContent,
@@ -35,6 +35,7 @@ import {
 import { Mail, Phone, Building2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { leadBandClass } from "@/lib/crm/lead-ui";
+import { leadSourceLabel } from "@/lib/crm/lead-sources";
 
 interface LeadDetailSheetProps {
   lead: Lead | null;
@@ -186,7 +187,7 @@ export function LeadDetailSheet({
             </Badge>
           </SheetTitle>
           <SheetDescription>
-            Lead via {lead.source} ·{" "}
+            Lead via {leadSourceLabel(lead.source)} ·{" "}
             {dateFormat.format(new Date(lead.created_at))}
           </SheetDescription>
         </SheetHeader>
@@ -237,6 +238,10 @@ export function LeadDetailSheet({
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase">
               Pontuação ({lead.score})
+            </p>
+            {/* One-line plain-language verdict derived from the score band. */}
+            <p className="text-sm font-medium">
+              {leadVerdict(breakdown.band)}
             </p>
             {breakdown.rules.map((rule) => (
               <div
