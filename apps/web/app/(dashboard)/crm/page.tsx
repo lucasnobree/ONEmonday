@@ -63,19 +63,20 @@ export default function CRMDashboardPage() {
   }, [deals]);
 
   // Top performers: ranked by total value of WON deals, grouped by the deal
-  // creator (cards.created_by -> users). crm_deals has no owner_id, so the
-  // card creator is the canonical "owner" of the deal.
+  // OWNER (crm_deals.owner_id). Falls back to the card creator only for legacy
+  // deals with no owner assigned.
   const topPerformers = useMemo(() => {
     if (!deals) return [];
     const wonDeals = deals.filter((d) => d.actual_close_date && !d.lost_reason);
     const performerMap = new Map<string, { name: string; total: number }>();
     for (const deal of wonDeals) {
-      const creatorId = deal.card?.created_by;
-      if (!creatorId) continue;
-      const name = deal.card?.users?.full_name ?? "Usuário";
-      const existing = performerMap.get(creatorId) ?? { name, total: 0 };
+      const ownerId = deal.owner?.id ?? deal.card?.created_by;
+      if (!ownerId) continue;
+      const name =
+        deal.owner?.full_name ?? deal.card?.users?.full_name ?? "Usuário";
+      const existing = performerMap.get(ownerId) ?? { name, total: 0 };
       existing.total += Number(deal.value) || 0;
-      performerMap.set(creatorId, existing);
+      performerMap.set(ownerId, existing);
     }
     return Array.from(performerMap.values())
       .sort((a, b) => b.total - a.total)

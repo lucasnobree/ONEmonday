@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCreateDeal } from "@/hooks/crm/use-deals";
 import { useCompanies } from "@/hooks/crm/use-companies";
 import { useContacts } from "@/hooks/crm/use-contacts";
+import { useCrmMembers } from "@/hooks/crm/use-crm-members";
 import { useBoardData } from "@/hooks/use-board-data";
 import {
   Dialog,
@@ -43,12 +44,14 @@ export function DealCreateDialog({
   const { data: board } = useBoardData(boardId);
   const { data: companies } = useCompanies(sectorId);
   const { data: contacts } = useContacts(sectorId);
+  const { data: members } = useCrmMembers(sectorId);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [columnId, setColumnId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [contactId, setContactId] = useState("");
+  const [ownerId, setOwnerId] = useState("");
   const [value, setValue] = useState("");
   const [probability, setProbability] = useState("");
   const [priority, setPriority] = useState("medium");
@@ -61,6 +64,7 @@ export function DealCreateDialog({
     setColumnId("");
     setCompanyId("");
     setContactId("");
+    setOwnerId("");
     setValue("");
     setProbability("");
     setPriority("medium");
@@ -84,6 +88,7 @@ export function DealCreateDialog({
       priority,
       companyId: companyId || undefined,
       contactId: contactId || undefined,
+      ownerId: ownerId || undefined,
       value: value ? parseFloat(value) : undefined,
       winProbability: probability ? parseInt(probability, 10) : undefined,
     });
@@ -198,6 +203,22 @@ export function DealCreateDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Responsável</Label>
+              <Select value={ownerId} onValueChange={(v) => setOwnerId(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Eu (padrão)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members || []).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

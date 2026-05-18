@@ -2,7 +2,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { createActivity } from "@/lib/actions/crm/activities";
+import {
+  createActivity,
+  completeActivity,
+  rescheduleActivity,
+} from "@/lib/actions/crm/activities";
 
 export interface Activity {
   id: string;
@@ -14,6 +18,8 @@ export interface Activity {
   subject: string;
   description: string | null;
   scheduled_at: string | null;
+  completed_at: string | null;
+  assigned_to: string | null;
   duration_min: number | null;
   performed_by: string;
   created_at: string;
@@ -21,6 +27,7 @@ export interface Activity {
   contact: { id: string; full_name: string } | null;
   company: { id: string; name: string } | null;
   user: { full_name: string } | null;
+  assignee: { full_name: string } | null;
 }
 
 interface UseActivitiesOptions {
@@ -48,17 +55,18 @@ export function useActivities({
         .select(
           `
           id, sector_id, deal_id, contact_id, company_id,
-          type, subject, description, scheduled_at, duration_min,
-          performed_by, created_at,
+          type, subject, description, scheduled_at, completed_at,
+          assigned_to, duration_min, performed_by, created_at,
           crm_deals (id, card_id, cards (title)),
           crm_contacts (id, full_name),
           crm_companies (id, name),
-          users!crm_activities_performed_by_fkey (full_name)
+          users!crm_activities_performed_by_fkey (full_name),
+          assignee:users!crm_activities_assigned_to_fkey (full_name)
         `
         )
         .eq("sector_id", sectorId)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (dealId) query = query.eq("deal_id", dealId);
       if (contactId) query = query.eq("contact_id", contactId);
@@ -74,6 +82,7 @@ export function useActivities({
         contact: a.crm_contacts,
         company: a.crm_companies,
         user: a.users,
+        assignee: a.assignee,
       })) as unknown as Activity[];
     },
     enabled: !!sectorId,
@@ -85,6 +94,30 @@ export function useCreateActivity() {
 
   return useMutation({
     mutationFn: (input: unknown) => createActivity(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
+    },
+  });
+}
+
+export function useCompleteActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { activityId: string; completed: boolean }) =>
+      completeActivity(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
+    },
+  });
+}
+
+export function useRescheduleActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { activityId: string; scheduledAt: string }) =>
+      rescheduleActivity(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
     },

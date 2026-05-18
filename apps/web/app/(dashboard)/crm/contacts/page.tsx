@@ -2,9 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useContacts } from "@/hooks/crm/use-contacts";
+import { useContacts, type Contact } from "@/hooks/crm/use-contacts";
 import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
 import { ContactDetailSheet } from "@/components/crm/contact-detail-sheet";
+import {
+  nextSortState,
+  sortRows,
+  type SortState,
+} from "@/lib/crm/list-sort";
+import { SortHeader } from "@/components/crm/sort-header";
 import {
   Card,
   CardContent,
@@ -14,29 +20,82 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Mail, Phone, Building2, UserRound, Download } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Plus,
+  Search,
+  Mail,
+  Phone,
+  Building2,
+  UserRound,
+  Download,
+  LayoutGrid,
+  Table as TableIcon,
+} from "lucide-react";
 import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
+
+type ContactSortKey = "full_name" | "position" | "company" | "email";
+
+function contactValue(contact: Contact, key: ContactSortKey): unknown {
+  if (key === "company") return contact.company?.name ?? null;
+  return contact[key];
+}
 
 export default function ContactsPage() {
   const { currentSector } = useCurrentSector();
   const { data: contacts, isLoading } = useContacts(currentSector?.id);
   const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [primaryOnly, setPrimaryOnly] = useState(false);
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const [sort, setSort] = useState<SortState<ContactSortKey>>({
+    key: "full_name",
+    direction: "asc",
+  });
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    null
+  );
+
+  // Distinct companies present, for the filter dropdown.
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of contacts ?? []) {
+      if (c.company) map.set(c.company.id, c.company.name);
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [contacts]);
 
   const filtered = useMemo(() => {
-    if (!contacts) return [];
-    if (!search.trim()) return contacts;
-    const q = search.toLowerCase();
-    return contacts.filter(
-      (c) =>
-        c.full_name.toLowerCase().includes(q) ||
-        c.email?.toLowerCase().includes(q) ||
-        c.company?.name?.toLowerCase().includes(q) ||
-        c.position?.toLowerCase().includes(q)
-    );
-  }, [contacts, search]);
+    let result = contacts ?? [];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.full_name.toLowerCase().includes(q) ||
+          c.email?.toLowerCase().includes(q) ||
+          c.company?.name?.toLowerCase().includes(q) ||
+          c.position?.toLowerCase().includes(q)
+      );
+    }
+    if (companyFilter !== "all") {
+      result = result.filter((c) => c.company_id === companyFilter);
+    }
+    if (primaryOnly) {
+      result = result.filter((c) => c.is_primary);
+    }
+    return sortRows(result, sort, contactValue);
+  }, [contacts, search, companyFilter, primaryOnly, sort]);
+
+  const hasActiveFilter =
+    search.trim() !== "" || companyFilter !== "all" || primaryOnly;
 
   if (!currentSector) {
     return (
@@ -58,6 +117,9 @@ export default function ContactsPage() {
       </div>
     );
   }
+
+  const toggleSort = (key: ContactSortKey) =>
+    setSort((s) => nextSortState(s, key));
 
   return (
     <div className="space-y-6">
@@ -106,7 +168,75 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {!contacts?.length && !search ? (
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={companyFilter}
+          onValueChange={(v) => setCompanyFilter(v ?? "all")}
+        >
+          <SelectTrigger className="h-8 w-52 text-sm">
+            <SelectValue placeholder="Empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toda empresa</SelectItem>
+            {companyOptions.map(([id, name]) => (
+              <SelectItem key={id} value={id}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant={primaryOnly ? "default" : "outline"}
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setPrimaryOnly((v) => !v)}
+        >
+          Apenas principais
+        </Button>
+        {hasActiveFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              setSearch("");
+              setCompanyFilter("all");
+              setPrimaryOnly(false);
+            }}
+          >
+            Limpar filtros
+          </Button>
+        )}
+        <div className="ml-auto inline-flex h-8 items-center rounded-lg bg-muted p-0.75">
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            className={`inline-flex items-center justify-center rounded-md px-2 py-1 transition-all ${
+              view === "grid"
+                ? "bg-background shadow-sm"
+                : "text-muted-foreground"
+            }`}
+            title="Cards"
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            className={`inline-flex items-center justify-center rounded-md px-2 py-1 transition-all ${
+              view === "table"
+                ? "bg-background shadow-sm"
+                : "text-muted-foreground"
+            }`}
+            title="Tabela"
+          >
+            <TableIcon className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      {!contacts?.length && !hasActiveFilter ? (
         <EmptyState
           icon={UserRound}
           title="Nenhum contato cadastrado"
@@ -120,8 +250,74 @@ export default function ContactsPage() {
         />
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
-          Nenhum contato encontrado para a busca.
+          Nenhum contato encontrado para os filtros.
         </p>
+      ) : view === "table" ? (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <SortHeader
+                  label="Nome"
+                  sortKey="full_name"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                  className="pl-3"
+                />
+                <SortHeader
+                  label="Cargo"
+                  sortKey="position"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Empresa"
+                  sortKey="company"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Email"
+                  sortKey="email"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={toggleSort}
+                  className="pr-3"
+                />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((contact) => (
+                <tr
+                  key={contact.id}
+                  className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedContactId(contact.id)}
+                >
+                  <td className="py-2.5 pl-3 font-medium">
+                    <span className="flex items-center gap-2">
+                      {contact.full_name}
+                      {contact.is_primary && (
+                        <Badge variant="secondary">Principal</Badge>
+                      )}
+                    </span>
+                  </td>
+                  <td className="py-2.5 text-muted-foreground">
+                    {contact.position ?? "—"}
+                  </td>
+                  <td className="py-2.5 text-muted-foreground">
+                    {contact.company?.name ?? "—"}
+                  </td>
+                  <td className="py-2.5 pr-3 text-muted-foreground">
+                    {contact.email ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((contact) => (

@@ -5,6 +5,7 @@ import { useCreateActivity } from "@/hooks/crm/use-activities";
 import { useDeals } from "@/hooks/crm/use-deals";
 import { useContacts } from "@/hooks/crm/use-contacts";
 import { useCompanies } from "@/hooks/crm/use-companies";
+import { useCrmMembers } from "@/hooks/crm/use-crm-members";
 import {
   Dialog,
   DialogContent,
@@ -40,35 +41,62 @@ const ACTIVITY_TYPES = [
   { value: "task", label: "Tarefa" },
 ];
 
-export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
-  const [open, setOpen] = useState(false);
+interface ActivityCreateDialogPropsExtended extends ActivityCreateDialogProps {
+  /** When provided, the dialog is controlled externally (no internal trigger). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Hides the built-in "Nova Atividade" trigger button. */
+  hideTrigger?: boolean;
+  /** Pre-links the activity to a deal / contact / company. */
+  defaultDealId?: string;
+  defaultContactId?: string;
+  defaultCompanyId?: string;
+}
+
+export function ActivityCreateDialog({
+  sectorId,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideTrigger,
+  defaultDealId,
+  defaultContactId,
+  defaultCompanyId,
+}: ActivityCreateDialogPropsExtended) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const createActivity = useCreateActivity();
   const { data: deals } = useDeals(sectorId);
   const { data: contacts } = useContacts(sectorId);
   const { data: companies } = useCompanies(sectorId);
+  const { data: members } = useCrmMembers(sectorId);
 
   const [type, setType] = useState("call");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
-  const [dealId, setDealId] = useState("");
-  const [contactId, setContactId] = useState("");
-  const [companyId, setCompanyId] = useState("");
+  const [dealId, setDealId] = useState(defaultDealId ?? "");
+  const [contactId, setContactId] = useState(defaultContactId ?? "");
+  const [companyId, setCompanyId] = useState(defaultCompanyId ?? "");
   const [durationMin, setDurationMin] = useState("");
   const [fromEmail, setFromEmail] = useState("");
   const [toEmail, setToEmail] = useState("");
   const [location, setLocation] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
 
   function resetForm() {
     setType("call");
     setSubject("");
     setDescription("");
-    setDealId("");
-    setContactId("");
-    setCompanyId("");
+    setDealId(defaultDealId ?? "");
+    setContactId(defaultContactId ?? "");
+    setCompanyId(defaultCompanyId ?? "");
     setDurationMin("");
     setFromEmail("");
     setToEmail("");
     setLocation("");
+    setScheduledAt("");
+    setAssignedTo("");
   }
 
   function buildDescription() {
@@ -99,6 +127,10 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
       dealId: dealId || undefined,
       contactId: contactId || undefined,
       companyId: companyId || undefined,
+      scheduledAt: scheduledAt
+        ? new Date(scheduledAt).toISOString()
+        : undefined,
+      assignedTo: assignedTo || undefined,
       durationMin: durationMin ? parseInt(durationMin, 10) : undefined,
     });
 
@@ -118,16 +150,18 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>
-        <Plus className="size-4" />
-        Nova Atividade
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger render={<Button size="sm" />}>
+          <Plus className="size-4" />
+          Nova Atividade
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Nova Atividade</DialogTitle>
             <DialogDescription>
-              Registre uma nova atividade no CRM.
+              Registre uma atividade ou agende uma tarefa com prazo.
             </DialogDescription>
           </DialogHeader>
 
@@ -219,6 +253,41 @@ export function ActivityCreateDialog({ sectorId }: ActivityCreateDialogProps) {
                 placeholder="Detalhes adicionais..."
                 rows={3}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="activity-scheduled">
+                  Agendar para (opcional)
+                </Label>
+                <Input
+                  id="activity-scheduled"
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Cria uma tarefa com prazo. Em branco = registro imediato.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Responsável</Label>
+                <Select
+                  value={assignedTo}
+                  onValueChange={(v) => setAssignedTo(v ?? "")}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Eu (padrão)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(members || []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">

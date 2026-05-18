@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useDeals, type Deal } from "@/hooks/crm/use-deals";
@@ -16,10 +16,19 @@ import {
   rottingLabel,
   type RottingConfig,
 } from "@/lib/crm/deal-rotting";
+import { useCrmMembers } from "@/hooks/crm/use-crm-members";
 import { DealCreateDialog } from "@/components/crm/deal-create-dialog";
 import { DealDetailSheet } from "@/components/crm/deal-detail-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   Plus,
@@ -28,6 +37,7 @@ import {
   CalendarDays,
   GripVertical,
   AlertTriangle,
+  Search,
 } from "lucide-react";
 
 const formatCurrency = (value: number) =>
@@ -57,6 +67,11 @@ export default function PipelinePage() {
   const { data: boards, isLoading: boardsLoading } = useBoards(
     currentSector?.id
   );
+  const { data: members } = useCrmMembers(currentSector?.id);
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("open");
+  const [search, setSearch] = useState("");
   const [showCreateDeal, setShowCreateDeal] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
@@ -144,6 +159,34 @@ export default function PipelinePage() {
     [queryClient]
   );
 
+  const filteredDeals = useMemo(() => {
+    let result = deals ?? [];
+    // status: open hides closed deals; won/lost narrow to outcome.
+    if (statusFilter === "open") {
+      result = result.filter((d) => !d.actual_close_date);
+    } else if (statusFilter === "won") {
+      result = result.filter((d) => d.actual_close_date && !d.lost_reason);
+    } else if (statusFilter === "lost") {
+      result = result.filter((d) => d.actual_close_date && d.lost_reason);
+    }
+    if (ownerFilter !== "all") {
+      result = result.filter((d) => d.owner_id === ownerFilter);
+    }
+    if (priorityFilter !== "all") {
+      result = result.filter((d) => d.card?.priority === priorityFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (d) =>
+          d.card?.title?.toLowerCase().includes(q) ||
+          d.company?.name?.toLowerCase().includes(q) ||
+          d.contact?.full_name?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [deals, statusFilter, ownerFilter, priorityFilter, search]);
+
   if (!currentSector) {
     return (
       <p className="text-muted-foreground">
@@ -192,12 +235,18 @@ export default function PipelinePage() {
     );
   }
 
-  const stages = buildStageColumns(deals || []);
+  const stages = buildStageColumns(filteredDeals);
 
-  const totalPipelineValue = (deals || []).reduce(
+  const totalPipelineValue = filteredDeals.reduce(
     (sum, d) => sum + (d.value || 0),
     0
   );
+
+  const hasActiveFilter =
+    ownerFilter !== "all" ||
+    priorityFilter !== "all" ||
+    statusFilter !== "open" ||
+    search.trim() !== "";
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -205,7 +254,7 @@ export default function PipelinePage() {
         <div>
           <h2 className="text-lg font-semibold">Pipeline de Vendas</h2>
           <p className="text-sm text-muted-foreground">
-            {deals?.length ?? 0} deals &middot;{" "}
+            {filteredDeals.length} deals &middot;{" "}
             {formatCurrency(totalPipelineValue)} no pipeline
           </p>
         </div>
@@ -213,6 +262,76 @@ export default function PipelinePage() {
           <Button onClick={() => setShowCreateDeal(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Novo Deal
+          </Button>
+        )}
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="relative w-56">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar deals..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 pl-8 text-sm"
+          />
+        </div>
+        <Select value={ownerFilter} onValueChange={(v) => setOwnerFilter(v ?? "all")}>
+          <SelectTrigger className="h-8 w-44 text-sm">
+            <SelectValue placeholder="Responsável" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos responsáveis</SelectItem>
+            {(members || []).map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.full_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={priorityFilter}
+          onValueChange={(v) => setPriorityFilter(v ?? "all")}
+        >
+          <SelectTrigger className="h-8 w-36 text-sm">
+            <SelectValue placeholder="Prioridade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toda prioridade</SelectItem>
+            <SelectItem value="critical">Crítica</SelectItem>
+            <SelectItem value="high">Alta</SelectItem>
+            <SelectItem value="medium">Média</SelectItem>
+            <SelectItem value="low">Baixa</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v ?? "open")}
+        >
+          <SelectTrigger className="h-8 w-32 text-sm">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Abertos</SelectItem>
+            <SelectItem value="won">Ganhos</SelectItem>
+            <SelectItem value="lost">Perdidos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
+          </SelectContent>
+        </Select>
+        {hasActiveFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              setOwnerFilter("all");
+              setPriorityFilter("all");
+              setStatusFilter("open");
+              setSearch("");
+            }}
+          >
+            Limpar filtros
           </Button>
         )}
       </div>
@@ -413,13 +532,29 @@ function DealCard({
         )}
       </div>
 
-      {/* Owner placeholder */}
+      {/* Deal owner */}
       <div className="flex items-center justify-end mt-2">
-        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
-          {(deal.contact?.full_name ?? deal.company?.name ?? "?")
-            .charAt(0)
-            .toUpperCase()}
-        </div>
+        {deal.owner ? (
+          <div
+            className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary"
+            title={`Responsável: ${deal.owner.full_name}`}
+          >
+            {deal.owner.full_name
+              .split(" ")
+              .map((n) => n[0])
+              .filter(Boolean)
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()}
+          </div>
+        ) : (
+          <div
+            className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center text-[10px] text-muted-foreground"
+            title="Sem responsável"
+          >
+            ?
+          </div>
+        )}
       </div>
     </div>
   );

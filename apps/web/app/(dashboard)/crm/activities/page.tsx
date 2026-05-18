@@ -2,7 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useActivities } from "@/hooks/crm/use-activities";
+import {
+  useActivities,
+  useCompleteActivity,
+  type Activity,
+} from "@/hooks/crm/use-activities";
+import { useCrmMembers } from "@/hooks/crm/use-crm-members";
+import { bucketActivity, countOpenTasks } from "@/lib/crm/activity-tasks";
 import {
   Card,
   CardContent,
@@ -14,15 +20,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Phone,
   Mail,
   Calendar,
   StickyNote,
   CheckSquare,
   Download,
+  AlertTriangle,
+  Clock,
+  Circle,
+  CheckCircle2,
 } from "lucide-react";
 import { ActivityCreateDialog } from "@/components/crm/activity-create-dialog";
 import { exportToCSV } from "@/lib/utils/export-csv";
+import { toast } from "sonner";
 
 const activityIcons: Record<string, React.ElementType> = {
   call: Phone,
@@ -48,7 +66,10 @@ const activityLabels: Record<string, string> = {
   task: "Tarefa",
 };
 
-const activityVariants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+const activityVariants: Record<
+  string,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
   call: "default",
   email: "secondary",
   meeting: "outline",
@@ -66,20 +87,40 @@ const TYPE_LABELS: Record<string, string> = {
   task: "Tarefas",
 };
 
+const dateTimeFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export default function ActivitiesPage() {
   const { currentSector } = useCurrentSector();
   const { data: activities, isLoading } = useActivities({
     sectorId: currentSector?.id,
   });
+  const { data: members } = useCrmMembers(currentSector?.id);
+  const completeActivity = useCompleteActivity();
+  const [tab, setTab] = useState<"tasks" | "history">("tasks");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const filtered = useMemo(() => {
+  // Stable "now" for one render pass so every bucket calculation agrees.
+  const now = useMemo(() => new Date(), []);
+
+  const baseFiltered = useMemo(() => {
     if (!activities) return [];
     let result = activities;
     if (typeFilter !== "all") {
       result = result.filter((a) => a.type === typeFilter);
+    }
+    if (ownerFilter !== "all") {
+      result = result.filter(
+        (a) => a.assigned_to === ownerFilter || a.performed_by === ownerFilter
+      );
     }
     if (dateFrom) {
       const from = new Date(dateFrom);
@@ -90,7 +131,49 @@ export default function ActivitiesPage() {
       result = result.filter((a) => new Date(a.created_at) <= to);
     }
     return result;
-  }, [activities, typeFilter, dateFrom, dateTo]);
+  }, [activities, typeFilter, ownerFilter, dateFrom, dateTo]);
+
+  // Split into open tasks (scheduled, incomplete) and the historical feed.
+  const { openTasks, historyFeed } = useMemo(() => {
+    const open: Activity[] = [];
+    const history: Activity[] = [];
+    for (const a of baseFiltered) {
+      const bucket = bucketActivity(a, now);
+      if (bucket === "overdue" || bucket === "today" || bucket === "upcoming") {
+        open.push(a);
+      } else {
+        history.push(a);
+      }
+    }
+    // Open tasks: soonest due first.
+    open.sort(
+      (a, b) =>
+        new Date(a.scheduled_at!).getTime() -
+        new Date(b.scheduled_at!).getTime()
+    );
+    return { openTasks: open, historyFeed: history };
+  }, [baseFiltered, now]);
+
+  const counts = useMemo(
+    () => countOpenTasks(activities ?? [], now),
+    [activities, now]
+  );
+
+  const handleComplete = async (activity: Activity, completed: boolean) => {
+    const result = await completeActivity.mutateAsync({
+      activityId: activity.id,
+      completed,
+    });
+    if (result && "error" in result && result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao atualizar tarefa"
+      );
+      return;
+    }
+    toast.success(completed ? "Tarefa concluída" : "Tarefa reaberta");
+  };
 
   if (!currentSector) {
     return (
@@ -104,7 +187,7 @@ export default function ActivitiesPage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Atividades Recentes</h2>
+          <h2 className="text-lg font-semibold">Atividades</h2>
           <ActivityCreateDialog sectorId={currentSector.id} />
         </div>
         {Array.from({ length: 5 }).map((_, i) => (
@@ -114,26 +197,34 @@ export default function ActivitiesPage() {
     );
   }
 
+  const visible = tab === "tasks" ? openTasks : historyFeed;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Atividades Recentes</h2>
+        <h2 className="text-lg font-semibold">Atividades</h2>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            disabled={!filtered.length}
+            disabled={!visible.length}
             onClick={() =>
               exportToCSV(
-                filtered.map((a) => ({
+                visible.map((a) => ({
                   tipo: activityLabels[a.type] ?? a.type,
                   assunto: a.subject,
                   descricao: a.description ?? "",
-                  responsavel: a.user?.full_name ?? "",
+                  responsavel:
+                    a.assignee?.full_name ?? a.user?.full_name ?? "",
+                  agendado: a.scheduled_at
+                    ? new Date(a.scheduled_at).toLocaleString("pt-BR")
+                    : "",
+                  concluido: a.completed_at
+                    ? new Date(a.completed_at).toLocaleString("pt-BR")
+                    : "",
                   deal: a.deal?.cards?.title ?? "",
                   contato: a.contact?.full_name ?? "",
                   empresa: a.company?.name ?? "",
-                  duracao_min: a.duration_min ?? "",
                   data: new Date(a.created_at).toLocaleString("pt-BR"),
                 })),
                 `atividades-${new Date().toISOString().split("T")[0]}`,
@@ -142,11 +233,12 @@ export default function ActivitiesPage() {
                   { key: "assunto", label: "Assunto" },
                   { key: "descricao", label: "Descrição" },
                   { key: "responsavel", label: "Responsável" },
+                  { key: "agendado", label: "Agendado para" },
+                  { key: "concluido", label: "Concluído em" },
                   { key: "deal", label: "Deal" },
                   { key: "contato", label: "Contato" },
                   { key: "empresa", label: "Empresa" },
-                  { key: "duracao_min", label: "Duração (min)" },
-                  { key: "data", label: "Data" },
+                  { key: "data", label: "Criado em" },
                 ]
               )
             }
@@ -158,8 +250,66 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
+      {/* Open-task summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card>
+          <CardContent className="p-3 flex items-center gap-2">
+            <AlertTriangle className="size-4 text-red-500" />
+            <div>
+              <p className="text-xs text-muted-foreground">Atrasadas</p>
+              <p className="text-lg font-bold">{counts.overdue}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-2">
+            <Clock className="size-4 text-amber-500" />
+            <div>
+              <p className="text-xs text-muted-foreground">Hoje</p>
+              <p className="text-lg font-bold">{counts.today}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-2">
+            <Calendar className="size-4 text-blue-500" />
+            <div>
+              <p className="text-xs text-muted-foreground">Próximas</p>
+              <p className="text-lg font-bold">{counts.upcoming}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs: tasks vs history */}
+      <div className="inline-flex h-9 items-center rounded-lg bg-muted p-0.75 text-muted-foreground">
+        <button
+          type="button"
+          onClick={() => setTab("tasks")}
+          className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all ${
+            tab === "tasks"
+              ? "bg-background text-foreground shadow-sm"
+              : "hover:text-foreground"
+          }`}
+        >
+          Tarefas pendentes ({counts.openTotal})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("history")}
+          className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all ${
+            tab === "history"
+              ? "bg-background text-foreground shadow-sm"
+              : "hover:text-foreground"
+          }`}
+        >
+          Histórico
+        </button>
+      </div>
+
+      {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="inline-flex h-8 items-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+        <div className="inline-flex h-8 items-center rounded-lg bg-muted p-0.75 text-muted-foreground">
           {TYPES.map((t) => (
             <button
               key={t}
@@ -174,6 +324,22 @@ export default function ActivitiesPage() {
               {TYPE_LABELS[t]}
             </button>
           ))}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Responsável</Label>
+          <Select value={ownerFilter} onValueChange={(v) => setOwnerFilter(v ?? "all")}>
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {(members || []).map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-end gap-2">
           <div className="space-y-1">
@@ -194,7 +360,7 @@ export default function ActivitiesPage() {
               className="h-8 w-35 text-xs"
             />
           </div>
-          {(dateFrom || dateTo) && (
+          {(dateFrom || dateTo || ownerFilter !== "all" || typeFilter !== "all") && (
             <Button
               variant="ghost"
               size="sm"
@@ -202,6 +368,8 @@ export default function ActivitiesPage() {
               onClick={() => {
                 setDateFrom("");
                 setDateTo("");
+                setOwnerFilter("all");
+                setTypeFilter("all");
               }}
             >
               Limpar
@@ -210,18 +378,86 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
-          Nenhuma atividade encontrada.
+          {tab === "tasks"
+            ? "Nenhuma tarefa pendente."
+            : "Nenhuma atividade no histórico."}
         </p>
+      ) : tab === "tasks" ? (
+        <div className="space-y-2">
+          {visible.map((activity) => {
+            const Icon = activityIcons[activity.type] ?? StickyNote;
+            const bucket = bucketActivity(activity, now);
+            const isOverdueTask = bucket === "overdue";
+            return (
+              <Card
+                key={activity.id}
+                className={isOverdueTask ? "border-red-300 dark:border-red-900" : ""}
+              >
+                <CardContent className="p-3 flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleComplete(activity, !activity.completed_at)
+                    }
+                    disabled={completeActivity.isPending}
+                    title={
+                      activity.completed_at
+                        ? "Reabrir tarefa"
+                        : "Concluir tarefa"
+                    }
+                    className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    {activity.completed_at ? (
+                      <CheckCircle2 className="size-5 text-green-600" />
+                    ) : (
+                      <Circle className="size-5" />
+                    )}
+                  </button>
+                  <Icon className="size-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">
+                        {activity.subject}
+                      </span>
+                      <Badge
+                        variant={activityVariants[activity.type] ?? "secondary"}
+                      >
+                        {activityLabels[activity.type] ?? activity.type}
+                      </Badge>
+                      {isOverdueTask && (
+                        <Badge variant="destructive">Atrasada</Badge>
+                      )}
+                      {bucket === "today" && (
+                        <Badge variant="secondary">Hoje</Badge>
+                      )}
+                    </div>
+                    {activity.description && (
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap mt-1">
+                        {activity.description}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activity.scheduled_at &&
+                        `Prazo: ${dateTimeFormat.format(
+                          new Date(activity.scheduled_at)
+                        )}`}
+                      {activity.assignee?.full_name &&
+                        ` · ${activity.assignee.full_name}`}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       ) : (
         <div className="relative space-y-0">
           <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
-
-          {filtered.map((activity) => {
+          {visible.map((activity) => {
             const Icon = activityIcons[activity.type] ?? StickyNote;
             const colors = activityColors[activity.type] ?? activityColors.note;
-
             return (
               <div key={activity.id} className="relative flex gap-4 pb-6">
                 <div
@@ -229,28 +465,26 @@ export default function ActivitiesPage() {
                 >
                   <Icon className="h-4 w-4" />
                 </div>
-
                 <Card className="flex-1">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-sm font-medium">
                         {activity.subject}
                       </CardTitle>
-                      <Badge variant={activityVariants[activity.type] ?? "secondary"}>
+                      <Badge
+                        variant={activityVariants[activity.type] ?? "secondary"}
+                      >
                         {activityLabels[activity.type] ?? activity.type}
                       </Badge>
+                      {activity.completed_at && (
+                        <Badge variant="secondary">Concluída</Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {activity.user?.full_name ?? "Usuario"} &middot;{" "}
-                      {new Date(activity.created_at).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {dateTimeFormat.format(new Date(activity.created_at))}
                       {activity.duration_min
-                        ? ` \u00B7 ${activity.duration_min}min`
+                        ? ` · ${activity.duration_min}min`
                         : ""}
                     </p>
                   </CardHeader>
