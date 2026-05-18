@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Integration layer (migration Phase 1)
+- Foundation for consolidating the company's external SaaS onto ONEmonday:
+  a provider-adapter integration layer (`lib/integrations/`), an encrypted
+  `integration_credentials` store (AES-256-GCM), an idempotent
+  `webhook_events` log, and a `notification_outbox` that generalizes in-app
+  notifications to outbound channels.
+- Microsoft Teams and WhatsApp (Cloud API) channel adapters, inbound webhook
+  routes with signature verification, and an admin Settings → Integrações
+  screen to configure credentials and event→channel routing.
+- Migration roadmap and research: `docs/research/migration-*.md`.
+
 ### UX audit & quick wins (Wave 3)
 - A screen-by-screen UX & market audit of all 39 screens
   (`docs/research/ux-audit-*.md`, `screenshots/audit/`), followed by the
