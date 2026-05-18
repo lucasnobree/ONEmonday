@@ -18,6 +18,7 @@ import { decryptSecretJson } from "@/lib/integrations/crypto";
 import { verifyMetaSignature } from "@/lib/integrations/signature";
 import { makeWebhookPorts } from "@/lib/integrations/webhook-ports";
 import { processWebhook } from "@/lib/integrations/webhook";
+import { logInboundWhatsApp } from "@/lib/integrations/crm-inbound";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,8 @@ export async function POST(request: NextRequest) {
 
   const { id, type } = extractExternalId(body);
 
-  const ports = makeWebhookPorts(createServiceClient());
+  const client = createServiceClient();
+  const ports = makeWebhookPorts(client);
   const outcome = await processWebhook(
     {
       provider: "whatsapp",
@@ -117,9 +119,15 @@ export async function POST(request: NextRequest) {
       signatureOk,
     },
     ports,
-    // Phase 1 domain handler: the event is logged. Delivery-status fan-out
-    // into notification_outbox / crm_activities lands in later phases.
-    async () => {}
+    // Domain handler: an inbound message (a contact replying) is fanned into
+    // `crm_activities` so the deal timeline shows the conversation — the RD
+    // Station CRM "WhatsApp inside the deal" behaviour. Delivery-status
+    // callbacks carry no conversation content and are a no-op here.
+    async (parsed) => {
+      if (parsed.eventType === "message") {
+        await logInboundWhatsApp(client, parsed.payload);
+      }
+    }
   );
 
   if (outcome.ok) {

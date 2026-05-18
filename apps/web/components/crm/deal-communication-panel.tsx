@@ -1,0 +1,340 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type { Activity } from "@/hooks/crm/use-activities";
+import { useSendWhatsapp, useLogEmail } from "@/hooks/crm/use-activities";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+  MessageCircle,
+  Mail,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Send,
+} from "lucide-react";
+
+const timeFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+interface DealCommunicationPanelProps {
+  sectorId: string;
+  dealId: string;
+  contactId?: string | null;
+  companyId?: string | null;
+  /** Default WhatsApp number — usually the linked contact's phone. */
+  contactPhone?: string | null;
+  /** All activities for the deal; this panel filters to communication ones. */
+  activities: Activity[] | undefined;
+}
+
+/**
+ * Communication tab of the deal detail sheet — the RD Station CRM
+ * "WhatsApp inside the deal" + "email logging" replacement.
+ *
+ *  - Renders the conversation thread: every `whatsapp` / `email` activity,
+ *    inbound vs outbound, ordered by `occurred_at`.
+ *  - "Enviar WhatsApp" sends a message through the Phase-1 WhatsApp adapter;
+ *    the sent message is logged back as an outbound activity.
+ *  - "Registrar e-mail" logs a manual email exchange (sync is out of scope).
+ */
+export function DealCommunicationPanel({
+  sectorId,
+  dealId,
+  contactId,
+  companyId,
+  contactPhone,
+  activities,
+}: DealCommunicationPanelProps) {
+  const sendWhatsapp = useSendWhatsapp();
+  const logEmail = useLogEmail();
+
+  const [mode, setMode] = useState<"whatsapp" | "email">("whatsapp");
+  const [waTo, setWaTo] = useState(contactPhone ?? "");
+  const [waBody, setWaBody] = useState("");
+  const [emailDirection, setEmailDirection] = useState<
+    "inbound" | "outbound"
+  >("outbound");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailCounterpart, setEmailCounterpart] = useState("");
+
+  // The conversation thread: communication activities, oldest first so it
+  // reads top-to-bottom like a chat.
+  const thread = useMemo(() => {
+    return (activities ?? [])
+      .filter((a) => a.channel === "whatsapp" || a.channel === "email")
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(a.occurred_at).getTime() -
+          new Date(b.occurred_at).getTime()
+      );
+  }, [activities]);
+
+  async function handleSendWhatsapp() {
+    if (!waBody.trim() || !waTo.trim()) return;
+    const result = await sendWhatsapp.mutateAsync({
+      sectorId,
+      dealId,
+      contactId: contactId || undefined,
+      companyId: companyId || undefined,
+      to: waTo.trim(),
+      body: waBody.trim(),
+    });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Verifique o número e a mensagem."
+      );
+      return;
+    }
+    toast.success(
+      result.noop
+        ? "Mensagem registrada (WhatsApp não configurado — modo demo)"
+        : "WhatsApp enviado e registrado no histórico"
+    );
+    setWaBody("");
+  }
+
+  async function handleLogEmail() {
+    if (!emailSubject.trim() || !emailBody.trim()) return;
+    const result = await logEmail.mutateAsync({
+      sectorId,
+      dealId,
+      contactId: contactId || undefined,
+      companyId: companyId || undefined,
+      direction: emailDirection,
+      subject: emailSubject.trim(),
+      body: emailBody.trim(),
+      counterpartEmail: emailCounterpart.trim() || undefined,
+    });
+    if (result.error) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Verifique os campos e tente novamente."
+      );
+      return;
+    }
+    toast.success("E-mail registrado no histórico");
+    setEmailSubject("");
+    setEmailBody("");
+    setEmailCounterpart("");
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Conversation thread */}
+      {thread.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">
+          Nenhuma comunicação registrada. Envie um WhatsApp ou registre um
+          e-mail abaixo.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {thread.map((a) => {
+            const inbound = a.direction === "inbound";
+            const isWa = a.channel === "whatsapp";
+            return (
+              <div
+                key={a.id}
+                className={`flex ${inbound ? "justify-start" : "justify-end"}`}
+              >
+                <div
+                  className={`max-w-[85%] rounded-lg border px-3 py-2 text-sm ${
+                    inbound
+                      ? "bg-muted"
+                      : "bg-primary/10 border-primary/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    {isWa ? (
+                      <MessageCircle className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <Mail className="h-3 w-3 text-blue-600" />
+                    )}
+                    {inbound ? (
+                      <ArrowDownLeft className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpRight className="h-3 w-3" />
+                    )}
+                    <span>{isWa ? "WhatsApp" : "E-mail"}</span>
+                    <span>·</span>
+                    <span>
+                      {timeFormat.format(new Date(a.occurred_at))}
+                    </span>
+                  </div>
+                  {a.channel === "email" && (
+                    <p className="mt-0.5 text-sm font-medium">{a.subject}</p>
+                  )}
+                  {a.description && (
+                    <p className="mt-0.5 whitespace-pre-wrap text-sm">
+                      {a.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Separator />
+
+      {/* Composer mode toggle */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "whatsapp" ? "default" : "outline"}
+          className="flex-1"
+          onClick={() => setMode("whatsapp")}
+        >
+          <MessageCircle className="h-3.5 w-3.5 mr-1" />
+          WhatsApp
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "email" ? "default" : "outline"}
+          className="flex-1"
+          onClick={() => setMode("email")}
+        >
+          <Mail className="h-3.5 w-3.5 mr-1" />
+          Registrar e-mail
+        </Button>
+      </div>
+
+      {mode === "whatsapp" ? (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label htmlFor="wa-to" className="text-xs">
+              Número (WhatsApp)
+            </Label>
+            <Input
+              id="wa-to"
+              value={waTo}
+              onChange={(e) => setWaTo(e.target.value)}
+              placeholder="+55 11 99999-9999"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="wa-body" className="text-xs">
+              Mensagem
+            </Label>
+            <Textarea
+              id="wa-body"
+              value={waBody}
+              onChange={(e) => setWaBody(e.target.value)}
+              placeholder="Escreva a mensagem..."
+              rows={3}
+            />
+          </div>
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={handleSendWhatsapp}
+            disabled={
+              sendWhatsapp.isPending || !waBody.trim() || !waTo.trim()
+            }
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            {sendWhatsapp.isPending ? "Enviando..." : "Enviar WhatsApp"}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Direção</Label>
+              <Select
+                value={emailDirection}
+                onValueChange={(v) =>
+                  setEmailDirection(
+                    (v as "inbound" | "outbound") ?? "outbound"
+                  )
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="outbound">Enviado</SelectItem>
+                  <SelectItem value="inbound">Recebido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="email-counterpart" className="text-xs">
+                {emailDirection === "inbound" ? "De" : "Para"} (e-mail)
+              </Label>
+              <Input
+                id="email-counterpart"
+                type="email"
+                value={emailCounterpart}
+                onChange={(e) => setEmailCounterpart(e.target.value)}
+                placeholder="contato@email.com"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="email-subject" className="text-xs">
+              Assunto
+            </Label>
+            <Input
+              id="email-subject"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder="Assunto do e-mail"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="email-body" className="text-xs">
+              Conteúdo
+            </Label>
+            <Textarea
+              id="email-body"
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              placeholder="Conteúdo da troca de e-mail..."
+              rows={3}
+            />
+          </div>
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={handleLogEmail}
+            disabled={
+              logEmail.isPending ||
+              !emailSubject.trim() ||
+              !emailBody.trim()
+            }
+          >
+            <Mail className="h-3.5 w-3.5 mr-1" />
+            {logEmail.isPending ? "Registrando..." : "Registrar e-mail"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            Registro manual. A sincronização automática de e-mail depende de um
+            provedor (ESP) — fora do escopo desta fase.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

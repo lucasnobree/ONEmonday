@@ -78,6 +78,50 @@ export const rescheduleActivitySchema = z.object({
   scheduledAt: z.string().min(1, "Data é obrigatória"),
 });
 
+/**
+ * Send a WhatsApp message to a contact from the deal/contact detail sheet.
+ * The message is delivered through the Phase-1 WhatsApp adapter and logged as
+ * an outbound `crm_activities` entry on the deal timeline.
+ */
+export const sendWhatsappMessageSchema = z
+  .object({
+    sectorId: z.string().uuid(),
+    dealId: z.string().uuid().optional(),
+    contactId: z.string().uuid().optional(),
+    companyId: z.string().uuid().optional(),
+    // E.164-ish: digits, may carry +, spaces, dashes — normalised server-side.
+    to: z.string().min(8, "Número de WhatsApp inválido").max(20),
+    body: z
+      .string()
+      .min(1, "Mensagem é obrigatória")
+      .max(4096, "Mensagem muito longa"),
+  })
+  .refine((d) => d.dealId || d.contactId || d.companyId, {
+    message: "Vincule a mensagem a um deal, contato ou empresa",
+  });
+
+/**
+ * Manually log an email exchange against a deal/contact as a `crm_activities`
+ * entry. Two-way email *sync* is out of scope — it needs an ESP provider
+ * (see docs/research/migration-architecture.md §2.8). This is the manual
+ * "log email" form that replaces RD Station CRM's manual email logging.
+ */
+export const logEmailSchema = z
+  .object({
+    sectorId: z.string().uuid(),
+    dealId: z.string().uuid().optional(),
+    contactId: z.string().uuid().optional(),
+    companyId: z.string().uuid().optional(),
+    direction: z.enum(["inbound", "outbound"]),
+    subject: z.string().min(1, "Assunto é obrigatório").max(300),
+    body: z.string().min(1, "Conteúdo é obrigatório").max(20000),
+    // Optional counterpart address shown in the timeline ("De:" / "Para:").
+    counterpartEmail: z.string().email().optional().or(z.literal("")),
+  })
+  .refine((d) => d.dealId || d.contactId || d.companyId, {
+    message: "Vincule o e-mail a um deal, contato ou empresa",
+  });
+
 export const createProposalSchema = z.object({
   dealId: z.string().uuid(),
   sectorId: z.string().uuid(),
