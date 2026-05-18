@@ -190,7 +190,10 @@ export function EmailCampaignFormDialog({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email-segment">Audiência</Label>
-                <Select value={segmentId} onValueChange={setSegmentId}>
+                <Select
+                  value={segmentId}
+                  onValueChange={(v) => setSegmentId(v ?? NO_SEGMENT)}
+                >
                   <SelectTrigger id="email-segment" className="w-full">
                     <SelectValue />
                   </SelectTrigger>

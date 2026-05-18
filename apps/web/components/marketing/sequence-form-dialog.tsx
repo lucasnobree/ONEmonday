@@ -181,7 +181,10 @@ export function SequenceFormDialog({
             {triggerType === "segment_entry" && (
               <div className="grid gap-2">
                 <Label htmlFor="sequence-segment">Audiência do gatilho</Label>
-                <Select value={segmentId} onValueChange={setSegmentId}>
+                <Select
+                  value={segmentId}
+                  onValueChange={(v) => setSegmentId(v ?? NO_SEGMENT)}
+                >
                   <SelectTrigger id="sequence-segment" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
