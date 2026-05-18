@@ -22,6 +22,8 @@ import {
   RENEWAL_STATUS_LABELS,
   MATTER_PRIORITY_LABELS,
 } from "@/lib/legal/labels";
+import { formatDateOnly } from "@/lib/legal/dates";
+import type { BadgeVariant } from "@/lib/legal/labels";
 import {
   FileText,
   CalendarClock,
@@ -31,7 +33,13 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-const dateFormat = new Intl.DateTimeFormat("pt-BR");
+/** Tailwind background for a status-distribution bar, keyed by badge variant. */
+const STATUS_BAR_COLOR: Record<BadgeVariant, string> = {
+  default: "bg-emerald-500",
+  secondary: "bg-amber-500",
+  destructive: "bg-destructive",
+  outline: "bg-muted-foreground/40",
+};
 
 export default function LegalDashboardPage() {
   const { currentSector } = useCurrentSector();
@@ -152,24 +160,28 @@ export default function LegalDashboardPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {statusEntries.map(([status, count]) => (
-                  <div key={status} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>
-                        {CONTRACT_STATUS_LABELS[status]?.label ?? status}
-                      </span>
-                      <span className="font-medium">{count}</span>
+                {statusEntries.map(([status, count]) => {
+                  const variant =
+                    CONTRACT_STATUS_LABELS[status]?.variant ?? "secondary";
+                  return (
+                    <div key={status} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>
+                          {CONTRACT_STATUS_LABELS[status]?.label ?? status}
+                        </span>
+                        <span className="font-medium">{count}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${STATUS_BAR_COLOR[variant]}`}
+                          style={{
+                            width: `${(count / maxStatusCount) * 100}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{
-                          width: `${(count / maxStatusCount) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -203,7 +215,7 @@ export default function LegalDashboardPage() {
                   return (
                     <Link
                       key={contract.id}
-                      href="/legal/contracts"
+                      href={`/legal/contracts?contract=${contract.id}`}
                       className="flex items-center justify-between text-sm hover:bg-muted/50 rounded px-1 -mx-1 py-0.5 transition-colors"
                     >
                       <div className="min-w-0">
@@ -213,7 +225,7 @@ export default function LegalDashboardPage() {
                         <span className="block text-xs text-muted-foreground">
                           {contract.counterparty}
                           {contract.expiry_date
-                            ? ` - ${dateFormat.format(new Date(contract.expiry_date))}`
+                            ? ` - ${formatDateOnly(contract.expiry_date)}`
                             : ""}
                         </span>
                       </div>

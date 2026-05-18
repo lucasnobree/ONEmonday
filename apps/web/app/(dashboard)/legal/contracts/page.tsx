@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useContracts, type Contract } from "@/hooks/legal/use-contracts";
 import { useSectorMembers } from "@/hooks/legal/use-sector-members";
@@ -31,16 +32,24 @@ import {
   formatCurrency,
 } from "@/lib/legal/labels";
 import { getRenewalStatus } from "@/lib/legal/renewal";
-
-const dateFormat = new Intl.DateTimeFormat("pt-BR");
+import { formatDateOnly } from "@/lib/legal/dates";
 
 export default function ContractsPage() {
   const { currentSector } = useCurrentSector();
   const { data: contracts, isLoading } = useContracts(currentSector?.id);
   const { data: members } = useSectorMembers(currentSector?.id);
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selected, setSelected] = useState<Contract | null>(null);
+  // Selection is tracked by id, seeded once from a `?contract=<id>` deep link
+  // (dashboard renewal alerts). The selected contract is then derived from the
+  // loaded list during render — no effect, no state-sync.
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    searchParams.get("contract")
+  );
+  const selected =
+    (selectedId && (contracts ?? []).find((c) => c.id === selectedId)) ||
+    null;
 
   const memberNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -162,7 +171,7 @@ export default function ContractsPage() {
                       <tr
                         key={contract.id}
                         className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setSelected(contract)}
+                        onClick={() => setSelectedId(contract.id)}
                       >
                         <td className="py-2 font-medium">{contract.title}</td>
                         <td className="py-2">{contract.counterparty}</td>
@@ -183,9 +192,7 @@ export default function ContractsPage() {
                         </td>
                         <td className="py-2">
                           {contract.expiry_date
-                            ? dateFormat.format(
-                                new Date(contract.expiry_date)
-                              )
+                            ? formatDateOnly(contract.expiry_date)
                             : "-"}
                         </td>
                         <td className="py-2">
@@ -211,7 +218,7 @@ export default function ContractsPage() {
       <ContractDetailSheet
         contract={selected}
         open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
+        onOpenChange={(o) => !o && setSelectedId(null)}
       />
     </div>
   );

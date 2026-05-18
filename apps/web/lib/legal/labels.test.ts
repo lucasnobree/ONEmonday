@@ -8,6 +8,7 @@ import {
   MATTER_PRIORITY_LABELS,
   MATTER_STATUS_LABELS,
   CLAUSE_CATEGORY_LABELS,
+  clauseUsageLabel,
   formatCurrency,
   formatFileSize,
 } from "./labels";
@@ -61,6 +62,25 @@ describe("Legal enum labels — pt-BR accent correctness", () => {
     expect(allLabels).not.toMatch(
       /\b(Servico|Locacao|Licenca|Renovacao|Acao|revisao|Revisao|Litigio|Media|Rescisao)\b/
     );
+  });
+});
+
+describe("clauseUsageLabel", () => {
+  it("reads naturally for zero contracts", () => {
+    expect(clauseUsageLabel(0)).toBe("Não usada em contratos");
+  });
+
+  it("uses the singular for exactly one contract", () => {
+    expect(clauseUsageLabel(1)).toBe("Usada em 1 contrato");
+  });
+
+  it("uses the plural for several contracts", () => {
+    expect(clauseUsageLabel(3)).toBe("Usada em 3 contratos");
+  });
+
+  it("clamps negative or fractional input", () => {
+    expect(clauseUsageLabel(-2)).toBe("Não usada em contratos");
+    expect(clauseUsageLabel(2.7)).toBe("Usada em 2 contratos");
   });
 });
 

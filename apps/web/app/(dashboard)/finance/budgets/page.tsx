@@ -150,7 +150,7 @@ export default function BudgetsPage() {
         >
           <ChevronLeft className="size-4" />
         </Button>
-        <span className="min-w-40 text-center text-sm font-medium capitalize">
+        <span className="min-w-40 text-center text-sm font-medium">
           {formatMonthKey(monthKey)}
         </span>
         <Button

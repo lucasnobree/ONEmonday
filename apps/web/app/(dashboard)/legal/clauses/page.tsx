@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useClauses, type Clause } from "@/hooks/legal/use-clauses";
+import { useClauseUsage } from "@/hooks/legal/use-contract-clauses";
 import { ClauseFormDialog } from "@/components/legal/clause-form-dialog";
 import { ClauseDetailSheet } from "@/components/legal/clause-detail-sheet";
 import {
@@ -23,11 +24,12 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { ScrollText, Search, CheckCircle2 } from "lucide-react";
 import { CLAUSE_CATEGORIES } from "@/lib/validations/legal";
-import { CLAUSE_CATEGORY_LABELS } from "@/lib/legal/labels";
+import { CLAUSE_CATEGORY_LABELS, clauseUsageLabel } from "@/lib/legal/labels";
 
 export default function ClausesPage() {
   const { currentSector } = useCurrentSector();
   const { data: clauses, isLoading } = useClauses(currentSector?.id);
+  const { data: clauseUsage } = useClauseUsage(currentSector?.id);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selected, setSelected] = useState<Clause | null>(null);
@@ -139,9 +141,12 @@ export default function ClausesPage() {
                   {CLAUSE_CATEGORY_LABELS[clause.category] ?? clause.category}
                 </Badge>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-2">
                 <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
                   {clause.body}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {clauseUsageLabel(clauseUsage?.get(clause.id) ?? 0)}
                 </p>
               </CardContent>
             </Card>

@@ -29,8 +29,11 @@ import {
   MATTER_TYPE_LABELS,
   MATTER_PRIORITY_LABELS,
 } from "@/lib/legal/labels";
-
-const dateFormat = new Intl.DateTimeFormat("pt-BR");
+import { formatDateOnly } from "@/lib/legal/dates";
+import {
+  compareMatterByPriority,
+  matterDueStatus,
+} from "@/lib/legal/matters";
 
 export default function MattersPage() {
   const { currentSector } = useCurrentSector();
@@ -48,16 +51,21 @@ export default function MattersPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return (matters ?? []).filter((m: Matter) => {
-      if (statusFilter !== "all" && m.status !== statusFilter) return false;
-      if (term) {
-        const haystack = [m.title, m.description ?? ""]
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(term)) return false;
-      }
-      return true;
-    });
+    return (matters ?? [])
+      .filter((m: Matter) => {
+        if (statusFilter !== "all" && m.status !== statusFilter) return false;
+        if (term) {
+          const haystack = [m.title, m.description ?? ""]
+            .join(" ")
+            .toLowerCase();
+          if (!haystack.includes(term)) return false;
+        }
+        return true;
+      })
+      // Default-sort by priority weight (urgent first), mirroring the
+      // dashboard's open-matters ranking so urgent items are not buried.
+      .slice()
+      .sort(compareMatterByPriority);
   }, [matters, statusFilter, search]);
 
   if (!currentSector) {
@@ -178,9 +186,26 @@ export default function MattersPage() {
                           </Badge>
                         </td>
                         <td className="py-2">
-                          {matter.due_date
-                            ? dateFormat.format(new Date(matter.due_date))
-                            : "-"}
+                          {matter.due_date ? (
+                            (() => {
+                              const due = matterDueStatus(
+                                matter.due_date,
+                                matter.status
+                              );
+                              return (
+                                <span className="flex items-center gap-1.5">
+                                  {formatDateOnly(matter.due_date)}
+                                  {due.label && due.variant && (
+                                    <Badge variant={due.variant}>
+                                      {due.label}
+                                    </Badge>
+                                  )}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className="py-2">
                           <Badge variant={statusInfo.variant}>

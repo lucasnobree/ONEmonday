@@ -20,9 +20,9 @@ import {
   MATTER_TYPE_LABELS,
   MATTER_PRIORITY_LABELS,
 } from "@/lib/legal/labels";
+import { formatDateOnly, formatTimestamp } from "@/lib/legal/dates";
+import { matterDueStatus } from "@/lib/legal/matters";
 import { Gavel, Pencil } from "lucide-react";
-
-const dateFormat = new Intl.DateTimeFormat("pt-BR");
 
 interface MatterDetailSheetProps {
   matter: Matter | null;
@@ -69,6 +69,7 @@ export function MatterDetailSheet({
   const relatedContract = matter.contract_id
     ? (contracts ?? []).find((c) => c.id === matter.contract_id)
     : undefined;
+  const due = matterDueStatus(matter.due_date, matter.status);
 
   return (
     <>
@@ -112,14 +113,21 @@ export function MatterDetailSheet({
               <Field
                 label="Prazo"
                 value={
-                  matter.due_date
-                    ? dateFormat.format(new Date(matter.due_date))
-                    : "-"
+                  matter.due_date ? (
+                    <span className="flex items-center gap-1.5">
+                      {formatDateOnly(matter.due_date)}
+                      {due.label && due.variant && (
+                        <Badge variant={due.variant}>{due.label}</Badge>
+                      )}
+                    </span>
+                  ) : (
+                    "-"
+                  )
                 }
               />
               <Field
                 label="Criada em"
-                value={dateFormat.format(new Date(matter.created_at))}
+                value={formatTimestamp(matter.created_at)}
               />
               <Field
                 label="Contrato relacionado"
@@ -129,7 +137,7 @@ export function MatterDetailSheet({
                 label="Resolvida em"
                 value={
                   matter.resolved_at
-                    ? dateFormat.format(new Date(matter.resolved_at))
+                    ? formatTimestamp(matter.resolved_at)
                     : "-"
                 }
               />
