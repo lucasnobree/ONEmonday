@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Marketing automation & CRM communication (migration Phase 5)
+- Marketing automation MVP: a Resend email adapter on the integration layer,
+  email campaigns to audience segments, and linear trigger→step automation
+  sequences (`/marketing/email`, `/marketing/automations`). A full RD Station
+  Marketing replacement (forms, landing pages, lead scoring) stays out of
+  scope — this is the feasible first slice.
+- CRM communication: send WhatsApp from a deal and log sent/received
+  messages and emails onto the deal timeline as activities (a "Comunicação"
+  tab), closing the last functional gap before RD Station CRM can be retired.
+
 ### Finance & fiscal gateways (migration Phase 4)
 - Internal financial management ONEmonday can own: AR/AP aging reports, a
   management DRE/P&L, and a categorized accountant export, on new
