@@ -75,6 +75,10 @@ export default function DevToolsPage() {
   const deleteFlag = useDeleteFeatureFlag();
   const toggleFlag = useToggleFeatureFlag();
 
+  // Controlled tab state so the overview stat cards can deep-link into the
+  // matching tab (Wave 5 — Dev-Tools overview interactivity).
+  const [tab, setTab] = useState("overview");
+
   const [serviceDialog, setServiceDialog] = useState(false);
   const [editService, setEditService] = useState<DevService>();
   const [incidentDialog, setIncidentDialog] = useState(false);
@@ -126,7 +130,7 @@ export default function DevToolsPage() {
         <p className="text-muted-foreground">{currentSector.name}</p>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="incidents">Incidentes</TabsTrigger>
@@ -142,24 +146,28 @@ export default function DevToolsPage() {
               color="text-red-500"
               label="Incidentes Abertos"
               value={stats?.openIncidents ?? 0}
+              onClick={() => setTab("incidents")}
             />
             <StatCard
               icon={AlertTriangle}
               color="text-orange-500"
               label="SEV1 Abertos"
               value={stats?.sev1Open ?? 0}
+              onClick={() => setTab("incidents")}
             />
             <StatCard
               icon={Server}
               color="text-amber-500"
               label="Serviços com Falha"
               value={stats?.servicesDown ?? 0}
+              onClick={() => setTab("services")}
             />
             <StatCard
               icon={Rocket}
               color="text-sky-500"
               label="Deploys (7 dias)"
               value={stats?.deploys7d ?? 0}
+              onClick={() => setTab("deployments")}
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -168,18 +176,31 @@ export default function DevToolsPage() {
               color="text-emerald-500"
               label="Flags Ativas"
               value={stats?.activeFlags ?? 0}
+              onClick={() => setTab("flags")}
             />
             <StatCard
               icon={AlertTriangle}
               color="text-violet-500"
               label="MTTA médio"
-              value={formatDuration(metrics.mttaMinutes)}
+              value={
+                metrics.mttaMinutes === null
+                  ? "Sem incidentes resolvidos"
+                  : formatDuration(metrics.mttaMinutes)
+              }
+              hint="Tempo médio até o reconhecimento de um incidente."
+              onClick={() => setTab("incidents")}
             />
             <StatCard
               icon={AlertTriangle}
               color="text-indigo-500"
               label="MTTR médio"
-              value={formatDuration(metrics.mttrMinutes)}
+              value={
+                metrics.mttrMinutes === null
+                  ? "Sem incidentes resolvidos"
+                  : formatDuration(metrics.mttrMinutes)
+              }
+              hint="Tempo médio até a resolução de um incidente."
+              onClick={() => setTab("incidents")}
             />
           </div>
         </TabsContent>
@@ -420,21 +441,50 @@ function StatCard({
   color,
   label,
   value,
+  hint,
+  onClick,
 }: {
   icon: typeof AlertTriangle;
   color: string;
   label: string;
   value: number | string;
+  /** Optional tooltip-style caption shown below the value. */
+  hint?: string;
+  /** When provided the card becomes a button that navigates to a tab. */
+  onClick?: () => void;
 }) {
+  const body = (
+    <CardContent className="flex items-center gap-3 p-4">
+      <Icon className={`h-7 w-7 shrink-0 ${color}`} />
+      <div className="min-w-0">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="truncate text-xl font-bold">{value}</p>
+        {hint && (
+          <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+        )}
+      </div>
+    </CardContent>
+  );
+
+  if (!onClick) {
+    return <Card>{body}</Card>;
+  }
+
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <Icon className={`h-7 w-7 shrink-0 ${color}`} />
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold">{value}</p>
-        </div>
-      </CardContent>
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      aria-label={`Abrir ${label}`}
+      className="cursor-pointer transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      {body}
     </Card>
   );
 }
