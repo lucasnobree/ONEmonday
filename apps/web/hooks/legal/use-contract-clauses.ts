@@ -19,6 +19,36 @@ export interface ContractClauseLink {
   } | null;
 }
 
+/**
+ * Counts how many contracts each library clause is linked to, sector-wide.
+ * Returns a `Map<clauseId, contractCount>` so the clause library can show a
+ * "usada em N contratos" signal — `legal_contract_clauses` is one row per
+ * (contract, clause) link, so a plain tally is correct.
+ */
+export function useClauseUsage(sectorId: string | undefined) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["legal-clause-usage", sectorId],
+    queryFn: async () => {
+      const usage = new Map<string, number>();
+      if (!sectorId) return usage;
+
+      const { data, error } = await supabase
+        .from("legal_contract_clauses")
+        .select("clause_id")
+        .eq("sector_id", sectorId);
+
+      if (error) throw error;
+      for (const row of (data as { clause_id: string }[]) ?? []) {
+        usage.set(row.clause_id, (usage.get(row.clause_id) ?? 0) + 1);
+      }
+      return usage;
+    },
+    enabled: !!sectorId,
+  });
+}
+
 /** Lists the library clauses linked to a contract. */
 export function useContractClauses(contractId: string | undefined) {
   const supabase = createClient();

@@ -88,6 +88,17 @@ export const CLAUSE_CATEGORY_LABELS: Record<string, string> = {
   other: "Outro",
 };
 
+/**
+ * pt-BR label for how many contracts a clause is linked to, e.g.
+ * "Não usada em contratos", "Usada em 1 contrato", "Usada em 3 contratos".
+ */
+export function clauseUsageLabel(count: number): string {
+  const n = Math.max(0, Math.floor(count));
+  if (n === 0) return "Não usada em contratos";
+  if (n === 1) return "Usada em 1 contrato";
+  return `Usada em ${n} contratos`;
+}
+
 /** Formats a monetary amount in pt-BR for the given ISO currency code. */
 export function formatCurrency(
   amount: number | null,
