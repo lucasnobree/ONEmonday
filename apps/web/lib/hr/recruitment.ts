@@ -38,6 +38,37 @@ export function isForwardMove(from: string, to: string): boolean {
   return stageOrder(to) > stageOrder(from);
 }
 
+/** Canonical lifecycle statuses for a job opening (vaga). */
+export const JOB_OPENING_STATUSES = [
+  "open",
+  "closed",
+  "filled",
+  "cancelled",
+] as const;
+
+export type JobOpeningStatus = (typeof JOB_OPENING_STATUSES)[number];
+
+/** True when the given value is a known job-opening status. */
+export function isJobOpeningStatus(value: string): value is JobOpeningStatus {
+  return (JOB_OPENING_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * The set of statuses a vaga in `current` may legitimately move to. An open
+ * vaga can be closed, filled or cancelled; a non-open vaga can only be
+ * reopened. Re-selecting the current status is never a valid transition.
+ */
+export function allowedStatusTransitions(current: string): JobOpeningStatus[] {
+  if (current === "open") return ["closed", "filled", "cancelled"];
+  if (isJobOpeningStatus(current)) return ["open"];
+  return [];
+}
+
+/** True when moving a vaga `from` → `to` is an allowed status transition. */
+export function canTransitionStatus(from: string, to: string): boolean {
+  return (allowedStatusTransitions(from) as string[]).includes(to);
+}
+
 /**
  * Summarises a set of candidate stages into pipeline counts: how many are
  * still active, hired and rejected.

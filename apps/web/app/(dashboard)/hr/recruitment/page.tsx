@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useJobOpenings, type JobOpening } from "@/hooks/hr/use-job-openings";
 import { JobOpeningFormDialog } from "@/components/hr/job-opening-form-dialog";
+import { JobOpeningStatusMenu } from "@/components/hr/job-opening-status-menu";
 import { RecruitmentBoardSheet } from "@/components/hr/recruitment-board-sheet";
 import {
   Card,
@@ -11,6 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -31,11 +39,26 @@ const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
   intern: "Estagiário",
 };
 
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  all: "Todos os status",
+  open: "Abertas",
+  closed: "Fechadas",
+  filled: "Preenchidas",
+  cancelled: "Canceladas",
+};
+
 export default function RecruitmentPage() {
   const { currentSector } = useCurrentSector();
   const { data: openings, isLoading } = useJobOpenings(currentSector?.id);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
   const [selectedOpeningTitle, setSelectedOpeningTitle] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filteredOpenings = useMemo(() => {
+    if (!openings) return [];
+    if (statusFilter === "all") return openings;
+    return openings.filter((o) => o.status === statusFilter);
+  }, [openings, statusFilter]);
 
   if (!currentSector) {
     return (
@@ -45,9 +68,30 @@ export default function RecruitmentPage() {
     );
   }
 
+  const hasOpenings = !!openings && openings.length > 0;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v ?? "all")}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue>
+              {(value) =>
+                STATUS_FILTER_LABELS[value as string] ?? "Todos os status"
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(STATUS_FILTER_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <JobOpeningFormDialog />
       </div>
 
@@ -62,12 +106,18 @@ export default function RecruitmentPage() {
                 <div key={i} className="h-10 rounded bg-muted" />
               ))}
             </div>
-          ) : !openings || openings.length === 0 ? (
+          ) : !hasOpenings ? (
             <EmptyState
               icon={Briefcase}
               title="Nenhuma vaga aberta"
               description="Crie sua primeira vaga para começar o processo de recrutamento."
               action={<JobOpeningFormDialog />}
+            />
+          ) : filteredOpenings.length === 0 ? (
+            <EmptyState
+              icon={Briefcase}
+              title="Nenhuma vaga com esse status"
+              description="Ajuste o filtro de status para ver outras vagas."
             />
           ) : (
             <div className="overflow-x-auto">
@@ -81,10 +131,13 @@ export default function RecruitmentPage() {
                     <th className="pb-2 font-medium">Candidatos</th>
                     <th className="pb-2 font-medium">Data</th>
                     <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">
+                      <span className="sr-only">Ações</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {openings.map((opening: JobOpening) => {
+                  {filteredOpenings.map((opening: JobOpening) => {
                     const statusInfo = STATUS_MAP[opening.status] ?? {
                       label: opening.status,
                       variant: "secondary" as const,
@@ -113,6 +166,12 @@ export default function RecruitmentPage() {
                           <Badge variant={statusInfo.variant}>
                             {statusInfo.label}
                           </Badge>
+                        </td>
+                        <td
+                          className="py-2 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <JobOpeningStatusMenu opening={opening} />
                         </td>
                       </tr>
                     );
