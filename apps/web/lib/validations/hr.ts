@@ -22,6 +22,9 @@ export const requestTimeOffSchema = z.object({
   endDate: z.string().min(1, "Data de fim é obrigatória"),
   daysCount: z.number().int().min(1),
   reason: z.string().optional(),
+  // When false (default) the server blocks a request that would push the
+  // balance negative; the UI sets it true only after an explicit override.
+  allowNegativeBalance: z.boolean().optional().default(false),
 });
 
 export const createJobOpeningSchema = z.object({

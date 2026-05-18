@@ -3,8 +3,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
 import { requestTimeOffSchema } from "@/lib/validations/hr";
+import { checkTimeOffBalance } from "@/lib/hr/time-off-balance";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+/**
+ * Available balance for an employee + policy in a given year, via the
+ * get_time_off_available_days RPC (migration 00150). Returns null when the
+ * RPC fails so callers can decide whether to proceed.
+ */
+async function getAvailableDays(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  employeeId: string,
+  policyId: string,
+  year: number,
+  excludeRequestId?: string
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc("get_time_off_available_days", {
+    p_employee_id: employeeId,
+    p_policy_id: policyId,
+    p_year: year,
+    p_exclude_request_id: excludeRequestId ?? null,
+  });
+  if (error) return null;
+  return typeof data === "number" ? data : null;
+}
 
 export async function requestTimeOff(formData: unknown) {
   const supabase = await createClient();
@@ -19,6 +42,27 @@ export async function requestTimeOff(formData: unknown) {
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, parsed.data.sectorId, "time_off", "create")) {
     return { error: "Sem permissao" };
+  }
+
+  // Block a request that would push the balance negative, unless the caller
+  // explicitly opted to override after being warned.
+  if (!parsed.data.allowNegativeBalance) {
+    const year = new Date(parsed.data.startDate).getFullYear();
+    const available = await getAvailableDays(
+      supabase,
+      parsed.data.employeeId,
+      parsed.data.policyId,
+      year
+    );
+    if (available !== null) {
+      const check = checkTimeOffBalance(available, parsed.data.daysCount);
+      if (!check.withinBalance) {
+        return {
+          error: `Saldo insuficiente: a solicitação excede o saldo disponível em ${check.shortfall} dia(s).`,
+          balanceShortfall: check.shortfall,
+        };
+      }
+    }
   }
 
   const { data: request, error } = await supabase
@@ -42,7 +86,10 @@ export async function requestTimeOff(formData: unknown) {
   return { data: request };
 }
 
-export async function approveTimeOff(requestId: string) {
+export async function approveTimeOff(
+  requestId: string,
+  options?: { allowNegativeBalance?: boolean }
+) {
   const idParsed = z.string().uuid().safeParse(requestId);
   if (!idParsed.success) return { error: "ID invalido" };
 
@@ -54,7 +101,9 @@ export async function approveTimeOff(requestId: string) {
 
   const { data: request } = await supabase
     .from("hr_time_off_requests")
-    .select("sector_id, status")
+    .select(
+      "sector_id, status, employee_id, policy_id, start_date, days_count"
+    )
     .eq("id", requestId)
     .single();
 
@@ -64,6 +113,32 @@ export async function approveTimeOff(requestId: string) {
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, request.sector_id, "time_off", "manage")) {
     return { error: "Sem permissao" };
+  }
+
+  // Warn (and require an explicit override) when approving would push the
+  // balance negative. The request being approved is itself "pending", so it
+  // is excluded from the sum and compared explicitly via its day count.
+  if (!options?.allowNegativeBalance) {
+    const year = new Date(request.start_date as string).getFullYear();
+    const available = await getAvailableDays(
+      supabase,
+      request.employee_id as string,
+      request.policy_id as string,
+      year,
+      requestId
+    );
+    if (available !== null) {
+      const check = checkTimeOffBalance(
+        available,
+        request.days_count as number
+      );
+      if (!check.withinBalance) {
+        return {
+          error: `Aprovar esta solicitação deixará o saldo negativo (faltam ${check.shortfall} dia(s)). Confirme para aprovar mesmo assim.`,
+          balanceShortfall: check.shortfall,
+        };
+      }
+    }
   }
 
   const { error } = await supabase
