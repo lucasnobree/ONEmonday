@@ -12,6 +12,7 @@ const hrNav = [
   { label: "Desempenho", href: "/hr/performance" },
   { label: "Pesquisas", href: "/hr/surveys" },
   { label: "Onboarding", href: "/hr/onboarding" },
+  { label: "Offboarding", href: "/hr/offboarding" },
   { label: "Organograma", href: "/hr/org-chart" },
 ];
 

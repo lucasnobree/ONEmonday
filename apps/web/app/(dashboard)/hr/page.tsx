@@ -7,6 +7,7 @@ import { useTimeOffRequests } from "@/hooks/hr/use-time-off-requests";
 import { useOnboardingInstances } from "@/hooks/hr/use-onboarding";
 import { useEmployees } from "@/hooks/hr/use-employees";
 import { useExpiringDocuments } from "@/hooks/hr/use-expiring-documents";
+import { useHeadcountAnalytics } from "@/hooks/hr/use-headcount-analytics";
 import {
   Card,
   CardContent,
@@ -24,6 +25,10 @@ import {
   CalendarCheck,
   UserCog,
   FileWarning,
+  TrendingUp,
+  UserPlus,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR");
@@ -49,6 +54,8 @@ export default function HRDashboardPage() {
   );
   const { data: expiringDocs, isLoading: expiringDocsLoading } =
     useExpiringDocuments(currentSector?.id);
+  const { data: headcount, isLoading: headcountLoading } =
+    useHeadcountAnalytics(currentSector?.id, 12);
 
   if (!currentSector) {
     return (
@@ -189,6 +196,87 @@ export default function HRDashboardPage() {
           );
         })}
       </div>
+
+      {/* Headcount & turnover analytics (trailing 12 months) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">
+                Headcount e Rotatividade
+              </CardTitle>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              Últimos 12 meses
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {headcountLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  Headcount atual
+                </div>
+                <p className="mt-1 text-2xl font-bold">
+                  {headcount?.current_headcount ?? 0}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Contratações
+                </div>
+                <p className="mt-1 text-2xl font-bold text-green-600">
+                  {headcount?.hires_in_window ?? 0}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <UserMinus className="h-3.5 w-3.5" />
+                  Desligamentos
+                </div>
+                <p className="mt-1 text-2xl font-bold text-red-600">
+                  {headcount?.exits_in_window ?? 0}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Rotatividade
+                </div>
+                <p className="mt-1 text-2xl font-bold">
+                  {(headcount?.turnover_rate ?? 0).toLocaleString("pt-BR")}%
+                </p>
+              </div>
+            </div>
+          )}
+          {!headcountLoading && (
+            <p className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+              {(headcount?.net_change ?? 0) >= 0 ? (
+                <ArrowUp className="h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <ArrowDown className="h-3.5 w-3.5 text-red-600" />
+              )}
+              Variação líquida de{" "}
+              <span className="font-medium text-foreground">
+                {(headcount?.net_change ?? 0) > 0 ? "+" : ""}
+                {headcount?.net_change ?? 0}
+              </span>{" "}
+              colaborador{Math.abs(headcount?.net_change ?? 0) === 1 ? "" : "es"}{" "}
+              no período.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Department Distribution */}

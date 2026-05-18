@@ -22,6 +22,9 @@ export const requestTimeOffSchema = z.object({
   endDate: z.string().min(1, "Data de fim é obrigatória"),
   daysCount: z.number().int().min(1),
   reason: z.string().optional(),
+  // When false (default) the server blocks a request that would push the
+  // balance negative; the UI sets it true only after an explicit override.
+  allowNegativeBalance: z.boolean().optional().default(false),
 });
 
 export const createJobOpeningSchema = z.object({
@@ -189,4 +192,41 @@ export const createOnboardingTemplateSchema = z.object({
     responsibleRole: z.string().optional(),
     dueDaysAfterHire: z.number().int().min(0).optional(),
   })).default([]),
+});
+
+// ---------------------------------------------------------------------------
+// Offboarding — peer of onboarding for departing employees
+// ---------------------------------------------------------------------------
+
+export const OFFBOARDING_REASONS = [
+  "voluntary",
+  "involuntary",
+  "retirement",
+  "end_of_contract",
+  "other",
+] as const;
+
+export const createOffboardingTemplateSchema = z.object({
+  sectorId: z.string().uuid(),
+  name: z.string().min(1, "Nome é obrigatório").max(200),
+  description: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        title: z.string().min(1, "Título da etapa é obrigatório"),
+        description: z.string().optional(),
+        responsibleRole: z.string().optional(),
+        // Days relative to the termination date — may be negative for steps
+        // that must happen before the last working day.
+        dueDaysOffset: z.number().int().min(-365).max(365).optional(),
+      })
+    )
+    .min(1, "Adicione ao menos uma etapa"),
+});
+
+export const startOffboardingSchema = z.object({
+  employeeId: z.string().uuid(),
+  templateId: z.string().uuid(),
+  terminationDate: z.string().min(1, "Data de desligamento é obrigatória"),
+  reason: z.enum(OFFBOARDING_REASONS).optional(),
 });

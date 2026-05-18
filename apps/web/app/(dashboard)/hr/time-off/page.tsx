@@ -90,6 +90,11 @@ export default function TimeOffPage() {
   );
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  // When approval is blocked by an insufficient balance, hold the request id
+  // so the manager can confirm an over-balance approval.
+  const [overBalanceApproveId, setOverBalanceApproveId] = useState<
+    string | null
+  >(null);
 
   const filtered = useMemo(() => {
     if (!requests) return [];
@@ -97,19 +102,39 @@ export default function TimeOffPage() {
     return requests.filter((r: TimeOffRequest) => r.status === statusFilter);
   }, [requests, statusFilter]);
 
+  function invalidateTimeOff() {
+    queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
+    queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["hr-time-off-balance"] });
+  }
+
   const approveMutation = useMutation({
-    mutationFn: (id: string) => approveTimeOff(id),
-    onSuccess: (result) => {
+    mutationFn: ({
+      id,
+      allowNegativeBalance,
+    }: {
+      id: string;
+      allowNegativeBalance?: boolean;
+    }) => approveTimeOff(id, { allowNegativeBalance }),
+    onSuccess: (result, variables) => {
       if (result.error) {
+        // A balance shortfall is recoverable: prompt the manager to confirm
+        // an over-balance approval rather than just failing.
+        if (
+          "balanceShortfall" in result &&
+          typeof result.balanceShortfall === "number"
+        ) {
+          setOverBalanceApproveId(variables.id);
+          return;
+        }
         toast.error(
           typeof result.error === "string" ? result.error : "Erro ao aprovar"
         );
         return;
       }
       toast.success("Solicitação aprovada");
-      queryClient.invalidateQueries({ queryKey: ["hr-time-off-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["hr-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["hr-time-off-balance"] });
+      setOverBalanceApproveId(null);
+      invalidateTimeOff();
     },
   });
 
@@ -243,7 +268,9 @@ export default function TimeOffPage() {
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() => approveMutation.mutate(req.id)}
+                                onClick={() =>
+                                  approveMutation.mutate({ id: req.id })
+                                }
                                 disabled={approveMutation.isPending}
                               >
                                 <Check className="h-4 w-4 text-green-600" />
@@ -304,6 +331,48 @@ export default function TimeOffPage() {
               disabled={rejectMutation.isPending || !rejectReason.trim()}
             >
               {rejectMutation.isPending ? "Rejeitando..." : "Rejeitar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Over-balance approval confirmation */}
+      <Dialog
+        open={overBalanceApproveId !== null}
+        onOpenChange={(o) => {
+          if (!o) setOverBalanceApproveId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Saldo insuficiente</DialogTitle>
+            <DialogDescription>
+              Aprovar esta solicitação deixará o saldo de férias do colaborador
+              negativo. Deseja aprovar mesmo assim?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOverBalanceApproveId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (overBalanceApproveId) {
+                  approveMutation.mutate({
+                    id: overBalanceApproveId,
+                    allowNegativeBalance: true,
+                  });
+                }
+              }}
+              disabled={approveMutation.isPending}
+            >
+              {approveMutation.isPending
+                ? "Aprovando..."
+                : "Aprovar mesmo assim"}
             </Button>
           </DialogFooter>
         </DialogContent>

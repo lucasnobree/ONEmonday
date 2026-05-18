@@ -42,30 +42,76 @@ export function topLevelIds(tree: OrgNode[]): Set<string> {
   return ids;
 }
 
-export function useOrgChart(
-  sectorId: string | undefined,
-  departmentFilter?: string
-) {
+/** Total number of nodes across the whole forest. */
+export function countNodes(tree: OrgNode[]): number {
+  return tree.reduce(
+    (sum, node) => sum + 1 + countNodes(node.children),
+    0
+  );
+}
+
+/** Every node id in the forest — used by "expandir tudo". */
+export function allNodeIds(tree: OrgNode[]): Set<string> {
+  const ids = new Set<string>();
+  const walk = (nodes: OrgNode[]) => {
+    nodes.forEach((node) => {
+      ids.add(node.employee.id);
+      walk(node.children);
+    });
+  };
+  walk(tree);
+  return ids;
+}
+
+/**
+ * Filter the org tree to a department **without fragmenting the hierarchy**.
+ *
+ * The audit defect: filtering by department before building the tree drops
+ * managers in other departments, so every employee whose manager is outside
+ * the department becomes an orphan root. Instead we keep a node when it — or
+ * any of its descendants — matches the department, so ancestor managers are
+ * retained and the chart stays a single connected tree.
+ *
+ * Returns the matching ids separately so the UI can visually highlight the
+ * true matches versus the ancestors that are only kept for structure.
+ */
+export function filterTreeByDepartment(
+  tree: OrgNode[],
+  department: string
+): { tree: OrgNode[]; matchedIds: Set<string> } {
+  const matchedIds = new Set<string>();
+
+  function prune(nodes: OrgNode[]): OrgNode[] {
+    const kept: OrgNode[] = [];
+    for (const node of nodes) {
+      const prunedChildren = prune(node.children);
+      const selfMatches = node.employee.department === department;
+      if (selfMatches) matchedIds.add(node.employee.id);
+      if (selfMatches || prunedChildren.length > 0) {
+        kept.push({ employee: node.employee, children: prunedChildren });
+      }
+    }
+    return kept;
+  }
+
+  return { tree: prune(tree), matchedIds };
+}
+
+export function useOrgChart(sectorId: string | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-org-chart", sectorId, departmentFilter],
+    queryKey: ["hr-org-chart", sectorId],
     queryFn: async () => {
       if (!sectorId) return [];
 
-      let query = supabase
+      const { data, error } = await supabase
         .from("hr_employees")
         .select("*")
         .eq("sector_id", sectorId)
         .eq("is_active", true)
         .neq("status", "terminated")
         .order("full_name", { ascending: true });
-
-      if (departmentFilter) {
-        query = query.eq("department", departmentFilter);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
       return buildTree((data as Employee[]) ?? []);
