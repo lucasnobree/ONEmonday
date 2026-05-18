@@ -9,6 +9,7 @@ import {
 import type { Invoice, InvoiceStatus } from "@/hooks/finance/use-invoices";
 import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
 import { InvoiceFiscalDialog } from "@/components/finance/invoice-fiscal-dialog";
+import { InvoiceDetailSheet } from "@/components/finance/invoice-detail-sheet";
 import { InvoicePrintButton } from "@/components/finance/invoice-print-button";
 import {
   INVOICE_STATUS_LABELS,
@@ -45,6 +46,7 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all");
   const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
   const [fiscalInvoice, setFiscalInvoice] = useState<Invoice | undefined>();
+  const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
 
   // Each row carries an `effectiveStatus`: a `sent` invoice past its due date
   // is shown (and filtered) as `overdue` even though the stored status lags.
@@ -193,7 +195,11 @@ export default function InvoicesPage() {
                 </thead>
                 <tbody>
                   {filtered.map(({ invoice: inv, effectiveStatus }) => (
-                    <tr key={inv.id} className="border-b last:border-0">
+                    <tr
+                      key={inv.id}
+                      className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setDetailInvoice(inv)}
+                    >
                       <td className="p-3 font-medium">{inv.number}</td>
                       <td className="p-3 text-muted-foreground">
                         {inv.customer_name}
@@ -211,7 +217,7 @@ export default function InvoicesPage() {
                           {INVOICE_STATUS_LABELS[effectiveStatus]}
                         </Badge>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <InvoicePrintButton
                             invoice={inv}
@@ -268,6 +274,12 @@ export default function InvoicesPage() {
         open={fiscalDialogOpen}
         onOpenChange={setFiscalDialogOpen}
         invoice={fiscalInvoice}
+      />
+
+      <InvoiceDetailSheet
+        invoice={detailInvoice}
+        open={!!detailInvoice}
+        onOpenChange={(o) => !o && setDetailInvoice(null)}
       />
     </div>
   );
