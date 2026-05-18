@@ -2,11 +2,27 @@ import { describe, it, expect } from "vitest";
 import {
   parseDateOnly,
   formatDateOnly,
+  formatTimestamp,
   todayDateOnly,
   currentMonthKey,
   shiftMonthKey,
   formatMonthKey,
 } from "./dates";
+
+describe("formatTimestamp", () => {
+  it("formats an ISO timestamp with both date and HH:MM time", () => {
+    const result = formatTimestamp("2026-05-15T12:30:00Z");
+    expect(result).toMatch(/15\/05\/2026/);
+    expect(result).toMatch(/\d{2}:\d{2}/);
+  });
+
+  it("returns an empty string for missing or invalid input", () => {
+    expect(formatTimestamp(null)).toBe("");
+    expect(formatTimestamp(undefined)).toBe("");
+    expect(formatTimestamp("")).toBe("");
+    expect(formatTimestamp("not-a-timestamp")).toBe("");
+  });
+});
 
 describe("parseDateOnly", () => {
   it("parses a date-only string at local midnight (no UTC shift)", () => {
