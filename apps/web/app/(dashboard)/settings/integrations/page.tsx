@@ -7,6 +7,7 @@ import { PermissionGate } from "@/components/shared/permission-gate";
 import {
   upsertIntegrationCredential,
   deleteIntegrationCredential,
+  testIntegrationCredential,
 } from "@/lib/actions/integrations/credentials";
 import {
   upsertChannelRoute,
@@ -40,7 +41,7 @@ import {
   channelLabel,
 } from "@/lib/integrations/labels";
 import { toast } from "sonner";
-import { Loader2, Plug, Trash2 } from "lucide-react";
+import { Loader2, Plug, Trash2, Activity } from "lucide-react";
 
 /** Provider display metadata. */
 const PROVIDERS = [
@@ -74,6 +75,9 @@ export default function IntegrationsSettingsPage() {
   const [routes, setRoutes] = useState<ChannelRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Per-credential connectivity test state (W20).
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testTargets, setTestTargets] = useState<Record<string, string>>({});
 
   // Credential form state.
   const [provider, setProvider] = useState<string>("teams");
@@ -153,6 +157,34 @@ export default function IntegrationsSettingsPage() {
     setWaToken("");
     setWaPhoneId("");
     load();
+  }
+
+  async function handleTestCredential(cred: Credential) {
+    setTestingId(cred.id);
+    const result = await testIntegrationCredential({
+      id: cred.id,
+      target:
+        cred.provider === "whatsapp"
+          ? testTargets[cred.id]?.trim() || undefined
+          : undefined,
+    });
+    setTestingId(null);
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.noop) {
+      toast.warning(result.message ?? "Credencial sem segredo.", {
+        duration: 6000,
+      });
+      return;
+    }
+    if (result.ok) {
+      toast.success(result.message ?? "Conexão verificada com sucesso");
+      return;
+    }
+    toast.error(result.message ?? "Falha no teste de conexão");
   }
 
   async function handleDeleteCredential(id: string) {
@@ -277,42 +309,75 @@ export default function IntegrationsSettingsPage() {
               </p>
             ) : (
               <div className="space-y-1">
-                {credentials.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between gap-4 py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Plug className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {PROVIDERS.find((p) => p.slug === c.provider)?.label ??
-                          c.provider}
-                      </span>
-                      <Badge variant={c.has_secret ? "default" : "secondary"}>
-                        {c.has_secret ? "Configurado" : "Sem segredo"}
-                      </Badge>
-                      {!c.is_enabled && (
-                        <Badge variant="outline">Desativado</Badge>
-                      )}
-                    </div>
-                    <ConfirmDialog
-                      title="Remover credencial"
-                      description={`Remover a credencial de ${
-                        PROVIDERS.find((p) => p.slug === c.provider)?.label ??
-                        c.provider
-                      }? Os alertas roteados para este canal deixarão de funcionar.`}
-                      onConfirm={() => handleDeleteCredential(c.id)}
+                {credentials.map((c) => {
+                  const providerLabel =
+                    PROVIDERS.find((p) => p.slug === c.provider)?.label ??
+                    c.provider;
+                  return (
+                    <div
+                      key={c.id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3"
                     >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Remover ${c.provider}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </ConfirmDialog>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-3">
+                        <Plug className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {providerLabel}
+                        </span>
+                        <Badge
+                          variant={c.has_secret ? "default" : "secondary"}
+                        >
+                          {c.has_secret ? "Configurado" : "Sem segredo"}
+                        </Badge>
+                        {!c.is_enabled && (
+                          <Badge variant="outline">Desativado</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {c.provider === "whatsapp" && (
+                          <Input
+                            value={testTargets[c.id] ?? ""}
+                            onChange={(e) =>
+                              setTestTargets((prev) => ({
+                                ...prev,
+                                [c.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Nº de teste (E.164)"
+                            aria-label={`Número de WhatsApp para testar ${providerLabel}`}
+                            className="h-8 w-44 text-xs"
+                          />
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={testingId === c.id || !c.is_enabled}
+                          onClick={() => handleTestCredential(c)}
+                          aria-label={`Testar conexão ${providerLabel}`}
+                        >
+                          {testingId === c.id ? (
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Activity className="mr-1 h-3.5 w-3.5" />
+                          )}
+                          Testar
+                        </Button>
+                        <ConfirmDialog
+                          title="Remover credencial"
+                          description={`Remover a credencial de ${providerLabel}? Os alertas roteados para este canal deixarão de funcionar.`}
+                          onConfirm={() => handleDeleteCredential(c.id)}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Remover ${c.provider}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </ConfirmDialog>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>

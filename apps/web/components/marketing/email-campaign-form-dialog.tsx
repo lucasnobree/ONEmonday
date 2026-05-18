@@ -26,9 +26,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { textToHtml, sanitizeEmailHtml } from "@/lib/marketing/email-body";
 import { toast } from "sonner";
 
 const NO_SEGMENT = "__none__";
+
+/**
+ * Body composer modes. `text` derives HTML automatically; `html` is raw; the
+ * extra `preview` value is a read-only render tab that does not change which
+ * body source is persisted.
+ */
+type BodyTab = "text" | "html" | "preview";
 
 interface EmailCampaignFormDialogProps {
   open: boolean;
@@ -55,6 +64,7 @@ export function EmailCampaignFormDialog({
   const [replyTo, setReplyTo] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
+  const [bodyTab, setBodyTab] = useState<BodyTab>("text");
   const [segmentId, setSegmentId] = useState<string>(NO_SEGMENT);
 
   const formKey = `${open}:${emailCampaign?.id ?? "new"}`;
@@ -69,17 +79,28 @@ export function EmailCampaignFormDialog({
     setBodyText(emailCampaign?.body_text ?? "");
     setBodyHtml(emailCampaign?.body_html ?? "");
     setSegmentId(emailCampaign?.segment_id ?? NO_SEGMENT);
+    // Open the HTML tab when an existing campaign already carries hand-written
+    // HTML that is not just the auto-derived text wrapper.
+    setBodyTab(
+      emailCampaign &&
+        emailCampaign.body_html.trim().length > 0 &&
+        emailCampaign.body_html !== textToHtml(emailCampaign.body_text ?? "")
+        ? "html"
+        : "text"
+    );
   }
+
+  // The HTML actually persisted: the raw HTML the operator wrote (sanitised)
+  // when the HTML tab holds content, otherwise the HTML derived from the plain
+  // text. The read-only `preview` tab never changes the source. Recomputed
+  // live so the preview stays accurate.
+  const resolvedHtml =
+    bodyHtml.trim().length > 0
+      ? sanitizeEmailHtml(bodyHtml)
+      : textToHtml(bodyText);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // A simple composer: the plain-text body is also used as the HTML body
-    // (wrapped in a <p>) when no explicit HTML is provided.
-    const html =
-      bodyHtml.trim().length > 0
-        ? bodyHtml
-        : `<p>${bodyText.replace(/\n/g, "<br/>")}</p>`;
 
     const common = {
       name,
@@ -88,7 +109,7 @@ export function EmailCampaignFormDialog({
       fromEmail,
       replyTo: replyTo || null,
       bodyText,
-      bodyHtml: html,
+      bodyHtml: resolvedHtml,
       campaignId: null,
       segmentId: segmentId === NO_SEGMENT ? null : segmentId,
     };
@@ -210,19 +231,64 @@ export function EmailCampaignFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="email-body">Corpo do e-mail</Label>
-              <Textarea
-                id="email-body"
-                value={bodyText}
-                onChange={(e) => setBodyText(e.target.value)}
-                placeholder="Escreva o conteúdo do e-mail..."
-                rows={6}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Editor simples de texto. Um construtor visual de e-mail é um
-                item adiado.
-              </p>
+              <Label>Corpo do e-mail</Label>
+              <Tabs
+                value={bodyTab}
+                onValueChange={(v) => setBodyTab(v as BodyTab)}
+              >
+                <TabsList>
+                  <TabsTrigger value="text">Texto</TabsTrigger>
+                  <TabsTrigger value="html">HTML</TabsTrigger>
+                  <TabsTrigger value="preview">Prévia</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="text" className="mt-2">
+                  <Textarea
+                    id="email-body-text"
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    placeholder="Escreva o conteúdo do e-mail..."
+                    rows={7}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Texto simples — parágrafos e quebras de linha viram HTML
+                    automaticamente.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="html" className="mt-2">
+                  <Textarea
+                    id="email-body-html"
+                    value={bodyHtml}
+                    onChange={(e) => setBodyHtml(e.target.value)}
+                    placeholder="<h1>Olá!</h1><p>Conteúdo do e-mail...</p>"
+                    rows={7}
+                    className="font-mono text-xs"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    HTML é higienizado (scripts e handlers de evento são
+                    removidos) antes de salvar. O texto simples acima é o
+                    fallback para clientes sem HTML.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="preview" className="mt-2">
+                  <div className="rounded-md border bg-white p-4 text-sm text-black">
+                    {resolvedHtml.trim().length > 0 ? (
+                      <div
+                        // Preview only — the same sanitised HTML that will be
+                        // persisted and sent. resolveBodyHtml/sanitizeEmailHtml
+                        // strip script/style/handler vectors.
+                        dangerouslySetInnerHTML={{ __html: resolvedHtml }}
+                      />
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Sem conteúdo para pré-visualizar.
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
 
@@ -236,7 +302,9 @@ export function EmailCampaignFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isPending || !name || !subject || !bodyText}
+              disabled={
+                isPending || !name || !subject || !resolvedHtml.trim()
+              }
             >
               {isPending
                 ? "Salvando..."
