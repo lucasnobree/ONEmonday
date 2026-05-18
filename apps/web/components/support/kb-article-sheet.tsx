@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, User } from "lucide-react";
+import { MarkdownRenderer } from "@/components/support/markdown-renderer";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -113,11 +114,7 @@ export function KBArticleSheet({
 
               <Separator />
 
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {article.content}
-                </div>
-              </div>
+              <MarkdownRenderer content={article.content ?? ""} />
 
               {article.tags && article.tags.length > 0 && (
                 <>
