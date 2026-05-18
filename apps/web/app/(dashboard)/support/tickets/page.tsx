@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ import {
   Clock,
   ChevronUp,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import { exportToCSV } from "@/lib/utils/export-csv";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -55,6 +57,8 @@ import {
   type TicketSortKey,
   type SortDirection,
 } from "@/lib/support/ticket-sort";
+import { filterTicketsBySearch } from "@/lib/support/ticket-search";
+import { slaPillPresentation } from "@/lib/support/sla";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -95,26 +99,8 @@ function getSlaIndicator(
 ): { color: string; label: string } | null {
   const entry = slaMap.get(ticketId);
   if (!entry) return null;
-  const pct = entry.remaining_pct;
-  if (pct <= 0)
-    return {
-      color: "bg-gray-200 text-gray-600 line-through dark:bg-gray-800 dark:text-gray-400",
-      label: "SLA Violado",
-    };
-  if (pct < 25)
-    return {
-      color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      label: "SLA Crítico",
-    };
-  if (pct <= 50)
-    return {
-      color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-      label: "SLA Alerta",
-    };
-  return {
-    color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    label: "SLA OK",
-  };
+  const pill = slaPillPresentation(entry.remaining_pct);
+  return { color: pill.className, label: pill.label };
 }
 
 // Sortable column header — clicking toggles the sort direction.
@@ -158,6 +144,7 @@ export default function TicketsPage() {
   const { data: sectorTags } = useSectorTags(currentSector?.id);
   const { data: ticketTagsMap } = useSectorTicketTags(currentSector?.id);
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -186,7 +173,7 @@ export default function TicketsPage() {
 
   const filtered = useMemo(() => {
     if (!tickets) return [];
-    const rows = tickets.filter((t) => {
+    const rows = filterTicketsBySearch(tickets, search).filter((t) => {
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       if (priorityFilter !== "all" && t.card?.priority !== priorityFilter)
         return false;
@@ -201,6 +188,7 @@ export default function TicketsPage() {
     return sortTickets(rows, sortKey, sortDir);
   }, [
     tickets,
+    search,
     statusFilter,
     priorityFilter,
     categoryFilter,
@@ -311,6 +299,18 @@ export default function TicketsPage() {
       <div className="space-y-4">
         {/* Header with filters and create button */}
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por título, solicitante ou ID..."
+              aria-label="Buscar tickets"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
           <Select
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v ?? "all")}
