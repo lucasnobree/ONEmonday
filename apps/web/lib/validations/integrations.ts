@@ -68,6 +68,19 @@ export type UpsertCredentialInput = z.infer<typeof upsertCredentialSchema>;
 /** Delete (soft) an integration credential. */
 export const deleteCredentialSchema = z.object({ id: uuid });
 
+/**
+ * Test a saved credential's connectivity (Wave 5 — W20). The adapter is built
+ * from the stored credential and a sample message is sent. WhatsApp needs a
+ * destination phone number; Teams targets the webhook itself.
+ */
+export const testCredentialSchema = z.object({
+  id: uuid,
+  /** WhatsApp E.164 destination — required for the whatsapp provider. */
+  target: z.string().max(40).optional(),
+});
+
+export type TestCredentialInput = z.infer<typeof testCredentialSchema>;
+
 /** Create an event-to-channel routing rule. */
 export const upsertRouteSchema = z.object({
   sectorId: uuid.nullable(),
