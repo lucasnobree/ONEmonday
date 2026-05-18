@@ -15,6 +15,7 @@ import {
   suggestReconciliation,
   autoMatchableCount,
   type ReconcileCandidate,
+  type ReconcileSuggestion,
 } from "@/lib/finance/reconciliation";
 import { formatCents } from "@/lib/finance/money";
 import { formatDateOnly } from "@/lib/finance/dates";
@@ -160,6 +161,35 @@ export default function FinanceReconciliationPage() {
     toast.success("Transação conciliada");
   };
 
+  // Bulk-accept every transaction whose matcher gave a `high`-confidence
+  // single candidate — the same exact-match set `autoMatchableCount` reports.
+  const exactCount = autoMatchableCount(suggestions);
+
+  const handleReconcileAll = async () => {
+    const exact = unmatched
+      .map((tx) => ({ tx, suggestion: suggestionByTx.get(tx.id) }))
+      .filter(
+        (e): e is { tx: BankTransactionRow; suggestion: ReconcileSuggestion } =>
+          e.suggestion?.confidence === "high"
+      );
+    if (exact.length === 0) return;
+
+    let ok = 0;
+    let failed = 0;
+    for (const { tx, suggestion } of exact) {
+      const candidate = suggestion.candidates[0];
+      const result = await reconcile.mutateAsync({
+        transactionId: tx.id,
+        invoiceId: candidate.kind === "invoice" ? candidate.id : undefined,
+        expenseId: candidate.kind === "expense" ? candidate.id : undefined,
+      });
+      if (result.error) failed += 1;
+      else ok += 1;
+    }
+    if (ok > 0) toast.success(`${ok} transação(ões) conciliada(s)`);
+    if (failed > 0) toast.error(`${failed} não puderam ser conciliada(s)`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Import controls */}
@@ -193,9 +223,20 @@ export default function FinanceReconciliationPage() {
           </Button>
           {unmatched.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              {autoMatchableCount(suggestions)} de {unmatched.length} com
-              sugestão de correspondência exata.
+              {exactCount} de {unmatched.length} com sugestão de
+              correspondência exata.
             </p>
+          )}
+          {exactCount > 0 && (
+            <Button
+              variant="outline"
+              disabled={reconcile.isPending}
+              onClick={handleReconcileAll}
+            >
+              <Link2 className="size-4 mr-1" />
+              Conciliar {exactCount} correspondência
+              {exactCount > 1 ? "s exatas" : " exata"}
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -288,7 +329,10 @@ export default function FinanceReconciliationPage() {
                                 );
                               }}
                             >
-                              <SelectTrigger className="w-64">
+                              <SelectTrigger
+                                className="w-64"
+                                aria-label="Conciliar transação com fatura ou despesa"
+                              >
                                 <SelectValue placeholder="Selecione..." />
                               </SelectTrigger>
                               <SelectContent>
