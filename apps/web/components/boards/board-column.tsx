@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BoardCard } from "./board-card";
+import { isWipLimitReached, wipLimitMessage } from "./board-wip";
 import { createCard } from "@/lib/actions/cards";
 import type {
   BoardColumn as BoardColumnType,
@@ -43,11 +44,19 @@ export function BoardColumn({
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const cardIds = column.cards.map((c) => c.id);
 
-  const isOverWipLimit =
-    column.wip_limit != null && column.cards.length >= column.wip_limit;
+  const isOverWipLimit = isWipLimitReached({
+    wip_limit: column.wip_limit,
+    cardCount: column.cards.length,
+  });
 
   async function handleAddCard() {
     if (!newTitle.trim()) return;
+
+    if (isOverWipLimit) {
+      toast.warning(wipLimitMessage(column.wip_limit as number));
+      return;
+    }
+
     setIsSubmitting(true);
 
     const result = await createCard({

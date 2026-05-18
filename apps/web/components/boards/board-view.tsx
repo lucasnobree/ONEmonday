@@ -26,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BoardColumn } from "./board-column";
 import { BoardCard } from "./board-card";
 import { BoardLaneScroll } from "./board-lane-scroll";
+import { isWipLimitReached, wipLimitMessage } from "./board-wip";
 import { BoardCardDetail } from "./board-card-detail";
 import { BoardListView } from "./board-list-view";
 import { BoardTimelineView } from "./board-timeline-view";
@@ -134,6 +135,20 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
       // Build new card positions for target column
       const movedCard = sourceCol.cards.find((c) => c.id === activeId);
       if (!movedCard) return;
+
+      // Enforce the target column's WIP limit on a cross-column move. A
+      // same-column reorder never changes a column's card count, so it is
+      // always allowed.
+      if (
+        targetCol.id !== sourceCol.id &&
+        isWipLimitReached({
+          wip_limit: targetCol.wip_limit,
+          cardCount: targetCol.cards.length,
+        })
+      ) {
+        toast.warning(wipLimitMessage(targetCol.wip_limit as number));
+        return;
+      }
 
       // Remove card from source and compute target cards
       let targetCards: BoardCardType[];
