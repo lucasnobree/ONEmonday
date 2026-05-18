@@ -189,8 +189,22 @@ export const LEAD_FORM_FIELD_TYPES = [
   "select",
 ] as const;
 
+/**
+ * The structured lead columns a form field can be mapped onto. A field tagged
+ * with one of these feeds the matching `crm_leads` column instead of being
+ * buried in the free-form `payload` blob; `none` keeps the field in `payload`.
+ */
+export const LEAD_FIELD_MAP_TARGETS = [
+  "none",
+  "name",
+  "email",
+  "phone",
+  "company",
+] as const;
+
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 export type LeadFormFieldType = (typeof LEAD_FORM_FIELD_TYPES)[number];
+export type LeadFieldMapTarget = (typeof LEAD_FIELD_MAP_TARGETS)[number];
 
 /** A single field definition inside a capture form's `fields` jsonb array. */
 export const leadFormFieldSchema = z
@@ -206,6 +220,9 @@ export const leadFormFieldSchema = z
     required: z.boolean().default(false),
     // Only meaningful for type 'select'.
     options: z.array(z.string().min(1).max(120)).max(30).optional(),
+    // Which structured lead column this field feeds. Optional/legacy-safe:
+    // an absent `map` is treated as 'none' (payload-only).
+    map: z.enum(LEAD_FIELD_MAP_TARGETS).optional(),
   })
   .refine((f) => f.type !== "select" || (f.options?.length ?? 0) > 0, {
     message: "Campos do tipo seleção precisam de ao menos uma opção",
@@ -233,6 +250,17 @@ export const leadFormSchema = z.object({
     .refine(
       (fields) => new Set(fields.map((f) => f.key)).size === fields.length,
       { message: "Cada campo precisa de uma chave única" }
+    )
+    // A structured lead column may be fed by at most one field — two fields
+    // both mapped to `email` would make the lead's email ambiguous.
+    .refine(
+      (fields) => {
+        const mapped = fields
+          .map((f) => f.map)
+          .filter((m): m is LeadFieldMapTarget => !!m && m !== "none");
+        return new Set(mapped).size === mapped.length;
+      },
+      { message: "Cada propriedade do lead só pode ser mapeada uma vez" }
     ),
 });
 
