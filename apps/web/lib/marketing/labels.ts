@@ -2,6 +2,10 @@ import type {
   MarketingChannel,
   CampaignStatus,
   ContentStatus,
+  EmailCampaignStatus,
+  SequenceStatus,
+  SequenceTrigger,
+  SequenceStepType,
 } from "@/lib/validations/marketing";
 
 /** Portuguese display labels for marketing channels. */
@@ -60,4 +64,51 @@ export const CONTENT_STATUS_VARIANTS: Record<ContentStatus, BadgeVariant> = {
   scheduled: "secondary",
   published: "default",
   cancelled: "destructive",
+};
+
+// =============================================
+// Phase 5 — marketing automation labels
+// =============================================
+export const EMAIL_CAMPAIGN_STATUS_LABELS: Record<
+  EmailCampaignStatus,
+  string
+> = {
+  draft: "Rascunho",
+  scheduled: "Agendada",
+  sending: "Enviando",
+  sent: "Enviada",
+  cancelled: "Cancelada",
+};
+
+export const EMAIL_CAMPAIGN_STATUS_VARIANTS: Record<
+  EmailCampaignStatus,
+  BadgeVariant
+> = {
+  draft: "outline",
+  scheduled: "secondary",
+  sending: "secondary",
+  sent: "default",
+  cancelled: "destructive",
+};
+
+export const SEQUENCE_STATUS_LABELS: Record<SequenceStatus, string> = {
+  draft: "Rascunho",
+  active: "Ativa",
+  paused: "Pausada",
+};
+
+export const SEQUENCE_STATUS_VARIANTS: Record<SequenceStatus, BadgeVariant> = {
+  draft: "outline",
+  active: "default",
+  paused: "secondary",
+};
+
+export const SEQUENCE_TRIGGER_LABELS: Record<SequenceTrigger, string> = {
+  segment_entry: "Entrada em audiência",
+  manual: "Manual",
+};
+
+export const SEQUENCE_STEP_TYPE_LABELS: Record<SequenceStepType, string> = {
+  wait: "Aguardar",
+  send_email: "Enviar e-mail",
 };

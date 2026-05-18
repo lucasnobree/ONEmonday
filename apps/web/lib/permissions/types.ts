@@ -52,6 +52,8 @@ export type Resource =
   | "campaign"
   | "content_item"
   | "audience_segment"
+  | "email_campaign"
+  | "automation"
   // Integration layer (external-provider config + outbound dispatch)
   | "integration";
 
