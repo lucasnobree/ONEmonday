@@ -26,7 +26,15 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Send,
+  FileText,
+  Settings2,
 } from "lucide-react";
+import { useMessageTemplates } from "@/hooks/crm/use-message-templates";
+import {
+  renderTemplate,
+  type TemplateContext,
+} from "@/lib/crm/message-templates";
+import { MessageTemplatesDialog } from "./message-templates-dialog";
 
 const timeFormat = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -44,6 +52,12 @@ interface DealCommunicationPanelProps {
   contactPhone?: string | null;
   /** Default recipient address — usually the linked contact's email. */
   contactEmail?: string | null;
+  /** Linked contact name — feeds template merge fields. */
+  contactName?: string | null;
+  /** Linked company name — feeds template merge fields. */
+  companyName?: string | null;
+  /** Deal title — feeds template merge fields. */
+  dealTitle?: string | null;
   /** All activities for the deal; this panel filters to communication ones. */
   activities: Activity[] | undefined;
 }
@@ -69,11 +83,33 @@ export function DealCommunicationPanel({
   companyId,
   contactPhone,
   contactEmail,
+  contactName,
+  companyName,
+  dealTitle,
   activities,
 }: DealCommunicationPanelProps) {
   const sendWhatsapp = useSendWhatsapp();
   const sendEmail = useSendEmail();
   const logEmail = useLogEmail();
+  const { data: templates } = useMessageTemplates(sectorId);
+
+  // Merge-field values for `{{variable}}` substitution in templates.
+  const templateContext: TemplateContext = {
+    contactName,
+    companyName,
+    dealTitle,
+  };
+
+  // Templates whose channel matches each composer.
+  const whatsappTemplates = (templates ?? []).filter(
+    (t) => t.channel === "whatsapp"
+  );
+  const emailTemplates = (templates ?? []).filter((t) => t.channel === "email");
+
+  // Which channel the template-manager dialog is open for (null = closed).
+  const [managingChannel, setManagingChannel] = useState<
+    "whatsapp" | "email" | null
+  >(null);
 
   const [mode, setMode] = useState<"whatsapp" | "send-email" | "log-email">(
     "whatsapp"
@@ -185,6 +221,21 @@ export function DealCommunicationPanel({
     setEmailCounterpart("");
   }
 
+  // Apply a WhatsApp template — substitute its merge fields into the composer.
+  function applyWhatsappTemplate(templateId: string | null) {
+    const tpl = whatsappTemplates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setWaBody(renderTemplate(tpl.body, templateContext));
+  }
+
+  // Apply an email template — fills both the subject and the body.
+  function applyEmailTemplate(templateId: string | null) {
+    const tpl = emailTemplates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setSendSubject(renderTemplate(tpl.subject ?? "", templateContext));
+    setSendBody(renderTemplate(tpl.body, templateContext));
+  }
+
   return (
     <div className="space-y-4">
       {/* Conversation thread */}
@@ -280,6 +331,43 @@ export function DealCommunicationPanel({
 
       {mode === "whatsapp" && (
         <div className="space-y-2">
+          {/* Template picker — reusable snippets with merge fields. */}
+          <div className="flex items-center gap-2">
+            <Select
+              value=""
+              onValueChange={applyWhatsappTemplate}
+              disabled={whatsappTemplates.length === 0}
+            >
+              <SelectTrigger
+                className="h-8 flex-1 text-xs"
+                aria-label="Usar template de WhatsApp"
+              >
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5" />
+                  {whatsappTemplates.length === 0
+                    ? "Nenhum template"
+                    : "Usar template"}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {whatsappTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              aria-label="Gerenciar templates de WhatsApp"
+              onClick={() => setManagingChannel("whatsapp")}
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="wa-to" className="text-xs">
               Número (WhatsApp)
@@ -319,6 +407,43 @@ export function DealCommunicationPanel({
 
       {mode === "send-email" && (
         <div className="space-y-2">
+          {/* Template picker — fills the subject and body from a snippet. */}
+          <div className="flex items-center gap-2">
+            <Select
+              value=""
+              onValueChange={applyEmailTemplate}
+              disabled={emailTemplates.length === 0}
+            >
+              <SelectTrigger
+                className="h-8 flex-1 text-xs"
+                aria-label="Usar template de e-mail"
+              >
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5" />
+                  {emailTemplates.length === 0
+                    ? "Nenhum template"
+                    : "Usar template"}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {emailTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              aria-label="Gerenciar templates de e-mail"
+              onClick={() => setManagingChannel("email")}
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="send-to" className="text-xs">
               Para (e-mail)
@@ -452,6 +577,15 @@ export function DealCommunicationPanel({
             pelo sistema use &quot;Enviar e-mail&quot;.
           </p>
         </div>
+      )}
+
+      {managingChannel !== null && (
+        <MessageTemplatesDialog
+          open
+          onOpenChange={(o) => !o && setManagingChannel(null)}
+          sectorId={sectorId}
+          channel={managingChannel}
+        />
       )}
     </div>
   );

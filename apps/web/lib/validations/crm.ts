@@ -145,6 +145,39 @@ export const sendEmailSchema = z
     message: "Vincule o e-mail a um deal, contato ou empresa",
   });
 
+// =============================================
+// Message templates (migration 00185) — reusable WhatsApp / email snippets
+// for the deal Communication panel, with {{variable}} placeholders.
+// =============================================
+
+/** A message-template channel — mirrors the crm_message_templates CHECK. */
+export const MESSAGE_TEMPLATE_CHANNELS = ["whatsapp", "email"] as const;
+export type MessageTemplateChannel =
+  (typeof MESSAGE_TEMPLATE_CHANNELS)[number];
+
+/**
+ * Create / update a CRM message template.
+ *
+ * `subject` is required for an email template and forbidden for a WhatsApp
+ * one — the DB CHECK enforces the same rule. The refinement here surfaces it
+ * as a friendly field error instead of a raw constraint violation.
+ */
+export const messageTemplateSchema = z
+  .object({
+    sectorId: z.string().uuid(),
+    channel: z.enum(MESSAGE_TEMPLATE_CHANNELS),
+    name: z.string().min(1, "Nome é obrigatório").max(120),
+    subject: z.string().max(300).optional().or(z.literal("")),
+    body: z
+      .string()
+      .min(1, "Conteúdo é obrigatório")
+      .max(4096, "Conteúdo muito longo"),
+  })
+  .refine(
+    (t) => t.channel !== "email" || !!t.subject?.trim(),
+    { message: "Templates de e-mail precisam de um assunto", path: ["subject"] }
+  );
+
 export const createProposalSchema = z.object({
   dealId: z.string().uuid(),
   sectorId: z.string().uuid(),

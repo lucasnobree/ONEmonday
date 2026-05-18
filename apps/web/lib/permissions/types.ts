@@ -25,6 +25,7 @@ export type Resource =
   | "proposal"
   | "lead"
   | "lead_form"
+  | "message_template"
   // RH
   | "employee"
   | "time_off"
