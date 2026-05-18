@@ -104,3 +104,16 @@ export function formatCurrency(
     return `${currency} ${amount.toLocaleString("pt-BR")}`;
   }
 }
+
+/**
+ * Formats a byte count as a human-readable file size (B / KB / MB), pt-BR
+ * style. Used for contract document listings.
+ */
+export function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1).replace(".", ",")} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(1).replace(".", ",")} MB`;
+}

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useClauses, type Clause } from "@/hooks/legal/use-clauses";
 import { ClauseFormDialog } from "@/components/legal/clause-form-dialog";
+import { ClauseDetailSheet } from "@/components/legal/clause-detail-sheet";
 import {
   Card,
   CardContent,
@@ -29,7 +30,7 @@ export default function ClausesPage() {
   const { data: clauses, isLoading } = useClauses(currentSector?.id);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [editing, setEditing] = useState<Clause | null>(null);
+  const [selected, setSelected] = useState<Clause | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -113,20 +114,24 @@ export default function ClausesPage() {
           Nenhuma cláusula encontrada com os filtros selecionados.
         </p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((clause: Clause) => (
             <Card
               key={clause.id}
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => setEditing(clause)}
+              onClick={() => setSelected(clause)}
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base">{clause.title}</CardTitle>
-                  {clause.is_approved && (
+                  {clause.is_approved ? (
                     <Badge variant="default" className="shrink-0">
                       <CheckCircle2 className="size-3 mr-1" />
                       Aprovada
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="shrink-0">
+                      Rascunho
                     </Badge>
                   )}
                 </div>
@@ -144,15 +149,11 @@ export default function ClausesPage() {
         </div>
       )}
 
-      {editing && (
-        <ClauseFormDialog
-          key={editing.id}
-          clause={editing}
-          open={!!editing}
-          onOpenChange={(o) => !o && setEditing(null)}
-          hideTrigger
-        />
-      )}
+      <ClauseDetailSheet
+        clause={selected}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+      />
     </div>
   );
 }

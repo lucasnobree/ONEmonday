@@ -9,6 +9,7 @@ import {
   MATTER_STATUS_LABELS,
   CLAUSE_CATEGORY_LABELS,
   formatCurrency,
+  formatFileSize,
 } from "./labels";
 
 describe("Legal enum labels — pt-BR accent correctness", () => {
@@ -76,5 +77,25 @@ describe("formatCurrency", () => {
 
   it("falls back gracefully for an unknown currency code", () => {
     expect(formatCurrency(1000, "REAIS")).toBe("REAIS 1.000");
+  });
+});
+
+describe("formatFileSize", () => {
+  it("returns 0 B for zero or invalid sizes", () => {
+    expect(formatFileSize(0)).toBe("0 B");
+    expect(formatFileSize(-10)).toBe("0 B");
+    expect(formatFileSize(Number.NaN)).toBe("0 B");
+  });
+
+  it("formats bytes under 1 KB as plain bytes", () => {
+    expect(formatFileSize(512)).toBe("512 B");
+  });
+
+  it("formats kilobytes with a pt-BR decimal comma", () => {
+    expect(formatFileSize(2048)).toBe("2,0 KB");
+  });
+
+  it("formats megabytes with a pt-BR decimal comma", () => {
+    expect(formatFileSize(5 * 1024 * 1024)).toBe("5,0 MB");
   });
 });

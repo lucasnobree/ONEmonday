@@ -41,6 +41,7 @@ export type Resource =
   | "transaction"
   // Legal (Juridico)
   | "contract"
+  | "contract_document"
   | "legal_matter"
   | "clause"
   // Analytics

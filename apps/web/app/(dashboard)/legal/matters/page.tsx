@@ -5,6 +5,7 @@ import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useMatters, type Matter } from "@/hooks/legal/use-matters";
 import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { MatterFormDialog } from "@/components/legal/matter-form-dialog";
+import { MatterDetailSheet } from "@/components/legal/matter-detail-sheet";
 import {
   Card,
   CardContent,
@@ -37,7 +38,7 @@ export default function MattersPage() {
   const { data: members } = useSectorMembers(currentSector?.id);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [editing, setEditing] = useState<Matter | null>(null);
+  const [selected, setSelected] = useState<Matter | null>(null);
 
   const memberNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -159,7 +160,7 @@ export default function MattersPage() {
                       <tr
                         key={matter.id}
                         className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setEditing(matter)}
+                        onClick={() => setSelected(matter)}
                       >
                         <td className="py-2 font-medium">{matter.title}</td>
                         <td className="py-2">
@@ -196,15 +197,11 @@ export default function MattersPage() {
         </CardContent>
       </Card>
 
-      {editing && (
-        <MatterFormDialog
-          key={editing.id}
-          matter={editing}
-          open={!!editing}
-          onOpenChange={(o) => !o && setEditing(null)}
-          hideTrigger
-        />
-      )}
+      <MatterDetailSheet
+        matter={selected}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+      />
     </div>
   );
 }

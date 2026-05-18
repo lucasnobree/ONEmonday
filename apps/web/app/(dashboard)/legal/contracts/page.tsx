@@ -5,6 +5,7 @@ import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useContracts, type Contract } from "@/hooks/legal/use-contracts";
 import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { ContractFormDialog } from "@/components/legal/contract-form-dialog";
+import { ContractDetailSheet } from "@/components/legal/contract-detail-sheet";
 import {
   Card,
   CardContent,
@@ -39,7 +40,7 @@ export default function ContractsPage() {
   const { data: members } = useSectorMembers(currentSector?.id);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [editing, setEditing] = useState<Contract | null>(null);
+  const [selected, setSelected] = useState<Contract | null>(null);
 
   const memberNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -161,7 +162,7 @@ export default function ContractsPage() {
                       <tr
                         key={contract.id}
                         className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setEditing(contract)}
+                        onClick={() => setSelected(contract)}
                       >
                         <td className="py-2 font-medium">{contract.title}</td>
                         <td className="py-2">{contract.counterparty}</td>
@@ -207,15 +208,11 @@ export default function ContractsPage() {
         </CardContent>
       </Card>
 
-      {editing && (
-        <ContractFormDialog
-          key={editing.id}
-          contract={editing}
-          open={!!editing}
-          onOpenChange={(o) => !o && setEditing(null)}
-          hideTrigger
-        />
-      )}
+      <ContractDetailSheet
+        contract={selected}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+      />
     </div>
   );
 }

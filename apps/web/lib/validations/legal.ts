@@ -129,6 +129,26 @@ export const updateClauseSchema = createClauseSchema.extend({
   id: z.string().uuid(),
 });
 
+/** A document uploaded and attached to a contract. */
+export const createContractDocumentSchema = z.object({
+  contractId: z.string().uuid(),
+  filePath: z.string().min(1, "Caminho do arquivo é obrigatório").max(500),
+  fileName: z.string().min(1, "Nome do arquivo é obrigatório").max(255),
+  fileSize: z.number().int().min(0),
+  mimeType: z.string().max(150).optional(),
+  docLabel: z.string().max(120).optional(),
+});
+
+/** Links a library clause to a contract. */
+export const linkClauseSchema = z.object({
+  contractId: z.string().uuid(),
+  clauseId: z.string().uuid(),
+});
+
 export type CreateContractInput = z.infer<typeof createContractSchema>;
 export type CreateMatterInput = z.infer<typeof createMatterSchema>;
 export type CreateClauseInput = z.infer<typeof createClauseSchema>;
+export type CreateContractDocumentInput = z.infer<
+  typeof createContractDocumentSchema
+>;
+export type LinkClauseInput = z.infer<typeof linkClauseSchema>;
