@@ -32,13 +32,18 @@ import {
 import { toast } from "sonner";
 import { MoneyInput } from "./money-input";
 import { CATEGORY_LABELS, EXPENSE_STATUS_LABELS } from "./labels";
-import {
-  EXPENSE_CATEGORIES,
-  EXPENSE_STATUSES,
-} from "@/lib/validations/finance";
+import { EXPENSE_CATEGORIES } from "@/lib/validations/finance";
 import { todayDateOnly } from "@/lib/finance/dates";
 
 const today = () => todayDateOnly();
+
+/**
+ * Statuses a user may set directly in the form. The approval-workflow states
+ * (`submitted` / `approved` / `rejected`) are reached only through the
+ * approval menu, never by free-picking here — so editing an expense already
+ * in the workflow keeps its status untouched.
+ */
+const MANUAL_STATUSES = ["pending", "paid", "void"] as const;
 
 interface ExpenseFormDialogProps {
   open: boolean;
@@ -77,6 +82,13 @@ export function ExpenseFormDialog({
     setExpenseDate(expense?.expense_date ?? today());
     setDueDate(expense?.due_date ?? "");
   }
+
+  // An expense in an approval-workflow state — its status is driven by the
+  // approval menu, so the form keeps it untouched.
+  const inWorkflow =
+    status === "submitted" ||
+    status === "approved" ||
+    status === "rejected";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,21 +221,29 @@ export function ExpenseFormDialog({
               </div>
               <div className="grid gap-2">
                 <Label>Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => setStatus(v as ExpenseStatus)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXPENSE_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {EXPENSE_STATUS_LABELS[s]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {inWorkflow ? (
+                  // Workflow-driven status is changed via the approval menu,
+                  // not this form — show it read-only.
+                  <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm">
+                    {EXPENSE_STATUS_LABELS[status]}
+                  </div>
+                ) : (
+                  <Select
+                    value={status}
+                    onValueChange={(v) => setStatus(v as ExpenseStatus)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MANUAL_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {EXPENSE_STATUS_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 

@@ -37,6 +37,9 @@ function expense(over: Partial<Expense>): Expense {
     expense_date: "2026-01-05",
     due_date: null,
     paid_at: "2026-01-10T08:00:00Z",
+    approved_by: null,
+    approved_at: null,
+    rejection_reason: null,
     created_at: "2026-01-05T00:00:00Z",
     ...over,
   };
