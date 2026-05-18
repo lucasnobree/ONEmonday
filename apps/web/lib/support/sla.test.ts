@@ -3,6 +3,8 @@ import {
   isSlaBreached,
   computeResponseBreachOnResolve,
   slaHealthFromPercentRemaining,
+  slaRemainingPct,
+  slaPillPresentation,
   isSlaPausedStatus,
   computeSlaPauseTransition,
 } from "./sla";
@@ -104,6 +106,62 @@ describe("slaHealthFromPercentRemaining", () => {
   it("buckets zero or negative as breached", () => {
     expect(slaHealthFromPercentRemaining(0)).toBe("breached");
     expect(slaHealthFromPercentRemaining(-10)).toBe("breached");
+  });
+});
+
+describe("slaRemainingPct", () => {
+  it("returns null when dates are missing", () => {
+    expect(
+      slaRemainingPct({ createdAt: null, deadlineAt: "2026-05-15T14:00:00Z" })
+    ).toBeNull();
+    expect(
+      slaRemainingPct({ createdAt: "2026-05-15T10:00:00Z", deadlineAt: null })
+    ).toBeNull();
+  });
+
+  it("returns null for a zero-length window", () => {
+    expect(
+      slaRemainingPct({
+        createdAt: "2026-05-15T14:00:00Z",
+        deadlineAt: "2026-05-15T14:00:00Z",
+      })
+    ).toBeNull();
+  });
+
+  it("computes the remaining percentage at the midpoint", () => {
+    // window 10:00 -> 14:00, now 12:00 => 50%
+    expect(
+      slaRemainingPct({
+        createdAt: "2026-05-15T10:00:00Z",
+        deadlineAt: "2026-05-15T14:00:00Z",
+        at: NOW,
+      })
+    ).toBe(50);
+  });
+
+  it("yields a non-positive value once the deadline has passed", () => {
+    const pct = slaRemainingPct({
+      createdAt: "2026-05-15T08:00:00Z",
+      deadlineAt: "2026-05-15T11:00:00Z",
+      at: NOW,
+    });
+    expect(pct).not.toBeNull();
+    expect(pct as number).toBeLessThanOrEqual(0);
+  });
+});
+
+describe("slaPillPresentation", () => {
+  it("maps each health bucket to a label", () => {
+    expect(slaPillPresentation(80).label).toBe("SLA OK");
+    expect(slaPillPresentation(40).label).toBe("SLA Alerta");
+    expect(slaPillPresentation(10).label).toBe("SLA Crítico");
+    expect(slaPillPresentation(0).label).toBe("SLA Violado");
+  });
+
+  it("ships dark-mode variants on every pill class", () => {
+    for (const pct of [80, 40, 10, 0]) {
+      expect(slaPillPresentation(pct).className).toContain("dark:");
+    }
   });
 });
 
