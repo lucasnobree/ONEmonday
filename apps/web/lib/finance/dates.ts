@@ -77,5 +77,12 @@ export function shiftMonthKey(monthKey: string, offset: number): string {
 export function formatMonthKey(monthKey: string): string {
   const date = parseDateOnly(`${monthKey}-01`);
   if (!date) return monthKey;
-  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  // pt-BR month-year is "maio de 2026" — lowercase month and preposition.
+  // Capitalize only the first letter so a `capitalize` CSS class is not
+  // needed (that class would title-case "de" -> "Maio De 2026").
+  const label = date.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }

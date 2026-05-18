@@ -79,7 +79,7 @@ export function ExpenseApprovalMenu({ expense }: { expense: Expense }) {
 
   const submitReject = async () => {
     if (!reason.trim()) {
-      toast.error("Informe o motivo da rejeicao");
+      toast.error("Informe o motivo da rejeição");
       return;
     }
     await run("reject", reason.trim());
@@ -94,7 +94,7 @@ export function ExpenseApprovalMenu({ expense }: { expense: Expense }) {
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Acoes de aprovacao"
+              aria-label="Ações de aprovação"
               disabled={transition.isPending}
             />
           }
@@ -119,7 +119,7 @@ export function ExpenseApprovalMenu({ expense }: { expense: Expense }) {
           <DialogHeader>
             <DialogTitle>Rejeitar despesa</DialogTitle>
             <DialogDescription>
-              Informe o motivo da rejeicao — ele ficara registrado na despesa.
+              Informe o motivo da rejeição — ele ficará registrado na despesa.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">

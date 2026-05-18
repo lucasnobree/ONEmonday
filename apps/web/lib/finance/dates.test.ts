@@ -91,7 +91,13 @@ describe("shiftMonthKey", () => {
 
 describe("formatMonthKey", () => {
   it("formats a month key as a pt-BR month-year label", () => {
-    expect(formatMonthKey("2026-05")).toBe("maio de 2026");
+    // Only the first letter is capitalized — the preposition stays lowercase
+    // ("Maio de 2026", never the title-cased "Maio De 2026").
+    expect(formatMonthKey("2026-05")).toBe("Maio de 2026");
+  });
+
+  it("keeps the preposition lowercase", () => {
+    expect(formatMonthKey("2026-12")).toBe("Dezembro de 2026");
   });
 
   it("falls back to the raw key when unparseable", () => {

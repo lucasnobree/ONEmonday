@@ -110,7 +110,7 @@ export function ExpenseReceiptsDialog({
         <DialogHeader>
           <DialogTitle>Comprovantes — {expense.vendor_name}</DialogTitle>
           <DialogDescription>
-            Anexe recibos ou notas (imagem ou PDF, ate 10MB).
+            Anexe recibos ou notas (imagem ou PDF, até 10MB).
           </DialogDescription>
         </DialogHeader>
 
