@@ -14,6 +14,7 @@
  * testable.
  */
 import type { BankTransaction } from "@/lib/integrations/finance-types";
+import { parseCents } from "@/lib/finance/money";
 
 /** Reads the text content of the first `<TAG>` inside `block`. */
 function tagValue(block: string, tag: string): string | null {
@@ -37,18 +38,27 @@ export function parseOfxDate(raw: string | null): string | null {
 /**
  * Parses an OFX `<TRNAMT>` value into integer cents plus a direction.
  * OFX signs the amount (negative = debit). Returns null when unparseable or
- * zero. Accepts both `.` and `,` as the decimal separator.
+ * zero.
+ *
+ * The magnitude is parsed by `parseCents` (money.ts) so pt-BR grouped amounts
+ * (`1.500,00`) and en-US amounts (`1,500.00`) are both handled correctly — a
+ * naive `","->"."` replace would turn `1.500,00` into the broken `1.500.00`.
+ * The leading sign is stripped first because `parseCents` rejects negatives.
  */
 export function parseOfxAmount(
   raw: string | null
 ): { amountCents: number; direction: "credit" | "debit" } | null {
   if (!raw) return null;
-  const normalised = raw.trim().replace(/\s/g, "").replace(",", ".");
-  const value = Number(normalised);
-  if (!Number.isFinite(value) || value === 0) return null;
+  const trimmed = raw.trim().replace(/\s/g, "");
+  if (trimmed === "") return null;
+  const negative = trimmed.startsWith("-");
+  // Strip a leading +/- sign; the magnitude alone goes to parseCents.
+  const magnitude = trimmed.replace(/^[+-]/, "");
+  const amountCents = parseCents(magnitude);
+  if (amountCents === null || amountCents === 0) return null;
   return {
-    amountCents: Math.round(Math.abs(value) * 100),
-    direction: value < 0 ? "debit" : "credit",
+    amountCents,
+    direction: negative ? "debit" : "credit",
   };
 }
 
