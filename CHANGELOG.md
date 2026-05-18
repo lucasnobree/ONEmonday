@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### HR people-management (migration Phase 3)
+- Builds the HR module toward Sólides people-management parity: a working
+  recruitment ATS (candidate pipeline, stages, detail, interview notes),
+  performance management (review cycles, evaluations, a 9-box grid, PDIs),
+  and anonymous engagement/climate surveys with eNPS results.
+- LGPD hardening: sensitive compensation/PII moved to a narrowly-scoped
+  `hr_employee_compensation` table; `hr_employees` directory read tightened
+  to a real permission instead of bare sector membership.
+- Fixes a latent bug where recruitment write policies referenced an
+  unregistered permission resource (only global admins could write).
+
 ### CRM migration parity (migration Phase 2)
 - Builds the CRM toward Pipedrive / RD Station CRM parity so both can be
   retired: deal ownership (`owner_id`, picker, reassignment, owner-ranked
