@@ -73,6 +73,19 @@ export const moveCandidateSchema = z.object({
   stage: z.enum(CANDIDATE_STAGES),
 });
 
+export const updateJobOpeningSchema = z.object({
+  openingId: z.string().uuid(),
+  title: z.string().min(1, "Título é obrigatório").max(200),
+  department: z.string().optional(),
+  description: z.string().optional(),
+  requirements: z.string().optional(),
+  employmentType: z
+    .enum(["full_time", "part_time", "contractor", "intern"])
+    .default("full_time"),
+  location: z.string().optional(),
+  salaryRange: z.string().optional(),
+});
+
 export const updateCandidateSchema = z.object({
   candidateId: z.string().uuid(),
   fullName: z.string().min(1, "Nome é obrigatório"),
@@ -124,6 +137,18 @@ export const upsertEvaluationSchema = z.object({
   submit: z.boolean().default(false),
 });
 
+// Employee self-assessment within a review cycle (Wave 5).
+export const upsertSelfAssessmentSchema = z.object({
+  cycleId: z.string().uuid(),
+  performanceScore: z.number().int().min(1).max(3).optional(),
+  potentialScore: z.number().int().min(1).max(3).optional(),
+  overallRating: z.number().int().min(1).max(5).optional(),
+  achievements: z.string().optional(),
+  challenges: z.string().optional(),
+  goals: z.string().optional(),
+  submit: z.boolean().default(false),
+});
+
 export const createDevelopmentPlanSchema = z.object({
   sectorId: z.string().uuid(),
   employeeId: z.string().uuid(),
@@ -170,6 +195,10 @@ export const updateSurveyStatusSchema = z.object({
 
 export const submitSurveyResponseSchema = z.object({
   surveyId: z.string().uuid(),
+  // The responding employee — used only by the server's one-response-per-
+  // employee guard. It is NEVER stored on the response row, so the answers
+  // stay anonymous (see migration 00190).
+  employeeId: z.string().uuid(),
   answers: z
     .array(
       z.object({

@@ -1,6 +1,10 @@
 "use client";
 
-import { useSurveyResults } from "@/hooks/hr/use-surveys";
+import {
+  useSurveyResults,
+  useSurveyParticipation,
+} from "@/hooks/hr/use-surveys";
+import { participationRate } from "@/lib/hr/survey-stats";
 import {
   Sheet,
   SheetContent,
@@ -29,6 +33,13 @@ export function SurveyResultsSheet({
   onOpenChange,
 }: SurveyResultsSheetProps) {
   const { data, isLoading } = useSurveyResults(open ? surveyId : null);
+  const { data: participation } = useSurveyParticipation(
+    open ? surveyId : null
+  );
+
+  const rate = participation
+    ? participationRate(participation.responded, participation.eligible)
+    : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -50,7 +61,20 @@ export function SurveyResultsSheet({
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Respostas</p>
-                  <p className="text-2xl font-bold">{data.response_count}</p>
+                  <p className="text-2xl font-bold">
+                    {data.response_count}
+                    {participation && participation.eligible > 0 && (
+                      <span className="text-base font-normal text-muted-foreground">
+                        {" "}
+                        / {participation.eligible}
+                      </span>
+                    )}
+                  </p>
+                  {rate != null && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {rate}% de participação
+                    </p>
+                  )}
                 </div>
                 {data.enps != null && (
                   <div className="rounded-lg border p-3">

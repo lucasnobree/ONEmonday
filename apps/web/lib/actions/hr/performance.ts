@@ -6,6 +6,7 @@ import {
   createReviewCycleSchema,
   updateReviewCycleStatusSchema,
   upsertEvaluationSchema,
+  upsertSelfAssessmentSchema,
   createDevelopmentPlanSchema,
   addDevelopmentActionSchema,
   toggleDevelopmentActionSchema,
@@ -145,6 +146,76 @@ export async function upsertEvaluation(formData: unknown) {
 
   revalidatePath("/hr/performance");
   return { data: evaluation };
+}
+
+// ---------------------------------------------------------------------------
+// Self-assessment — the employee's own input into a review cycle
+// ---------------------------------------------------------------------------
+
+/**
+ * Create or update the calling employee's self-assessment for a review cycle.
+ * The employee may only write their own row, and only while the cycle is
+ * active — both enforced here and by RLS (migration 00191).
+ */
+export async function upsertSelfAssessment(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const parsed = upsertSelfAssessmentSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: cycle } = await supabase
+    .from("hr_review_cycles")
+    .select("sector_id, status")
+    .eq("id", parsed.data.cycleId)
+    .single();
+  if (!cycle) return { error: "Ciclo nao encontrado" };
+  if (cycle.status !== "active") {
+    return {
+      error: "A autoavaliação só pode ser preenchida em um ciclo ativo",
+    };
+  }
+
+  // Resolve the calling user's employee row in the cycle's sector.
+  const { data: employee } = await supabase
+    .from("hr_employees")
+    .select("id")
+    .eq("sector_id", cycle.sector_id)
+    .eq("user_id", user.id)
+    .neq("status", "terminated")
+    .maybeSingle();
+  if (!employee) {
+    return { error: "Você não é um colaborador ativo deste setor" };
+  }
+
+  const { data: assessment, error } = await supabase
+    .from("hr_self_assessments")
+    .upsert(
+      {
+        cycle_id: parsed.data.cycleId,
+        sector_id: cycle.sector_id,
+        employee_id: employee.id,
+        performance_score: parsed.data.performanceScore ?? null,
+        potential_score: parsed.data.potentialScore ?? null,
+        overall_rating: parsed.data.overallRating ?? null,
+        achievements: parsed.data.achievements || null,
+        challenges: parsed.data.challenges || null,
+        goals: parsed.data.goals || null,
+        status: parsed.data.submit ? "submitted" : "draft",
+        submitted_at: parsed.data.submit ? new Date().toISOString() : null,
+      },
+      { onConflict: "cycle_id,employee_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/hr/performance");
+  return { data: assessment };
 }
 
 // ---------------------------------------------------------------------------

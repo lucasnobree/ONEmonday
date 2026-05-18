@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { upsertEvaluation } from "@/lib/actions/hr/performance";
 import { useEmployees, type Employee } from "@/hooks/hr/use-employees";
-import type { Evaluation } from "@/hooks/hr/use-performance";
+import {
+  useEvaluationSelfAssessment,
+  type Evaluation,
+} from "@/hooks/hr/use-performance";
+import { nineBoxCell } from "@/lib/hr/performance";
 import {
   Dialog,
   DialogContent,
@@ -95,6 +99,13 @@ function EvaluationForm({
   );
   const [comments, setComments] = useState(evaluation?.comments ?? "");
 
+  // The employee's own self-assessment for this cycle, shown to the manager
+  // as a reference while filling the evaluation (Wave 5).
+  const { data: selfAssessment } = useEvaluationSelfAssessment(
+    cycleId,
+    employeeId || null
+  );
+
   const mutation = useMutation({
     mutationFn: (submit: boolean) =>
       upsertEvaluation({
@@ -164,6 +175,7 @@ function EvaluationForm({
               </SelectContent>
             </Select>
           </div>
+          {selfAssessment && <SelfAssessmentSummary assessment={selfAssessment} />}
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-2">
               <Label>Desempenho</Label>
@@ -271,5 +283,61 @@ function EvaluationForm({
           </Button>
         </DialogFooter>
     </>
+  );
+}
+
+/**
+ * Read-only summary of the employee's own self-assessment, shown inside the
+ * manager evaluation form as a reference point.
+ */
+function SelfAssessmentSummary({
+  assessment,
+}: {
+  assessment: {
+    status: string;
+    performance_score: number | null;
+    potential_score: number | null;
+    overall_rating: number | null;
+    achievements: string | null;
+    challenges: string | null;
+    goals: string | null;
+  };
+}) {
+  const cell =
+    assessment.performance_score != null && assessment.potential_score != null
+      ? nineBoxCell(assessment.performance_score, assessment.potential_score)
+      : null;
+
+  return (
+    <div className="rounded-md border bg-muted/40 p-3 text-sm">
+      <p className="font-medium">
+        Autoavaliação do colaborador
+        {assessment.status === "submitted" ? "" : " (rascunho)"}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {assessment.overall_rating != null
+          ? `Nota geral ${assessment.overall_rating}`
+          : "Sem nota geral"}
+        {cell ? ` · 9-box: ${cell.label}` : ""}
+      </p>
+      {assessment.achievements && (
+        <p className="mt-2 text-xs">
+          <span className="font-medium">Realizações: </span>
+          {assessment.achievements}
+        </p>
+      )}
+      {assessment.challenges && (
+        <p className="mt-1 text-xs">
+          <span className="font-medium">Desafios: </span>
+          {assessment.challenges}
+        </p>
+      )}
+      {assessment.goals && (
+        <p className="mt-1 text-xs">
+          <span className="font-medium">Objetivos: </span>
+          {assessment.goals}
+        </p>
+      )}
+    </div>
   );
 }

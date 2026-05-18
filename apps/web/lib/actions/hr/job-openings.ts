@@ -2,7 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserPermissions, hasPermission } from "@/lib/permissions/engine";
-import { createJobOpeningSchema } from "@/lib/validations/hr";
+import {
+  createJobOpeningSchema,
+  updateJobOpeningSchema,
+} from "@/lib/validations/hr";
 import {
   JOB_OPENING_STATUSES,
   canTransitionStatus,
@@ -47,6 +50,48 @@ export async function createJobOpening(formData: unknown) {
 
   revalidatePath("/hr/recruitment");
   return { data: opening };
+}
+
+/** Edit a job opening's title, description and other editable fields. */
+export async function updateJobOpening(formData: unknown) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const parsed = updateJobOpeningSchema.safeParse(formData);
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  const { data: opening } = await supabase
+    .from("hr_job_openings")
+    .select("sector_id")
+    .eq("id", parsed.data.openingId)
+    .single();
+  if (!opening) return { error: "Vaga nao encontrada" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, opening.sector_id, "job_opening", "update")) {
+    return { error: "Sem permissao" };
+  }
+
+  const { error } = await supabase
+    .from("hr_job_openings")
+    .update({
+      title: parsed.data.title,
+      department: parsed.data.department || null,
+      description: parsed.data.description || null,
+      requirements: parsed.data.requirements || null,
+      employment_type: parsed.data.employmentType,
+      location: parsed.data.location || null,
+      salary_range: parsed.data.salaryRange || null,
+    })
+    .eq("id", parsed.data.openingId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/hr/recruitment");
+  return { success: true };
 }
 
 export async function updateJobOpeningStatus(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useSurveys, type Survey } from "@/hooks/hr/use-surveys";
@@ -108,7 +109,20 @@ export default function SurveysPage() {
                         {survey.response_count} resposta(s)
                       </p>
                     </div>
-                    <div className="flex flex-shrink-0 gap-1.5">
+                    <div className="flex shrink-0 gap-1.5">
+                      {survey.status === "open" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          render={
+                            <Link
+                              href={`/hr/surveys/${survey.id}/responder`}
+                            />
+                          }
+                        >
+                          Responder
+                        </Button>
+                      )}
                       {survey.status === "draft" && (
                         <Button
                           size="sm"
