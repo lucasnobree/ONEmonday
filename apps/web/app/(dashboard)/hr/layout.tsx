@@ -9,6 +9,8 @@ const hrNav = [
   { label: "Colaboradores", href: "/hr/employees" },
   { label: "Férias e Ausências", href: "/hr/time-off" },
   { label: "Recrutamento", href: "/hr/recruitment" },
+  { label: "Desempenho", href: "/hr/performance" },
+  { label: "Pesquisas", href: "/hr/surveys" },
   { label: "Onboarding", href: "/hr/onboarding" },
   { label: "Organograma", href: "/hr/org-chart" },
 ];
