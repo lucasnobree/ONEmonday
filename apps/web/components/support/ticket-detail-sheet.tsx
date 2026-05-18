@@ -17,7 +17,12 @@ import { TicketStatusSelect } from "@/components/support/ticket-status-select";
 import { TicketAttachments } from "@/components/support/ticket-attachments";
 import { TICKET_STATUS_META } from "@/lib/support/status";
 import { normalizeTicketStatus } from "@/lib/support/status";
-import { isSlaPausedStatus } from "@/lib/support/sla";
+import {
+  isSlaPausedStatus,
+  slaRemainingPct,
+  slaPillPresentation,
+} from "@/lib/support/sla";
+import { formatRelativeTime } from "@/lib/support/format";
 import {
   Sheet,
   SheetContent,
@@ -93,15 +98,22 @@ const activityLabels: Record<string, string> = {
   description_updated: "Descrição atualizada",
 };
 
-function formatSlaTime(dueAt: string | null, breached: boolean): {
-  text: string;
-  className: string;
-} {
+/**
+ * SLA pill content for the detail sheet. Colour grading is delegated to the
+ * shared percentage-based `slaPillPresentation` so the sheet and the ticket
+ * queue use one consistent (dark-mode-aware) threshold model; the pill text
+ * stays absolute ("4h 30m" remaining) for at-a-glance precision.
+ */
+function formatSlaTime(params: {
+  createdAt: string;
+  dueAt: string | null;
+  breached: boolean;
+}): { text: string; className: string } {
+  const { createdAt, dueAt, breached } = params;
+  const breachedPill = slaPillPresentation(0);
+
   if (breached) {
-    return {
-      text: "SLA Violado",
-      className: "text-red-600 bg-red-50 font-semibold",
-    };
+    return { text: "SLA Violado", className: breachedPill.className };
   }
 
   if (!dueAt) {
@@ -109,14 +121,10 @@ function formatSlaTime(dueAt: string | null, breached: boolean): {
   }
 
   const now = new Date();
-  const due = new Date(dueAt);
-  const diffMs = due.getTime() - now.getTime();
+  const diffMs = new Date(dueAt).getTime() - now.getTime();
 
   if (diffMs <= 0) {
-    return {
-      text: "SLA Violado",
-      className: "text-red-600 bg-red-50 font-semibold",
-    };
+    return { text: "SLA Violado", className: breachedPill.className };
   }
 
   const totalMinutes = Math.floor(diffMs / 60000);
@@ -132,35 +140,14 @@ function formatSlaTime(dueAt: string | null, breached: boolean): {
     text = `${hours}h ${minutes}m`;
   }
 
-  const totalHoursRemaining = diffMs / 3600000;
-  let className: string;
-  if (totalHoursRemaining > 4) {
-    // > 50% remaining (green)
-    className = "text-green-600 bg-green-50";
-  } else if (totalHoursRemaining > 1) {
-    // 25-50% remaining (yellow)
-    className = "text-yellow-600 bg-yellow-50";
-  } else {
-    // < 25% remaining (red)
-    className = "text-red-600 bg-red-50";
-  }
+  const pct = slaRemainingPct({ createdAt, deadlineAt: dueAt, at: now });
+  // No computable window (e.g. zero-length) — fall back to a neutral pill.
+  const className =
+    pct === null
+      ? "text-muted-foreground bg-muted"
+      : slaPillPresentation(pct).className;
 
   return { text, className };
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const minutes = Math.floor(diffMs / 60000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (minutes < 1) return "agora";
-  if (minutes < 60) return `${minutes}min atras`;
-  if (hours < 24) return `${hours}h atras`;
-  if (days < 7) return `${days}d atras`;
-  return date.toLocaleDateString("pt-BR");
 }
 
 // -- Escalation History --
@@ -195,7 +182,7 @@ function EscalationHistory({ ticketId }: { ticketId: string }) {
       <Separator />
       <div>
         <h4 className="text-xs font-medium text-muted-foreground mb-2">
-          Historico de Escalacao
+          Histórico de Escalação
         </h4>
         <div className="relative">
           <div className="absolute left-1.75 top-2 bottom-2 w-px bg-border" />
@@ -232,14 +219,16 @@ function DetailsTab({
   ticket: NonNullable<ReturnType<typeof useTicketDetail>["data"]>;
 }) {
   const card = ticket.card;
-  const slaResponse = formatSlaTime(
-    ticket.sla_response_due_at,
-    ticket.sla_response_breached
-  );
-  const slaResolve = formatSlaTime(
-    ticket.sla_resolve_due_at,
-    ticket.sla_resolve_breached
-  );
+  const slaResponse = formatSlaTime({
+    createdAt: ticket.created_at,
+    dueAt: ticket.sla_response_due_at,
+    breached: ticket.sla_response_breached,
+  });
+  const slaResolve = formatSlaTime({
+    createdAt: ticket.created_at,
+    dueAt: ticket.sla_resolve_due_at,
+    breached: ticket.sla_resolve_breached,
+  });
 
   return (
     <div className="space-y-4">
@@ -378,7 +367,7 @@ function DetailsTab({
       <Separator />
       <div>
         <h4 className="text-xs font-medium text-muted-foreground mb-2">
-          Responsaveis
+          Responsáveis
         </h4>
         <TicketAssigneePicker
           ticketId={ticket.id}
@@ -399,7 +388,7 @@ function DetailsTab({
             <div className="flex items-center gap-2 mb-2">
               <ArrowUpRight className="size-4 text-orange-500" />
               <h4 className="text-xs font-medium text-muted-foreground">
-                Escalacao
+                Escalação
               </h4>
               <Badge
                 variant="secondary"

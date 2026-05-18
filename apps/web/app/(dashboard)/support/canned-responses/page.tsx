@@ -168,7 +168,10 @@ export default function CannedResponsesPage() {
                   >
                     {response.content}
                   </p>
-                  <div className="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Actions are hidden until hover for a clean grid, but
+                      remain operable for keyboard (group-focus-within) and
+                      touch (pointer-coarse) users — a WCAG operability fix. */}
+                  <div className="flex items-center gap-1 mt-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
                     <Button
                       variant="ghost"
                       size="icon-sm"
