@@ -32,6 +32,33 @@ export async function createActivity(formData: unknown) {
     ? parsed.data.assignedTo || user.id
     : parsed.data.assignedTo || null;
 
+  // An assignee must belong to the activity's sector — otherwise the task
+  // would land on a user who can't even see it under RLS. A global admin is
+  // accepted in any sector; a sector member needs a `user_sector_roles` row.
+  // The creator-default is trusted (the creator already passed the gate).
+  if (assignedTo && assignedTo !== user.id) {
+    const { data: assignee } = await supabase
+      .from("users")
+      .select("is_global_admin")
+      .eq("id", assignedTo)
+      .maybeSingle<{ is_global_admin: boolean }>();
+    if (!assignee) {
+      return { error: "Responsavel invalido" };
+    }
+    if (!assignee.is_global_admin) {
+      const { data: membership } = await supabase
+        .from("user_sector_roles")
+        .select("user_id")
+        .eq("user_id", assignedTo)
+        .eq("sector_id", parsed.data.sectorId)
+        .limit(1)
+        .maybeSingle<{ user_id: string }>();
+      if (!membership) {
+        return { error: "Responsavel nao pertence ao setor da atividade" };
+      }
+    }
+  }
+
   const { data: activity, error } = await supabase
     .from("crm_activities")
     .insert({
