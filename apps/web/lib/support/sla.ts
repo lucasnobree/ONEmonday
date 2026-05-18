@@ -44,6 +44,67 @@ export function slaHealthFromPercentRemaining(pct: number): SlaHealth {
   return "ok";
 }
 
+/**
+ * Percentage of the SLA window still remaining for a deadline, mirroring the
+ * `check_sla_status` SQL RPC: `(deadline - now) / (deadline - created) * 100`.
+ *
+ * Returns `null` when the percentage cannot be computed (missing dates or a
+ * zero-length window). A breached deadline yields a value `<= 0`.
+ */
+export function slaRemainingPct(params: {
+  createdAt: string | null | undefined;
+  deadlineAt: string | null | undefined;
+  at?: Date;
+}): number | null {
+  const { createdAt, deadlineAt } = params;
+  if (!createdAt || !deadlineAt) return null;
+  const at = params.at ?? new Date();
+  const created = new Date(createdAt).getTime();
+  const deadline = new Date(deadlineAt).getTime();
+  const windowMs = deadline - created;
+  if (windowMs <= 0) return null;
+  return ((deadline - at.getTime()) / windowMs) * 100;
+}
+
+export interface SlaPillPresentation {
+  health: SlaHealth;
+  /** pt-BR label for the pill. */
+  label: string;
+  /** Tailwind classes for the pill, paired light + dark. */
+  className: string;
+}
+
+/** Dark-mode-aware pill classes shared by the queue and the detail sheet. */
+const SLA_PILL_CLASSES: Record<SlaHealth, string> = {
+  ok: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  warning:
+    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  critical: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  breached:
+    "bg-gray-200 text-gray-600 line-through dark:bg-gray-800 dark:text-gray-400",
+};
+
+const SLA_PILL_LABELS: Record<SlaHealth, string> = {
+  ok: "SLA OK",
+  warning: "SLA Alerta",
+  critical: "SLA Crítico",
+  breached: "SLA Violado",
+};
+
+/**
+ * Presentation metadata for an SLA pill from a remaining-percentage value.
+ * The single source of truth for SLA pill colours/labels so the ticket queue
+ * and the detail sheet always agree (percentage-based thresholds).
+ */
+export function slaPillPresentation(pct: number): SlaPillPresentation {
+  const health = slaHealthFromPercentRemaining(pct);
+  return {
+    health,
+    label: SLA_PILL_LABELS[health],
+    className: SLA_PILL_CLASSES[health],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Multi-state ticket status
 // ---------------------------------------------------------------------------

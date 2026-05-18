@@ -23,6 +23,7 @@ export interface TicketListItem {
   category: string | null;
   subcategory: string | null;
   channel: string | null;
+  requester_email: string | null;
   status: string;
   resolved_at: string | null;
   first_response_at: string | null;

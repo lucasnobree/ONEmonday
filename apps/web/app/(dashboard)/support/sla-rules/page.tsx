@@ -185,7 +185,7 @@ export default function SLARulesPage() {
                               rule.business_hours_only ? "secondary" : "outline"
                             }
                           >
-                            {rule.business_hours_only ? "Sim" : "Nao"}
+                            {rule.business_hours_only ? "Sim" : "Não"}
                           </Badge>
                         </td>
                         <td className="py-3 pr-4">

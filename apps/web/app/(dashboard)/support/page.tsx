@@ -20,6 +20,10 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { SlaAlertBanner } from "@/components/support/sla-alert-banner";
+import {
+  TICKET_STATUS_META,
+  normalizeTicketStatus,
+} from "@/lib/support/status";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -142,7 +146,12 @@ export default function SupportDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tickets.slice(0, 10).map((ticket) => (
+                    {tickets.slice(0, 10).map((ticket) => {
+                      const statusMeta =
+                        TICKET_STATUS_META[
+                          normalizeTicketStatus(ticket.status)
+                        ];
+                      return (
                       <tr
                         key={ticket.id}
                         className="border-b last:border-0 hover:bg-muted/50"
@@ -162,13 +171,22 @@ export default function SupportDashboardPage() {
                           </Badge>
                         </td>
                         <td className="py-3 pr-4">
-                          {ticket.resolved_at ? (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                              Resolvido
+                          <div className="flex items-center gap-1">
+                            <Badge
+                              variant="secondary"
+                              className={statusMeta.badgeClass}
+                            >
+                              {statusMeta.label}
                             </Badge>
-                          ) : (
-                            <Badge variant="secondary">Aberto</Badge>
-                          )}
+                            {ticket.escalated_to_sector_id && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                              >
+                                Escalado
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground">
                           {ticket.category || "—"}
@@ -179,7 +197,8 @@ export default function SupportDashboardPage() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
