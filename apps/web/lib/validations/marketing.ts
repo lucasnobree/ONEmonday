@@ -135,6 +135,28 @@ export const updateSegmentSchema = z.object({
   ...segmentFields,
 });
 
+// =============================================
+// Audience-segment contacts — Wave 5 (W2: send to the attached segment)
+// Mirrors the CHECK constraints in migration 00206.
+// =============================================
+const segmentEmailSchema = z.string().email("E-mail inválido").max(320);
+
+/** A single contact added to an audience segment. */
+export const segmentContactSchema = z.object({
+  email: segmentEmailSchema,
+  name: z.string().max(200).optional().nullable(),
+});
+
+/** Replace the full contact list of a segment in one call. */
+export const saveSegmentContactsSchema = z.object({
+  segmentId: z.string().uuid("ID inválido"),
+  contacts: z
+    .array(segmentContactSchema)
+    .max(5000, "Lista de contatos muito longa"),
+});
+
+export type SegmentContactInput = z.infer<typeof segmentContactSchema>;
+
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 export type CreateContentItemInput = z.infer<typeof createContentItemSchema>;
 export type CreateSegmentInput = z.infer<typeof createSegmentSchema>;
@@ -184,14 +206,27 @@ export const emailRecipientSchema = z.object({
   name: z.string().max(200).optional(),
 });
 
-/** Send an email campaign to an explicit recipient list. */
-export const sendEmailCampaignSchema = z.object({
-  emailCampaignId: uuidSchema,
-  recipients: z
-    .array(emailRecipientSchema)
-    .min(1, "Informe ao menos um destinatário")
-    .max(5000, "Lista de destinatários muito longa"),
-});
+/**
+ * Send an email campaign.
+ *
+ * Two recipient sources, exactly one must be supplied:
+ *  - `source: "segment"` — the server resolves recipients from the campaign's
+ *    attached audience segment (W2). No `recipients` array is sent.
+ *  - `source: "manual"` — an explicit hand-typed recipient list (fallback).
+ */
+export const sendEmailCampaignSchema = z
+  .object({
+    emailCampaignId: uuidSchema,
+    source: z.enum(["segment", "manual"]).default("manual"),
+    recipients: z
+      .array(emailRecipientSchema)
+      .max(5000, "Lista de destinatários muito longa")
+      .default([]),
+  })
+  .refine((v) => v.source !== "manual" || v.recipients.length > 0, {
+    message: "Informe ao menos um destinatário",
+    path: ["recipients"],
+  });
 
 /** Send a single preview ("test") email of a campaign to one recipient. */
 export const sendEmailCampaignTestSchema = z.object({

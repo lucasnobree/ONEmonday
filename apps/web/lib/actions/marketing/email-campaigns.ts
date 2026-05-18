@@ -22,6 +22,7 @@ import {
   sendEmailCampaignSchema,
   sendEmailCampaignTestSchema,
 } from "@/lib/validations/marketing";
+import { resolveSegmentRecipients } from "@/lib/actions/marketing/segment-contacts";
 import { loadEmailCredential } from "@/lib/integrations/email-credential-loader";
 import {
   resolveEmailAdapter,
@@ -179,7 +180,7 @@ export async function sendEmailCampaign(formData: unknown) {
   const { data: campaign } = await supabase
     .from("marketing_email_campaigns")
     .select(
-      "id, sector_id, status, subject, from_name, from_email, reply_to, body_html, body_text"
+      "id, sector_id, segment_id, status, subject, from_name, from_email, reply_to, body_html, body_text"
     )
     .eq("id", parsed.data.emailCampaignId)
     .eq("is_active", true)
@@ -195,6 +196,28 @@ export async function sendEmailCampaign(formData: unknown) {
 
   if (campaign.status === "sent" || campaign.status === "sending") {
     return { error: "Campanha já enviada" };
+  }
+
+  // Resolve the recipient list. With `source: "segment"` the campaign's
+  // attached audience segment is the source of truth (W2); otherwise the
+  // hand-typed manual list is used.
+  let recipients = parsed.data.recipients;
+  if (parsed.data.source === "segment") {
+    if (!campaign.segment_id) {
+      return { error: "Esta campanha não tem uma audiência associada" };
+    }
+    const resolved = await resolveSegmentRecipients(campaign.segment_id);
+    if (resolved.error) return { error: resolved.error };
+    if (resolved.recipients.length === 0) {
+      return {
+        error:
+          "A audiência associada não tem contatos. Adicione contatos à audiência ou use o envio manual.",
+      };
+    }
+    recipients = resolved.recipients;
+  }
+  if (recipients.length === 0) {
+    return { error: "Informe ao menos um destinatário" };
   }
 
   // Resolve the ESP gateway credential (no-op mode when unconfigured).
@@ -213,7 +236,7 @@ export async function sendEmailCampaign(formData: unknown) {
   let skipped = 0;
   const sendRows: Record<string, unknown>[] = [];
 
-  for (const recipient of parsed.data.recipients) {
+  for (const recipient of recipients) {
     const result = await adapter.send({
       to: recipient.email,
       toName: recipient.name,
@@ -270,7 +293,7 @@ export async function sendEmailCampaign(formData: unknown) {
     .update({
       status: "sent",
       sent_at: new Date().toISOString(),
-      recipient_count: parsed.data.recipients.length,
+      recipient_count: recipients.length,
       delivered_count: delivered,
       failed_count: failed,
     })
@@ -278,7 +301,7 @@ export async function sendEmailCampaign(formData: unknown) {
 
   revalidatePath("/marketing/email");
 
-  const noop = skipped === parsed.data.recipients.length;
+  const noop = skipped === recipients.length;
   return {
     success: true,
     sent: delivered,

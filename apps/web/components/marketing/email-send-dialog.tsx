@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Send } from "lucide-react";
 import {
   useSendEmailCampaign,
   useSendEmailCampaignTest,
 } from "@/hooks/marketing/use-email-campaigns";
 import type { EmailCampaign } from "@/hooks/marketing/use-email-campaigns";
+import { useSegments } from "@/hooks/marketing/use-segments";
+import { useSegmentContacts } from "@/hooks/marketing/use-segment-contacts";
 import { createClient } from "@/lib/supabase/client";
+import { parseRecipients } from "@/lib/marketing/recipients";
 import {
   Dialog,
   DialogContent,
@@ -27,22 +30,7 @@ interface EmailSendDialogProps {
   emailCampaign: EmailCampaign | undefined;
 }
 
-/** Parses a textarea of `email` or `Name <email>` lines into recipient rows. */
-function parseRecipients(
-  raw: string
-): { email: string; name?: string }[] {
-  return raw
-    .split(/[\n,;]+/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const match = line.match(/^(.*?)<(.+?)>$/);
-      if (match) {
-        return { name: match[1].trim() || undefined, email: match[2].trim() };
-      }
-      return { email: line };
-    });
-}
+type SendSource = "segment" | "manual";
 
 export function EmailSendDialog({
   open,
@@ -52,27 +40,62 @@ export function EmailSendDialog({
   const sendEmailCampaign = useSendEmailCampaign();
   const sendTest = useSendEmailCampaignTest();
   const [recipientsRaw, setRecipientsRaw] = useState("");
+  const [source, setSource] = useState<SendSource>("manual");
+
+  const campaignSegmentId = emailCampaign?.segment_id ?? null;
+  const { data: segments } = useSegments(emailCampaign?.sector_id);
+  const segment = useMemo(
+    () =>
+      campaignSegmentId
+        ? segments?.find((s) => s.id === campaignSegmentId)
+        : undefined,
+    [segments, campaignSegmentId]
+  );
+  // Resolve the actual contact list of the attached segment so the dialog can
+  // show a true recipient count (W2). Disabled when the campaign has no
+  // segment attached.
+  const { data: segmentContacts } = useSegmentContacts(
+    campaignSegmentId ?? undefined
+  );
+
+  const hasSegment = !!campaignSegmentId;
+  const segmentCount = segmentContacts?.length ?? 0;
 
   const formKey = `${open}:${emailCampaign?.id ?? "none"}`;
   const [seededKey, setSeededKey] = useState<string | null>(null);
   if (open && seededKey !== formKey) {
     setSeededKey(formKey);
     setRecipientsRaw("");
+    // Default to the attached audience when the campaign has one.
+    setSource(emailCampaign?.segment_id ? "segment" : "manual");
   }
 
-  const recipients = parseRecipients(recipientsRaw);
+  const parsed = parseRecipients(recipientsRaw);
+  const manualCount = parsed.valid.length;
+
+  const canSend =
+    source === "segment" ? hasSegment && segmentCount > 0 : manualCount > 0;
 
   const handleSend = async () => {
     if (!emailCampaign) return;
-    if (recipients.length === 0) {
-      toast.error("Informe ao menos um destinatário");
+    if (!canSend) {
+      toast.error(
+        source === "segment"
+          ? "A audiência não tem contatos"
+          : "Informe ao menos um destinatário"
+      );
       return;
     }
 
-    const result = await sendEmailCampaign.mutateAsync({
-      emailCampaignId: emailCampaign.id,
-      recipients,
-    });
+    const result = await sendEmailCampaign.mutateAsync(
+      source === "segment"
+        ? { emailCampaignId: emailCampaign.id, source: "segment" }
+        : {
+            emailCampaignId: emailCampaign.id,
+            source: "manual",
+            recipients: parsed.valid,
+          }
+    );
 
     if (result.error) {
       toast.error(
@@ -82,10 +105,9 @@ export function EmailSendDialog({
     }
 
     if (result.noop) {
-      toast.warning(
-        result.message ?? "Gateway de e-mail não configurado.",
-        { duration: 6000 }
-      );
+      toast.warning(result.message ?? "Gateway de e-mail não configurado.", {
+        duration: 6000,
+      });
     } else {
       toast.success(
         `Envio concluído: ${result.sent ?? 0} enviado(s), ${result.failed ?? 0} falha(s)`
@@ -128,10 +150,9 @@ export function EmailSendDialog({
     }
 
     if (result.noop) {
-      toast.warning(
-        result.message ?? "Gateway de e-mail não configurado.",
-        { duration: 6000 }
-      );
+      toast.warning(result.message ?? "Gateway de e-mail não configurado.", {
+        duration: 6000,
+      });
     } else {
       toast.success(`E-mail de teste enviado para ${user.email}`);
     }
@@ -150,20 +171,102 @@ export function EmailSendDialog({
         </DialogHeader>
 
         <div className="grid gap-3 py-2">
-          <div className="grid gap-2">
-            <Label htmlFor="email-recipients">Destinatários</Label>
-            <Textarea
-              id="email-recipients"
-              value={recipientsRaw}
-              onChange={(e) => setRecipientsRaw(e.target.value)}
-              placeholder={"joao@exemplo.com\nMaria <maria@exemplo.com>"}
-              rows={6}
-            />
-            <p className="text-xs text-muted-foreground">
-              Um destinatário por linha (ou separados por vírgula).{" "}
-              {recipients.length} destinatário(s) detectado(s).
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-sm font-medium">
+              Destinatários
+            </legend>
+            <div className="flex items-start gap-2">
+              <input
+                type="radio"
+                name="send-source"
+                value="segment"
+                id="send-source-segment"
+                checked={source === "segment"}
+                disabled={!hasSegment}
+                onChange={() => setSource("segment")}
+                className="mt-1 h-4 w-4 accent-primary"
+              />
+              <Label
+                htmlFor="send-source-segment"
+                className="font-normal leading-snug"
+              >
+                {hasSegment ? (
+                  <>
+                    Enviar para a audiência «{segment?.name ?? "audiência"}»{" "}
+                    <span className="text-muted-foreground">
+                      ({segmentCount} contato
+                      {segmentCount === 1 ? "" : "s"})
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Esta campanha não tem audiência associada
+                  </span>
+                )}
+              </Label>
+            </div>
+            <div className="flex items-start gap-2">
+              <input
+                type="radio"
+                name="send-source"
+                value="manual"
+                id="send-source-manual"
+                checked={source === "manual"}
+                onChange={() => setSource("manual")}
+                className="mt-1 h-4 w-4 accent-primary"
+              />
+              <Label
+                htmlFor="send-source-manual"
+                className="font-normal leading-snug"
+              >
+                Informar destinatários manualmente
+              </Label>
+            </div>
+          </fieldset>
+
+          {source === "segment" && hasSegment && segmentCount === 0 && (
+            <p className="rounded-md bg-muted p-2 text-xs text-muted-foreground">
+              A audiência «{segment?.name ?? "audiência"}» ainda não tem
+              contatos. Adicione contatos pela tela de Audiências ou use o
+              envio manual.
             </p>
-          </div>
+          )}
+
+          {source === "manual" && (
+            <div className="grid gap-2">
+              <Label htmlFor="email-recipients">Lista de destinatários</Label>
+              <Textarea
+                id="email-recipients"
+                value={recipientsRaw}
+                onChange={(e) => setRecipientsRaw(e.target.value)}
+                placeholder={"joao@exemplo.com\nMaria <maria@exemplo.com>"}
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                Um destinatário por linha (ou separados por vírgula).{" "}
+                <span className="font-medium">{manualCount} válido(s)</span>
+                {parsed.invalid.length > 0 && (
+                  <span className="text-destructive">
+                    {" "}
+                    · {parsed.invalid.length} inválido(s)
+                  </span>
+                )}
+                {parsed.duplicates > 0 && (
+                  <span> · {parsed.duplicates} duplicado(s) ignorado(s)</span>
+                )}
+                .
+              </p>
+              {parsed.invalid.length > 0 && (
+                <p className="wrap-break-word text-xs text-destructive">
+                  Linhas inválidas: {parsed.invalid.slice(0, 5).join(", ")}
+                  {parsed.invalid.length > 5
+                    ? ` (+${parsed.invalid.length - 5})`
+                    : ""}
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
             Antes de um envio real, use{" "}
             <span className="font-medium">Enviar teste</span> para receber uma
@@ -196,11 +299,13 @@ export function EmailSendDialog({
             </Button>
             <Button
               onClick={handleSend}
-              disabled={sendEmailCampaign.isPending || recipients.length === 0}
+              disabled={sendEmailCampaign.isPending || !canSend}
             >
               {sendEmailCampaign.isPending
                 ? "Enviando..."
-                : `Enviar (${recipients.length})`}
+                : source === "segment"
+                  ? `Enviar (${segmentCount})`
+                  : `Enviar (${manualCount})`}
             </Button>
           </div>
         </DialogFooter>
