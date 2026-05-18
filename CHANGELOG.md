@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Module depth (Wave 5 — high-impact backlog)
+- The larger, High-impact items each Wave 4 audit deferred, built per
+  module and integrated together:
+  - **Core**: board column management UI (add/rename/recolour/reorder/
+    WIP/delete), a deeper project detail page (edit, members strip,
+    health + status note), and seeded default Analytics reports so the
+    page is no longer empty on first load (migrations `00181`–`00183`).
+  - **CRM**: capture-form fields map onto real lead properties instead of
+    a raw JSON blob; lead ownership + SLA aging in the inbox; reusable
+    WhatsApp/email message templates with variable substitution
+    (migration `00185`).
+  - **HR**: a real employee-facing survey answering flow with
+    schema-level anonymity (participation tracked separately from the
+    response); employee self-assessment in review cycles; job-opening
+    editing and a drag-and-drop recruitment pipeline (migrations
+    `00190`–`00191`).
+  - **Support**: a public reply channel (internal-note vs public-reply,
+    email-out via Resend for `email` tickets); operational dashboard
+    KPIs (first-response/resolution time, SLA %, backlog age); SLA
+    business-hours schedules and breach actions (migrations
+    `00195`–`00197`).
+  - **Finance & Legal**: invoice and expense detail sheets; a contract/
+    matter status-change history with a lightweight contract approval
+    step; a matter comment thread (migrations `00200`–`00201`).
+  - **Marketing**: email campaigns send to the attached audience segment
+    (segments now carry real recipient lists); an HTML-aware email body
+    editor with a sanitized live preview; a "test credential" action in
+    Settings → Integrações; clickable Dev-Tools overview cards
+    (migration `00206`).
+
 ### UX audit & quick wins (Wave 4)
 - A second screen-by-screen UX & market audit, this time of all 50
   dashboard screens (the migration-phase and module-backlog screens that
