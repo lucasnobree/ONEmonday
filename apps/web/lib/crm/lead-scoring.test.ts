@@ -3,6 +3,7 @@ import {
   scoreLead,
   scoreBand,
   scoreBandLabel,
+  leadVerdict,
   emailDomain,
   isCorporateEmail,
   MAX_LEAD_SCORE,
@@ -133,5 +134,21 @@ describe("scoreBandLabel", () => {
     expect(scoreBandLabel("hot")).toBe("Quente");
     expect(scoreBandLabel("warm")).toBe("Morno");
     expect(scoreBandLabel("cold")).toBe("Frio");
+  });
+});
+
+describe("leadVerdict", () => {
+  it("returns a distinct, non-empty verdict for every band", () => {
+    const verdicts = (["hot", "warm", "cold"] as const).map(leadVerdict);
+    for (const verdict of verdicts) {
+      expect(verdict.length).toBeGreaterThan(0);
+    }
+    expect(new Set(verdicts).size).toBe(3);
+  });
+
+  it("prioritizes a hot lead and de-prioritizes a cold one", () => {
+    expect(leadVerdict("hot")).toMatch(/quente/i);
+    expect(leadVerdict("hot")).toMatch(/hoje/i);
+    expect(leadVerdict("cold")).toMatch(/frio/i);
   });
 });

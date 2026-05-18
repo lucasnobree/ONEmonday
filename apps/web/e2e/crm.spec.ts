@@ -102,4 +102,31 @@ test.describe("CRM module", () => {
     await page.getByRole("link", { name: "Atividades" }).click();
     await expect(page).toHaveURL(/\/crm\/activities/);
   });
+
+  test("companies filter shows a localized label, not the raw 'all' token", async ({
+    page,
+  }) => {
+    // Wave-4 regression: the size/industry filter triggers used to paint the
+    // literal selected value ("all"). They must show the translated label.
+    await page.goto("/crm/companies");
+
+    const sizeFilter = page.getByLabel("Filtrar por porte");
+    await expect(sizeFilter).toBeVisible();
+    await expect(sizeFilter).toHaveText("Todo porte");
+    await expect(sizeFilter).not.toHaveText("all");
+
+    const industryFilter = page.getByLabel("Filtrar por indústria");
+    await expect(industryFilter).toHaveText("Toda indústria");
+  });
+
+  test("leads inbox source filter is localized and selectable", async ({
+    page,
+  }) => {
+    await page.goto("/crm/leads");
+
+    const sourceFilter = page.getByLabel("Filtrar por origem");
+    await expect(sourceFilter).toBeVisible();
+    await expect(sourceFilter).toHaveText("Toda origem");
+    await expect(sourceFilter).not.toHaveText("all");
+  });
 });
