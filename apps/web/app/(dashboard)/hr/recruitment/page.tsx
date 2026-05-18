@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useJobOpenings, type JobOpening } from "@/hooks/hr/use-job-openings";
 import { JobOpeningFormDialog } from "@/components/hr/job-opening-form-dialog";
 import { JobOpeningStatusMenu } from "@/components/hr/job-opening-status-menu";
-import { RecruitmentBoardSheet } from "@/components/hr/recruitment-board-sheet";
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -48,10 +49,9 @@ const STATUS_FILTER_LABELS: Record<string, string> = {
 };
 
 export default function RecruitmentPage() {
+  const router = useRouter();
   const { currentSector } = useCurrentSector();
   const { data: openings, isLoading } = useJobOpenings(currentSector?.id);
-  const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
-  const [selectedOpeningTitle, setSelectedOpeningTitle] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const filteredOpenings = useMemo(() => {
@@ -146,10 +146,9 @@ export default function RecruitmentPage() {
                       <tr
                         key={opening.id}
                         className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
-                        onClick={() => {
-                          setSelectedOpeningId(opening.id);
-                          setSelectedOpeningTitle(opening.title);
-                        }}
+                        onClick={() =>
+                          router.push(`/hr/recruitment/${opening.id}`)
+                        }
                       >
                         <td className="py-2 font-medium">{opening.title}</td>
                         <td className="py-2">{opening.department ?? "-"}</td>
@@ -171,7 +170,19 @@ export default function RecruitmentPage() {
                           className="py-2 text-right"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <JobOpeningStatusMenu opening={opening} />
+                          <div className="flex items-center justify-end gap-1">
+                            <JobOpeningFormDialog
+                              opening={opening}
+                              trigger={
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label="Editar vaga"
+                                />
+                              }
+                            />
+                            <JobOpeningStatusMenu opening={opening} />
+                          </div>
                         </td>
                       </tr>
                     );
@@ -182,16 +193,6 @@ export default function RecruitmentPage() {
           )}
         </CardContent>
       </Card>
-
-      <RecruitmentBoardSheet
-        openingId={selectedOpeningId}
-        openingTitle={selectedOpeningTitle}
-        sectorId={currentSector.id}
-        open={!!selectedOpeningId}
-        onOpenChange={(open) => {
-          if (!open) setSelectedOpeningId(null);
-        }}
-      />
     </div>
   );
 }
