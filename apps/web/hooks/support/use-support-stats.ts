@@ -17,6 +17,11 @@ const EMPTY_STATS: SupportStats = {
   resolvedTickets: 0,
 };
 
+interface SlaStatusRow {
+  ticket_id: string;
+  remaining_pct: number;
+}
+
 export function useSupportStats(sectorId: string | undefined) {
   return useQuery<SupportStats>({
     queryKey: ["support-stats", sectorId],
@@ -25,7 +30,7 @@ export function useSupportStats(sectorId: string | undefined) {
 
       const supabase = createClient();
 
-      const [totalRes, openRes, slaRes, resolvedRes] = await Promise.all([
+      const [totalRes, openRes, resolvedRes, slaRes] = await Promise.all([
         // Total tickets
         supabase
           .from("support_tickets")
@@ -39,25 +44,28 @@ export function useSupportStats(sectorId: string | undefined) {
           .eq("sector_id", sectorId)
           .is("resolved_at", null),
 
-        // SLA breached: sla_response_breached or sla_resolve_breached
-        supabase
-          .from("support_tickets")
-          .select("id", { count: "exact", head: true })
-          .eq("sector_id", sectorId)
-          .or("sla_response_breached.eq.true,sla_resolve_breached.eq.true"),
-
         // Resolved tickets: resolved_at is not null
         supabase
           .from("support_tickets")
           .select("id", { count: "exact", head: true })
           .eq("sector_id", sectorId)
           .not("resolved_at", "is", null),
+
+        // SLA breached: derived from the same check_sla_status RPC that
+        // powers the SLA alert banner, so the KPI card and the banner
+        // count exactly the same set of currently-breaching tickets
+        // (one active SLA per ticket — response *or* resolution — and
+        // paused/resolved tickets excluded by the RPC).
+        supabase.rpc("check_sla_status"),
       ]);
+
+      const slaRows = (slaRes.error ? [] : (slaRes.data ?? [])) as SlaStatusRow[];
+      const slaBreached = slaRows.filter((r) => r.remaining_pct <= 0).length;
 
       return {
         totalTickets: totalRes.count ?? 0,
         openTickets: openRes.count ?? 0,
-        slaBreached: slaRes.count ?? 0,
+        slaBreached,
         resolvedTickets: resolvedRes.count ?? 0,
       };
     },
