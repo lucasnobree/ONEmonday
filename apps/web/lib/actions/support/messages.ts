@@ -65,7 +65,7 @@ export async function addTicketMessage(formData: unknown) {
   if (!ticket) return { error: "Ticket não encontrado" };
 
   const perms = await getUserPermissions(user.id);
-  if (!hasPermission(perms, ticket.sector_id, "support_ticket", "update")) {
+  if (!hasPermission(perms, ticket.sector_id, "ticket", "update")) {
     return { error: "Sem permissão" };
   }
 

@@ -137,6 +137,47 @@ export function addBusinessHours(
   return cursor;
 }
 
+/** Short pt-BR weekday labels indexed 0 = Sunday ... 6 = Saturday. */
+export const WEEKDAY_LABELS = [
+  "Dom",
+  "Seg",
+  "Ter",
+  "Qua",
+  "Qui",
+  "Sex",
+  "Sáb",
+] as const;
+
+/** Format minutes-from-midnight as a `HH:MM` clock string. */
+export function formatMinuteOfDay(minute: number): string {
+  const h = Math.floor(minute / 60);
+  const m = minute % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * Human-readable pt-BR summary of a working-days bitset: collapses the
+ * common Monday-Friday set to "Seg-Sex", otherwise lists each day.
+ */
+export function formatWorkingDays(daysMask: number): string {
+  const days: number[] = [];
+  for (let d = 0; d < 7; d++) {
+    if ((daysMask & (1 << d)) !== 0) days.push(d);
+  }
+  if (days.length === 0) return "Nenhum dia";
+  // Monday-Friday is bit 1..5 => mask 62.
+  if (daysMask === 62) return "Seg-Sex";
+  if (daysMask === 127) return "Todos os dias";
+  return days.map((d) => WEEKDAY_LABELS[d]).join(", ");
+}
+
+/** One-line summary of a schedule, e.g. "Seg-Sex 09:00-18:00". */
+export function formatBusinessHours(schedule: BusinessHoursSchedule): string {
+  return `${formatWorkingDays(schedule.daysMask)} ${formatMinuteOfDay(
+    schedule.startMinute
+  )}-${formatMinuteOfDay(schedule.endMinute)}`;
+}
+
 /**
  * Compute an SLA deadline `hours` ahead of `start`. When `businessHoursOnly`
  * is false the deadline is plain calendar time (24x7); otherwise the

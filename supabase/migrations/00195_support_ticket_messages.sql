@@ -69,7 +69,7 @@ CREATE POLICY "ticket_messages_insert" ON ticket_messages
           JOIN permissions p ON p.id = rp.permission_id
           WHERE usr.user_id = auth.uid()
           AND usr.sector_id = st.sector_id
-          AND p.resource = 'support_ticket' AND p.action = 'update'
+          AND p.resource = 'ticket' AND p.action = 'update'
         )
       )
     )
@@ -90,7 +90,7 @@ CREATE POLICY "ticket_messages_update" ON ticket_messages
           JOIN permissions p ON p.id = rp.permission_id
           WHERE usr.user_id = auth.uid()
           AND usr.sector_id = st.sector_id
-          AND p.resource = 'support_ticket' AND p.action = 'update'
+          AND p.resource = 'ticket' AND p.action = 'update'
         )
       )
     )

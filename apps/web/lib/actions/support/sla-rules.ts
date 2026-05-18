@@ -32,6 +32,12 @@ export async function createSlaRule(formData: unknown) {
       resolve_time_hours: parsed.data.resolveTimeHours,
       business_hours_only: parsed.data.businessHoursOnly,
       is_active: parsed.data.isActive,
+      business_timezone: parsed.data.businessTimezone,
+      business_start_minute: parsed.data.businessStartMinute,
+      business_end_minute: parsed.data.businessEndMinute,
+      business_days_mask: parsed.data.businessDaysMask,
+      breach_action: parsed.data.breachAction,
+      warn_threshold_pct: parsed.data.warnThresholdPct,
     })
     .select()
     .single();
@@ -78,6 +84,12 @@ export async function updateSlaRule(id: string, formData: unknown) {
       resolve_time_hours: parsed.data.resolveTimeHours,
       business_hours_only: parsed.data.businessHoursOnly,
       is_active: parsed.data.isActive,
+      business_timezone: parsed.data.businessTimezone,
+      business_start_minute: parsed.data.businessStartMinute,
+      business_end_minute: parsed.data.businessEndMinute,
+      business_days_mask: parsed.data.businessDaysMask,
+      breach_action: parsed.data.breachAction,
+      warn_threshold_pct: parsed.data.warnThresholdPct,
     })
     .eq("id", id);
 

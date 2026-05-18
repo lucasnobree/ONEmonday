@@ -6,6 +6,9 @@ import {
   nextBusinessInstant,
   addBusinessHours,
   computeSlaDeadline,
+  formatMinuteOfDay,
+  formatWorkingDays,
+  formatBusinessHours,
   type BusinessHoursSchedule,
 } from "./business-hours";
 
@@ -146,5 +149,41 @@ describe("computeSlaDeadline", () => {
       schedule: weekendOnly,
     });
     expect(result).toEqual(SAT(12));
+  });
+});
+
+describe("formatMinuteOfDay", () => {
+  it("formats minutes-from-midnight as HH:MM", () => {
+    expect(formatMinuteOfDay(540)).toBe("09:00");
+    expect(formatMinuteOfDay(1080)).toBe("18:00");
+    expect(formatMinuteOfDay(0)).toBe("00:00");
+    expect(formatMinuteOfDay(575)).toBe("09:35");
+  });
+});
+
+describe("formatWorkingDays", () => {
+  it("collapses the Monday-Friday set", () => {
+    expect(formatWorkingDays(62)).toBe("Seg-Sex");
+  });
+
+  it("collapses the all-days set", () => {
+    expect(formatWorkingDays(127)).toBe("Todos os dias");
+  });
+
+  it("lists individual days otherwise", () => {
+    // Saturday + Sunday => bits 0 and 6.
+    expect(formatWorkingDays((1 << 0) | (1 << 6))).toBe("Dom, Sáb");
+  });
+
+  it("handles an empty mask", () => {
+    expect(formatWorkingDays(0)).toBe("Nenhum dia");
+  });
+});
+
+describe("formatBusinessHours", () => {
+  it("summarizes the default schedule", () => {
+    expect(formatBusinessHours(DEFAULT_BUSINESS_HOURS)).toBe(
+      "Seg-Sex 09:00-18:00"
+    );
   });
 });

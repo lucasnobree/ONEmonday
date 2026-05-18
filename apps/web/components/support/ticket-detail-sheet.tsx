@@ -9,7 +9,7 @@ import {
   reopenTicket,
   markFirstResponse,
 } from "@/lib/actions/support/tickets";
-import { addTicketComment } from "@/lib/actions/support/comments";
+import { addTicketMessage } from "@/lib/actions/support/messages";
 import { EscalateTicketDialog } from "@/components/support/escalate-ticket-dialog";
 import { TicketTagEditor } from "@/components/support/ticket-tag-editor";
 import { TicketAssigneePicker } from "@/components/support/ticket-assignee-picker";
@@ -46,6 +46,9 @@ import {
   ArrowUpRight,
   RotateCcw,
   Reply,
+  Lock,
+  Mail,
+  AlertCircle,
 } from "lucide-react";
 
 interface TicketDetailSheetProps {
@@ -427,31 +430,82 @@ function DetailsTab({
   );
 }
 
+// A unified thread entry — either a legacy internal card comment or a
+// `ticket_messages` row (internal note or public reply).
+interface ThreadEntry {
+  id: string;
+  author: string;
+  body: string;
+  createdAt: string;
+  visibility: "internal" | "public";
+  deliveryStatus:
+    | "not_applicable"
+    | "pending"
+    | "sent"
+    | "skipped"
+    | "failed";
+}
+
+const DELIVERY_NOTE: Record<string, string> = {
+  sent: "Entregue por e-mail",
+  skipped: "E-mail não configurado — não enviado",
+  failed: "Falha no envio do e-mail",
+  pending: "Envio pendente",
+};
+
 // -- Comments Tab --
+// Wave 4 H3: the composer can post an internal note OR a public reply. For an
+// email-channel ticket a public reply is delivered to the requester via the
+// ESP. The thread merges legacy internal `card_comments` with the new
+// `ticket_messages` rows so no history is lost.
 function CommentsTab({
   ticket,
 }: {
   ticket: NonNullable<ReturnType<typeof useTicketDetail>["data"]>;
 }) {
   const [content, setContent] = useState("");
+  const [visibility, setVisibility] = useState<"internal" | "public">(
+    "internal"
+  );
   const [submitting, setSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
-  const comments = (ticket.card?.card_comments || [])
+  const isEmailTicket = ticket.channel === "email";
+
+  const legacyComments: ThreadEntry[] = (ticket.card?.card_comments || [])
     .filter((c) => c.is_active)
-    .sort(
-      (a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    .map((c) => ({
+      id: `comment-${c.id}`,
+      author: c.users?.full_name || "Usuário",
+      body: c.content,
+      createdAt: c.created_at,
+      visibility: "internal" as const,
+      deliveryStatus: "not_applicable" as const,
+    }));
+
+  const messages: ThreadEntry[] = (ticket.ticket_messages || []).map((m) => ({
+    id: `message-${m.id}`,
+    author: m.author?.full_name || "Usuário",
+    body: m.body,
+    createdAt: m.created_at,
+    visibility: m.visibility,
+    deliveryStatus: m.delivery_status,
+  }));
+
+  const thread = [...legacyComments, ...messages].sort(
+    (a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!content.trim() || !ticket.card_id) return;
+    if (!content.trim()) return;
 
     setSubmitting(true);
-    const result = await addTicketComment({
-      cardId: ticket.card_id,
-      content: content.trim(),
+    const result = await addTicketMessage({
+      ticketId: ticket.id,
+      visibility,
+      body: content.trim(),
     });
     setSubmitting(false);
 
@@ -459,12 +513,24 @@ function CommentsTab({
       const msg =
         typeof result.error === "string"
           ? result.error
-          : "Erro ao adicionar comentário";
+          : "Erro ao enviar mensagem";
       toast.error(msg);
       return;
     }
 
-    toast.success("Comentário adicionado");
+    if (visibility === "public") {
+      if (result.deliveryStatus === "sent") {
+        toast.success("Resposta enviada ao solicitante");
+      } else if (result.deliveryStatus === "skipped") {
+        toast.success("Resposta registrada (e-mail não configurado)");
+      } else if (result.deliveryStatus === "failed") {
+        toast.warning("Resposta registrada, mas o e-mail não foi entregue");
+      } else {
+        toast.success("Resposta pública registrada");
+      }
+    } else {
+      toast.success("Nota interna adicionada");
+    }
     setContent("");
     queryClient.invalidateQueries({
       queryKey: ["ticket-detail", ticket.card_id],
@@ -474,46 +540,138 @@ function CommentsTab({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 space-y-3 overflow-y-auto">
-        {comments.length === 0 ? (
+        {thread.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <MessageSquare className="size-8 mb-2 opacity-50" />
-            <p className="text-sm">Nenhum comentário ainda.</p>
+            <p className="text-sm">Nenhuma mensagem ainda.</p>
           </div>
         ) : (
-          comments.map((comment) => (
-            <div key={comment.id} className="rounded-lg border p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">
-                  {comment.users?.full_name || "Usuário"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatRelativeTime(comment.created_at)}
-                </span>
+          thread.map((entry) => {
+            const isPublic = entry.visibility === "public";
+            return (
+              <div
+                key={entry.id}
+                className={`rounded-lg border p-3 space-y-1 ${
+                  isPublic
+                    ? "border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-900/15"
+                    : "bg-amber-50/40 dark:bg-amber-900/10"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium">
+                      {entry.author}
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        isPublic
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                      }
+                    >
+                      {isPublic ? (
+                        <Mail className="size-3 mr-1" />
+                      ) : (
+                        <Lock className="size-3 mr-1" />
+                      )}
+                      {isPublic ? "Resposta" : "Nota interna"}
+                    </Badge>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {formatRelativeTime(entry.createdAt)}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{entry.body}</p>
+                {isPublic &&
+                  entry.deliveryStatus !== "not_applicable" &&
+                  DELIVERY_NOTE[entry.deliveryStatus] && (
+                    <p
+                      className={`flex items-center gap-1 text-xs ${
+                        entry.deliveryStatus === "failed"
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {entry.deliveryStatus === "failed" ? (
+                        <AlertCircle className="size-3" />
+                      ) : (
+                        <Mail className="size-3" />
+                      )}
+                      {DELIVERY_NOTE[entry.deliveryStatus]}
+                    </p>
+                  )}
               </div>
-              <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
       <Separator className="my-3" />
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Escreva um comentário..."
-          rows={2}
-          className="flex-1 resize-none"
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={submitting || !content.trim()}
-          title="Enviar comentário"
-        >
-          <Send className="size-4" />
-        </Button>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <div className="flex items-center gap-1 rounded-md border p-0.5">
+          <button
+            type="button"
+            onClick={() => setVisibility("internal")}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium transition-colors ${
+              visibility === "internal"
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+            aria-pressed={visibility === "internal"}
+          >
+            <Lock className="size-3.5" />
+            Nota interna
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisibility("public")}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium transition-colors ${
+              visibility === "public"
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+            aria-pressed={visibility === "public"}
+          >
+            <Mail className="size-3.5" />
+            Responder cliente
+          </button>
+        </div>
+        {visibility === "public" && (
+          <p className="text-xs text-muted-foreground">
+            {isEmailTicket
+              ? `A resposta será enviada por e-mail para ${
+                  ticket.requester_email || "o solicitante"
+                }.`
+              : "A resposta ficará visível para o solicitante neste canal."}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={
+              visibility === "public"
+                ? "Escreva a resposta ao cliente..."
+                : "Escreva uma nota interna..."
+            }
+            rows={2}
+            className="flex-1 resize-none"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={submitting || !content.trim()}
+            title={
+              visibility === "public"
+                ? "Enviar resposta"
+                : "Adicionar nota interna"
+            }
+          >
+            <Send className="size-4" />
+          </Button>
+        </div>
       </form>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useCurrentSector } from "@/hooks/use-current-sector";
 import { useTickets } from "@/hooks/support/use-tickets";
 import { useSupportStats } from "@/hooks/support/use-support-stats";
+import { useSupportMetrics } from "@/hooks/support/use-support-metrics";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import {
   Card,
@@ -18,12 +19,21 @@ import {
   AlertCircle,
   ShieldAlert,
   CheckCircle2,
+  Timer,
+  Gauge,
+  ShieldCheck,
+  History,
 } from "lucide-react";
 import { SlaAlertBanner } from "@/components/support/sla-alert-banner";
 import {
   TICKET_STATUS_META,
   normalizeTicketStatus,
 } from "@/lib/support/status";
+import {
+  formatDuration,
+  formatPercent,
+  attainmentHealth,
+} from "@/lib/support/metrics";
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -42,6 +52,9 @@ const priorityLabels: Record<string, string> = {
 export default function SupportDashboardPage() {
   const { currentSector } = useCurrentSector();
   const { data: stats, isLoading: statsLoading } = useSupportStats(
+    currentSector?.id
+  );
+  const { data: metrics, isLoading: metricsLoading } = useSupportMetrics(
     currentSector?.id
   );
   const { data: tickets, isLoading: ticketsLoading } = useTickets(
@@ -79,6 +92,45 @@ export default function SupportDashboardPage() {
     },
   ];
 
+  // Operational KPIs a support manager steers by (Wave 4 H1): first-response
+  // time, resolution time, SLA attainment and backlog age.
+  const slaHealth = attainmentHealth(metrics?.slaAttainmentPct);
+  const slaValueClass =
+    slaHealth === "good"
+      ? "text-green-600 dark:text-green-400"
+      : slaHealth === "warning"
+        ? "text-yellow-600 dark:text-yellow-400"
+        : slaHealth === "bad"
+          ? "text-red-600 dark:text-red-400"
+          : "";
+
+  const metricCards = [
+    {
+      title: "Tempo médio 1ª resposta",
+      value: formatDuration(metrics?.avgFirstResponseMinutes),
+      icon: Timer,
+      valueClass: "",
+    },
+    {
+      title: "Tempo médio de resolução",
+      value: formatDuration(metrics?.avgResolutionMinutes),
+      icon: Gauge,
+      valueClass: "",
+    },
+    {
+      title: "SLA cumprido",
+      value: formatPercent(metrics?.slaAttainmentPct),
+      icon: ShieldCheck,
+      valueClass: slaValueClass,
+    },
+    {
+      title: "Backlog mais antigo",
+      value: formatDuration(metrics?.oldestBacklogMinutes),
+      icon: History,
+      valueClass: "",
+    },
+  ];
+
   return (
     <PermissionGate
       sectorId={currentSector.id}
@@ -107,6 +159,34 @@ export default function SupportDashboardPage() {
                       <Skeleton className="mt-1 h-8 w-16" />
                     ) : (
                       <p className="text-2xl font-bold">{stat.value}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {metricCards.map((metric) => (
+            <Card key={metric.title}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <metric.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">
+                      {metric.title}
+                    </p>
+                    {metricsLoading ? (
+                      <Skeleton className="mt-1 h-8 w-16" />
+                    ) : (
+                      <p
+                        className={`text-2xl font-bold ${metric.valueClass}`}
+                      >
+                        {metric.value}
+                      </p>
                     )}
                   </div>
                 </div>
