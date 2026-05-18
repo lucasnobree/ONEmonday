@@ -55,6 +55,19 @@ export const submitCSATSchema = z.object({
   comment: z.string().optional(),
 });
 
+// Ticket reply — internal note vs public reply. A public reply on an
+// email-channel ticket is delivered to the requester via the ESP.
+export const ticketMessageVisibilitySchema = z.enum(["internal", "public"]);
+
+export const addTicketMessageSchema = z.object({
+  ticketId: z.string().uuid(),
+  visibility: ticketMessageVisibilitySchema,
+  body: z.string().min(1, "Mensagem obrigatória").max(5000),
+});
+
+// SLA breach action vocabulary, mirroring migration 00196.
+export const slaBreachActionSchema = z.enum(["none", "notify", "escalate"]);
+
 export const createSLARuleSchema = z.object({
   sectorId: z.string().uuid(),
   name: z.string().min(1, "Nome é obrigatório"),
@@ -64,6 +77,14 @@ export const createSLARuleSchema = z.object({
   resolveTimeHours: z.number().int().min(1),
   businessHoursOnly: z.boolean().default(true),
   isActive: z.boolean().default(true),
+  // Business-hours schedule (Wave 5). Defaulted so older callers keep working.
+  businessTimezone: z.string().min(1).default("America/Sao_Paulo"),
+  businessStartMinute: z.number().int().min(0).max(1439).default(540),
+  businessEndMinute: z.number().int().min(1).max(1440).default(1080),
+  businessDaysMask: z.number().int().min(0).max(127).default(62),
+  // Breach escalation action + warn threshold.
+  breachAction: slaBreachActionSchema.default("none"),
+  warnThresholdPct: z.number().int().min(1).max(100).default(80),
 });
 
 export const createArticleSchema = z.object({

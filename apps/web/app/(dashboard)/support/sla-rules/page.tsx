@@ -24,6 +24,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ShieldCheck, Plus, Pencil, Trash2 } from "lucide-react";
+import { formatBusinessHours } from "@/lib/support/business-hours";
+
+const BREACH_ACTION_LABELS: Record<string, string> = {
+  none: "—",
+  notify: "Notificar",
+  escalate: "Escalar",
+};
+
+const BREACH_ACTION_COLORS: Record<string, string> = {
+  notify:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  escalate:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+};
 
 const priorityLabels: Record<string, string> = {
   critical: "Crítica",
@@ -151,6 +165,7 @@ export default function SLARulesPage() {
                       <th className="pb-2 font-medium">Tempo de Resposta</th>
                       <th className="pb-2 font-medium">Tempo de Resolução</th>
                       <th className="pb-2 font-medium">Horário Comercial</th>
+                      <th className="pb-2 font-medium">Em violação</th>
                       <th className="pb-2 font-medium">Ativo</th>
                       <th className="pb-2 font-medium">Ações</th>
                     </tr>
@@ -180,13 +195,33 @@ export default function SLARulesPage() {
                           {formatHours(rule.resolve_time_hours)}
                         </td>
                         <td className="py-3 pr-4">
-                          <Badge
-                            variant={
-                              rule.business_hours_only ? "secondary" : "outline"
-                            }
-                          >
-                            {rule.business_hours_only ? "Sim" : "Não"}
-                          </Badge>
+                          {rule.business_hours_only ? (
+                            <span className="text-muted-foreground text-xs">
+                              {formatBusinessHours({
+                                startMinute: rule.business_start_minute,
+                                endMinute: rule.business_end_minute,
+                                daysMask: rule.business_days_mask,
+                              })}
+                            </span>
+                          ) : (
+                            <Badge variant="outline">24x7</Badge>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4">
+                          {rule.breach_action === "none" ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className={
+                                BREACH_ACTION_COLORS[rule.breach_action] || ""
+                              }
+                            >
+                              {BREACH_ACTION_LABELS[rule.breach_action]}
+                              {" · "}
+                              {rule.warn_threshold_pct}%
+                            </Badge>
+                          )}
                         </td>
                         <td className="py-3 pr-4">
                           <Switch

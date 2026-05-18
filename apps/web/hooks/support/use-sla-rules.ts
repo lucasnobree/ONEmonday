@@ -20,6 +20,13 @@ export interface SlaRule {
   business_hours_only: boolean;
   is_active: boolean;
   created_at: string;
+  // Wave 5 — business-hours schedule + breach escalation action.
+  business_timezone: string;
+  business_start_minute: number;
+  business_end_minute: number;
+  business_days_mask: number;
+  breach_action: "none" | "notify" | "escalate";
+  warn_threshold_pct: number;
 }
 
 export function useSLARules(sectorId: string | undefined) {

@@ -62,6 +62,28 @@ export interface TicketDetail {
     response_time_hours: number;
     resolve_time_hours: number;
   } | null;
+  ticket_messages: TicketMessage[];
+}
+
+/**
+ * An agent reply on a ticket — `internal` is a private note, `public` is a
+ * reply delivered to the requester (Wave 4 H3 public reply channel).
+ */
+export interface TicketMessage {
+  id: string;
+  visibility: "internal" | "public";
+  body: string;
+  delivery_status:
+    | "not_applicable"
+    | "pending"
+    | "sent"
+    | "skipped"
+    | "failed";
+  delivery_ref: string | null;
+  delivery_error: string | null;
+  created_at: string;
+  author_id: string;
+  author: { full_name: string } | null;
 }
 
 export function useTicketDetail(cardId: string | null) {
@@ -82,7 +104,8 @@ export function useTicketDetail(cardId: string | null) {
             card_comments(id, content, created_at, user_id, is_active, users(full_name)),
             card_activity_log(id, action, metadata, created_at, user_id, users(full_name))
           ),
-          sla_rules(name, response_time_hours, resolve_time_hours)
+          sla_rules(name, response_time_hours, resolve_time_hours),
+          ticket_messages(id, visibility, body, delivery_status, delivery_ref, delivery_error, created_at, author_id, author:users(full_name))
         `
         )
         .eq("card_id", cardId)

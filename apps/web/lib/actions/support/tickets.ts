@@ -14,8 +14,53 @@ import {
   computeSlaPauseTransition,
   type TicketStatus,
 } from "@/lib/support/sla";
+import { computeSlaDeadline } from "@/lib/support/business-hours";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+// The SLA-rule columns needed to project deadlines through business hours.
+interface SlaRuleForDeadline {
+  id: string;
+  response_time_hours: number;
+  resolve_time_hours: number;
+  business_hours_only: boolean;
+  business_start_minute: number;
+  business_end_minute: number;
+  business_days_mask: number;
+}
+
+/**
+ * Resolve the SLA due dates for a new ticket from the matching active rule.
+ *
+ * The most specific active rule for the sector/priority wins — a
+ * category-specific rule over a priority-only one. The deadline is projected
+ * with `computeSlaDeadline`, so `business_hours_only` rules only consume time
+ * inside the rule's configured working-hours window (Wave 4 S1).
+ */
+function resolveSlaDeadlines(
+  rule: SlaRuleForDeadline,
+  createdAt: Date
+): { responseDueAt: string; resolveDueAt: string } {
+  const schedule = {
+    startMinute: rule.business_start_minute,
+    endMinute: rule.business_end_minute,
+    daysMask: rule.business_days_mask,
+  };
+  return {
+    responseDueAt: computeSlaDeadline({
+      start: createdAt,
+      hours: rule.response_time_hours,
+      businessHoursOnly: rule.business_hours_only,
+      schedule,
+    }).toISOString(),
+    resolveDueAt: computeSlaDeadline({
+      start: createdAt,
+      hours: rule.resolve_time_hours,
+      businessHoursOnly: rule.business_hours_only,
+      schedule,
+    }).toISOString(),
+  };
+}
 
 export async function createTicket(formData: unknown) {
   const supabase = await createClient();
@@ -122,6 +167,28 @@ export async function createTicket(formData: unknown) {
 
   if (cardError) return { error: cardError.message };
 
+  // Resolve the matching active SLA rule and project its deadlines through
+  // the rule's business-hours schedule. A category-specific rule wins over a
+  // priority-only one; when no rule matches the ticket simply has no SLA.
+  const { data: slaRules } = await supabase
+    .from("sla_rules")
+    .select(
+      "id, category, response_time_hours, resolve_time_hours, business_hours_only, business_start_minute, business_end_minute, business_days_mask"
+    )
+    .eq("sector_id", parsed.data.sectorId)
+    .eq("priority", parsed.data.priority)
+    .eq("is_active", true);
+
+  const matchedRule =
+    (slaRules ?? []).find((r) => r.category === parsed.data.category) ??
+    (slaRules ?? []).find((r) => !r.category) ??
+    null;
+
+  const createdAt = new Date();
+  const slaDeadlines = matchedRule
+    ? resolveSlaDeadlines(matchedRule as SlaRuleForDeadline, createdAt)
+    : null;
+
   // Create the support ticket linked to the card
   const { data: ticket, error: ticketError } = await supabase
     .from("support_tickets")
@@ -133,6 +200,9 @@ export async function createTicket(formData: unknown) {
       channel: parsed.data.channel,
       requester_id: parsed.data.requesterId || user.id,
       requester_email: parsed.data.requesterEmail || null,
+      sla_rule_id: matchedRule?.id ?? null,
+      sla_response_due_at: slaDeadlines?.responseDueAt ?? null,
+      sla_resolve_due_at: slaDeadlines?.resolveDueAt ?? null,
     })
     .select()
     .single();

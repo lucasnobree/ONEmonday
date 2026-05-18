@@ -24,7 +24,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
+import { WEEKDAY_LABELS, formatMinuteOfDay } from "@/lib/support/business-hours";
+
 type SlaPriority = "critical" | "high" | "medium" | "low";
+type SlaBreachAction = "none" | "notify" | "escalate";
 
 const PRIORITY_LABELS: Record<SlaPriority, string> = {
   critical: "Crítica",
@@ -32,6 +35,19 @@ const PRIORITY_LABELS: Record<SlaPriority, string> = {
   medium: "Média",
   low: "Baixa",
 };
+
+const BREACH_LABELS: Record<SlaBreachAction, string> = {
+  none: "Nenhuma (apenas painel)",
+  notify: "Notificar responsável",
+  escalate: "Escalar automaticamente",
+};
+
+/** "HH:MM" string -> minutes from midnight. */
+function parseClock(value: string): number {
+  const [h, m] = value.split(":").map((p) => parseInt(p, 10));
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  return h * 60 + m;
+}
 
 interface SlaRuleFormDialogProps {
   open: boolean;
@@ -70,9 +86,34 @@ function SlaRuleForm({
     rule?.business_hours_only ?? true
   );
   const [isActive, setIsActive] = useState(rule?.is_active ?? true);
+  // Business-hours schedule.
+  const [startMinute, setStartMinute] = useState(
+    rule?.business_start_minute ?? 540
+  );
+  const [endMinute, setEndMinute] = useState(
+    rule?.business_end_minute ?? 1080
+  );
+  const [daysMask, setDaysMask] = useState(rule?.business_days_mask ?? 62);
+  // Breach escalation action + warn threshold.
+  const [breachAction, setBreachAction] = useState<SlaBreachAction>(
+    (rule?.breach_action as SlaBreachAction) ?? "none"
+  );
+  const [warnThresholdPct, setWarnThresholdPct] = useState(
+    rule?.warn_threshold_pct ?? 80
+  );
+
+  // Toggle one weekday bit in the working-days bitset.
+  const toggleDay = (day: number) => {
+    setDaysMask((mask) => mask ^ (1 << day));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (endMinute <= startMinute) {
+      toast.error("O fim do expediente deve ser depois do início");
+      return;
+    }
 
     const payload = {
       sectorId,
@@ -83,6 +124,12 @@ function SlaRuleForm({
       resolveTimeHours,
       businessHoursOnly,
       isActive,
+      businessTimezone: rule?.business_timezone ?? "America/Sao_Paulo",
+      businessStartMinute: startMinute,
+      businessEndMinute: endMinute,
+      businessDaysMask: daysMask,
+      breachAction,
+      warnThresholdPct,
     };
 
     const result = isEdit
@@ -200,6 +247,106 @@ function SlaRuleForm({
             onCheckedChange={setBusinessHoursOnly}
           />
         </div>
+
+        {businessHoursOnly && (
+          <div className="grid gap-3 rounded-md border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">
+              O relógio de SLA só conta o tempo dentro deste expediente.
+            </p>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Dias úteis</Label>
+              <div className="flex flex-wrap gap-1">
+                {WEEKDAY_LABELS.map((label, day) => {
+                  const active = (daysMask & (1 << day)) !== 0;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => toggleDay(day)}
+                      aria-pressed={active}
+                      className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/70"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="sla-start" className="text-xs">
+                  Início
+                </Label>
+                <Input
+                  id="sla-start"
+                  type="time"
+                  value={formatMinuteOfDay(startMinute)}
+                  onChange={(e) => setStartMinute(parseClock(e.target.value))}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sla-end" className="text-xs">
+                  Fim
+                </Label>
+                <Input
+                  id="sla-end"
+                  type="time"
+                  value={formatMinuteOfDay(endMinute)}
+                  onChange={(e) => setEndMinute(parseClock(e.target.value))}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-2">
+          <Label>Ação em caso de violação</Label>
+          <Select
+            value={breachAction}
+            onValueChange={(v) =>
+              setBreachAction((v as SlaBreachAction) ?? "none")
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue>
+                {(value) =>
+                  BREACH_LABELS[value as SlaBreachAction] ?? "Selecione"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{BREACH_LABELS.none}</SelectItem>
+              <SelectItem value="notify">{BREACH_LABELS.notify}</SelectItem>
+              <SelectItem value="escalate">
+                {BREACH_LABELS.escalate}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {breachAction !== "none" && (
+          <div className="grid gap-2">
+            <Label htmlFor="sla-warn">
+              Alertar ao atingir (% do prazo)
+            </Label>
+            <Input
+              id="sla-warn"
+              type="number"
+              min={1}
+              max={100}
+              value={warnThresholdPct}
+              onChange={(e) =>
+                setWarnThresholdPct(
+                  Math.min(100, Math.max(1, parseInt(e.target.value) || 80))
+                )
+              }
+            />
+          </div>
+        )}
 
         {isEdit && (
           <div className="flex items-center justify-between">
