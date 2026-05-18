@@ -48,7 +48,9 @@ export type Resource =
   // Marketing
   | "campaign"
   | "content_item"
-  | "audience_segment";
+  | "audience_segment"
+  // Integration layer (external-provider config + outbound dispatch)
+  | "integration";
 
 export type Action =
   | "create"
