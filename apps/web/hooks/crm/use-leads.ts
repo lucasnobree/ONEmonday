@@ -44,6 +44,16 @@ export interface LeadStats {
   avg_score: number;
 }
 
+/** Lead-aging / SLA counts returned by the `get_crm_lead_aging` RPC. */
+export interface LeadAgingStats {
+  /** The sector's SLA window in hours; 0 = the aging indicator is off. */
+  sla_hours: number;
+  /** Untouched ('new') leads, regardless of age. */
+  untouched: number;
+  /** Untouched leads that have breached the SLA window. */
+  overdue: number;
+}
+
 export function useLeads(sectorId: string | undefined) {
   const supabase = createClient();
 
@@ -98,10 +108,29 @@ export function useLeadStats(sectorId: string | undefined) {
   });
 }
 
+/** Inbox SLA-aging counts (the `get_crm_lead_aging` RPC). */
+export function useLeadAging(sectorId: string | undefined) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ["crm-lead-aging", sectorId],
+    queryFn: async () => {
+      if (!sectorId) return null;
+      const { data, error } = await supabase.rpc("get_crm_lead_aging", {
+        p_sector_id: sectorId,
+      });
+      if (error) throw error;
+      return data as LeadAgingStats;
+    },
+    enabled: !!sectorId,
+  });
+}
+
 /** Invalidates every leads query after a mutation. */
 function leadKeys(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["crm-leads"] });
   queryClient.invalidateQueries({ queryKey: ["crm-lead-stats"] });
+  queryClient.invalidateQueries({ queryKey: ["crm-lead-aging"] });
 }
 
 export function useCreateLead() {

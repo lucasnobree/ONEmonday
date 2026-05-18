@@ -170,7 +170,7 @@ export function LeadFormBuilderDialog({
     // A lead property may be fed by at most one field.
     const mapped = normalised
       .map((f) => f.map)
-      .filter((m): m is LeadFieldMapTarget => !!m);
+      .filter((m): m is NonNullable<typeof m> => !!m);
     if (new Set(mapped).size !== mapped.length) {
       toast.error("Cada propriedade do lead só pode ser mapeada uma vez");
       return;
