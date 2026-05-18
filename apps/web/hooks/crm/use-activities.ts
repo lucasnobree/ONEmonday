@@ -7,6 +7,10 @@ import {
   completeActivity,
   rescheduleActivity,
 } from "@/lib/actions/crm/activities";
+import {
+  sendWhatsappMessage,
+  logEmail,
+} from "@/lib/actions/crm/communication";
 
 export interface Activity {
   id: string;
@@ -21,7 +25,11 @@ export interface Activity {
   completed_at: string | null;
   assigned_to: string | null;
   duration_min: number | null;
-  performed_by: string;
+  performed_by: string | null;
+  channel: "manual" | "whatsapp" | "email" | "phone";
+  direction: "inbound" | "outbound" | null;
+  external_ref: string | null;
+  occurred_at: string;
   created_at: string;
   deal: { id: string; card_id: string; cards: { title: string } } | null;
   contact: { id: string; full_name: string } | null;
@@ -57,6 +65,7 @@ export function useActivities({
           id, sector_id, deal_id, contact_id, company_id,
           type, subject, description, scheduled_at, completed_at,
           assigned_to, duration_min, performed_by, created_at,
+          channel, direction, external_ref, occurred_at,
           crm_deals (id, card_id, cards (title)),
           crm_contacts (id, full_name),
           crm_companies (id, name),
@@ -118,6 +127,30 @@ export function useRescheduleActivity() {
   return useMutation({
     mutationFn: (input: { activityId: string; scheduledAt: string }) =>
       rescheduleActivity(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
+    },
+  });
+}
+
+/** Sends a WhatsApp message to a contact and logs it on the deal timeline. */
+export function useSendWhatsapp() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: unknown) => sendWhatsappMessage(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
+    },
+  });
+}
+
+/** Logs an email exchange (sent/received) as a deal timeline entry. */
+export function useLogEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: unknown) => logEmail(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-activities"] });
     },

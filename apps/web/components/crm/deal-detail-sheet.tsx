@@ -41,6 +41,7 @@ import {
 } from "@/lib/crm/lost-reasons";
 import { ProposalFormDialog } from "./proposal-form-dialog";
 import { ProposalDetailSheet } from "./proposal-detail-sheet";
+import { DealCommunicationPanel } from "./deal-communication-panel";
 import {
   Building2,
   User,
@@ -57,6 +58,9 @@ import {
   Plus,
   Lock,
   Unlock,
+  MessageCircle,
+  ArrowDownLeft,
+  ArrowUpRight,
 } from "lucide-react";
 
 const formatCurrency = (value: number) =>
@@ -175,6 +179,11 @@ export function DealDetailSheet({
   const isWon = isClosed && !deal?.lost_reason;
   const isLost = isClosed && !!deal?.lost_reason;
 
+  // Communication activities (WhatsApp + logged email) drive the tab counter.
+  const communicationCount = (activities ?? []).filter(
+    (a) => a.channel === "whatsapp" || a.channel === "email"
+  ).length;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
@@ -236,6 +245,9 @@ export function DealDetailSheet({
                 <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
                 <TabsTrigger value="atividades">
                   Atividades ({activities?.length ?? 0})
+                </TabsTrigger>
+                <TabsTrigger value="comunicacao">
+                  Comunicação ({communicationCount})
                 </TabsTrigger>
                 <TabsTrigger value="propostas">
                   Propostas ({deal.proposals.length})
@@ -548,10 +560,16 @@ export function DealDetailSheet({
                 ) : (
                   <div className="space-y-0 border-l-2 border-muted ml-3">
                     {activities.map((activity) => {
-                      const typeInfo = activityTypeIcons[activity.type] || {
-                        icon: FileText,
-                        color: "text-gray-400",
-                      };
+                      const isComm =
+                        activity.channel === "whatsapp" ||
+                        activity.channel === "email";
+                      const typeInfo =
+                        activity.channel === "whatsapp"
+                          ? { icon: MessageCircle, color: "text-green-600" }
+                          : activityTypeIcons[activity.type] || {
+                              icon: FileText,
+                              color: "text-gray-400",
+                            };
                       const Icon = typeInfo.icon;
                       return (
                         <div key={activity.id} className="relative pl-6 pb-4">
@@ -563,9 +581,29 @@ export function DealDetailSheet({
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-medium text-muted-foreground uppercase">
-                                {activityTypeLabels[activity.type] ||
-                                  activity.type}
+                                {activity.channel === "whatsapp"
+                                  ? "WhatsApp"
+                                  : activityTypeLabels[activity.type] ||
+                                    activity.type}
                               </span>
+                              {isComm && activity.direction && (
+                                <Badge
+                                  variant="secondary"
+                                  className="gap-0.5 px-1 py-0 text-[10px]"
+                                >
+                                  {activity.direction === "inbound" ? (
+                                    <>
+                                      <ArrowDownLeft className="h-2.5 w-2.5" />
+                                      Recebido
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ArrowUpRight className="h-2.5 w-2.5" />
+                                      Enviado
+                                    </>
+                                  )}
+                                </Badge>
+                              )}
                               <span className="text-xs text-muted-foreground">
                                 {dateFormat.format(
                                   new Date(activity.created_at)
@@ -591,6 +629,17 @@ export function DealDetailSheet({
                     })}
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="comunicacao" className="mt-4">
+                <DealCommunicationPanel
+                  sectorId={sectorId}
+                  dealId={deal.id}
+                  contactId={deal.contact?.id}
+                  companyId={deal.company?.id}
+                  contactPhone={deal.contact?.phone}
+                  activities={activities}
+                />
               </TabsContent>
 
               <TabsContent value="propostas" className="mt-4">
