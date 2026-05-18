@@ -105,39 +105,73 @@ interface MatchedContact {
 }
 
 /**
+ * The national significant number — area code + local number — of a Brazilian
+ * phone, derived from a digits-only string. WhatsApp reports `55` + 2-digit
+ * area + 8/9-digit local (12-13 digits); stored contact phones are free-text
+ * and may or may not carry the `55` country code.
+ *
+ * Returns the last 10-11 digits (area + local) once the optional leading `55`
+ * is stripped, or null when the string is too short to be a real number. The
+ * national number is what we match on — it is specific enough that a match is
+ * the same person, unlike a bare 8-digit local suffix which collides across
+ * area codes.
+ */
+export function nationalNumber(digits: string): string | null {
+  let d = digits;
+  // Strip the Brazil country code only when what remains is still a full
+  // national number (10-11 digits) — avoids eating real leading digits.
+  if (d.startsWith("55") && d.length >= 12 && d.length <= 13) {
+    d = d.slice(2);
+  }
+  // A Brazilian national number is 10 (landline / 8-digit mobile) or 11
+  // (9-digit mobile) digits. Anything shorter is not matchable.
+  if (d.length < 10 || d.length > 11) return null;
+  return d;
+}
+
+/**
  * Matches a sender phone against `crm_contacts`. WhatsApp reports numbers with
  * country code and no separators; stored contact phones are free-text, so the
- * match compares digits-only and tolerates a missing country code by also
- * trying a suffix match on the last 8+ digits.
+ * match compares on the *national significant number* (area code + local) with
+ * the optional `55` country code normalised away on both sides.
+ *
+ * A full national-number match is required — no loose suffix containment, which
+ * would cross-match different people who share an 8-digit local number under
+ * different area codes. When more than one distinct contact matches, the sender
+ * is ambiguous and is treated as UNMATCHED rather than guessing — an inbound
+ * message must never be threaded onto the wrong contact's deal.
  */
 async function findContactByPhone(
   client: SupabaseClient,
   fromDigits: string
 ): Promise<MatchedContact | null> {
+  const target = nationalNumber(fromDigits);
+  if (!target) return null;
+
   // Cheap first pass: candidates whose phone shares the local 8-digit suffix.
-  const suffix = fromDigits.slice(-8);
-  if (suffix.length < 8) return null;
+  // The exact decision below is made on the full national number.
+  const suffix = target.slice(-8);
 
   const { data } = await client
     .from("crm_contacts")
     .select("id, sector_id, phone")
     .eq("is_active", true)
     .ilike("phone", `%${suffix}%`)
-    .limit(25);
+    .limit(50);
 
+  const matches: MatchedContact[] = [];
+  const seen = new Set<string>();
   for (const c of (data ?? []) as MatchedContact[]) {
     if (!c.phone) continue;
-    const digits = normalizePhone(c.phone);
-    // Either side may omit the country code — accept a suffix containment.
-    if (
-      digits === fromDigits ||
-      fromDigits.endsWith(digits) ||
-      digits.endsWith(fromDigits)
-    ) {
-      return c;
+    const candidate = nationalNumber(normalizePhone(c.phone));
+    if (candidate && candidate === target && !seen.has(c.id)) {
+      seen.add(c.id);
+      matches.push(c);
     }
   }
-  return null;
+
+  // Exactly one contact -> a confident match. Zero or many -> unmatched.
+  return matches.length === 1 ? matches[0] : null;
 }
 
 /** Outcome summary of fanning a webhook body into the timeline. */

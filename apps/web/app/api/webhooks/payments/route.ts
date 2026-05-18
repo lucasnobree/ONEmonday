@@ -3,18 +3,23 @@
  *
  * Payment confirmation is asynchronous: a customer pays a boleto / PIX charge
  * hours-to-days after it was issued, and Asaas calls this route to report it.
- * The route verifies the shared-secret HMAC, logs the event for idempotency
+ * The route authenticates the caller, logs the event for idempotency
  * (`webhook_events`), updates the matching `finance_payment_charges` row, and —
  * when the charge is confirmed received — marks the linked invoice `paid`.
  *
- * The HMAC secret is read from the global `payments`-capability credential
+ * Unlike Meta / Teams, Asaas does NOT HMAC-sign the body: it sends a *static*
+ * shared token in the `asaas-access-token` header (the value configured in the
+ * Asaas webhook settings). Authentication is therefore a constant-time direct
+ * compare of that header against the stored token — there is nothing to HMAC.
+ *
+ * The token is read from the global `payments`-capability credential
  * (`webhookSecret` in the encrypted blob). With no credential / no service-role
  * key the route degrades to a safe response — dev runs without configuration.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient, hasServiceRoleKey } from "@/lib/supabase/service";
 import { decryptSecretJson } from "@/lib/integrations/crypto";
-import { verifyHmacSignature } from "@/lib/integrations/signature";
+import { verifyStaticToken } from "@/lib/integrations/signature";
 import { makeWebhookPorts } from "@/lib/integrations/webhook-ports";
 import { processWebhook } from "@/lib/integrations/webhook";
 import { mapAsaasStatus } from "@/lib/integrations/payments/asaas-adapter";
@@ -34,6 +39,7 @@ async function loadPaymentSecret(): Promise<PaymentSecret | null> {
     .select("secret")
     .eq("capability", "payments")
     .eq("is_active", true)
+    .eq("is_enabled", true)
     .is("sector_id", null)
     .maybeSingle<{ secret: string | null }>();
   if (!data?.secret) return null;
@@ -52,11 +58,11 @@ export async function POST(request: NextRequest) {
   }
 
   const secret = await loadPaymentSecret();
-  const signatureOk = verifyHmacSignature(
+  // Asaas authenticates with a static `asaas-access-token` header, not an
+  // HMAC over the body — verify it with a timing-safe direct compare.
+  const signatureOk = verifyStaticToken(
     secret?.webhookSecret ?? "",
-    rawBody,
-    request.headers.get("x-webhook-signature") ??
-      request.headers.get("asaas-access-token")
+    request.headers.get("asaas-access-token")
   );
 
   let body: Record<string, unknown>;

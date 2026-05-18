@@ -16,10 +16,19 @@
  * service-role-backed implementation.
  */
 
-/** Result of recording an inbound event in the idempotency log. */
+/** Persisted lifecycle status of a `webhook_events` row. */
+export type WebhookEventStatus = "received" | "processed" | "failed" | "skipped";
+
+/**
+ * Result of recording an inbound event in the idempotency log.
+ *
+ *  - `new`        — first time this (provider, externalId) was seen.
+ *  - `duplicate`  — already recorded; `status` is the stored row's status, so
+ *    the caller can decide whether to re-process (a prior `failed` attempt).
+ */
 export type RecordResult =
   | { state: "new" }
-  | { state: "duplicate" };
+  | { state: "duplicate"; status: WebhookEventStatus };
 
 /** Side-effecting dependencies for webhook processing. */
 export interface WebhookPorts {
@@ -34,6 +43,11 @@ export interface WebhookPorts {
     payload: unknown;
     signatureOk: boolean;
   }): Promise<RecordResult>;
+  /**
+   * Resets a previously-`failed` event back to `received` so the handler can
+   * run again on a provider redelivery. Called only for a `failed` duplicate.
+   */
+  resetEvent(input: { provider: string; externalId: string }): Promise<void>;
   /** Marks a previously-recorded event as processed / failed. */
   finalizeEvent(input: {
     provider: string;
@@ -64,9 +78,11 @@ export interface ParsedWebhook {
 /**
  * Runs the verify-record-handle pipeline for a parsed webhook.
  *
- *   * `signatureOk === false` -> 401, nothing recorded.
- *   * a duplicate event id     -> 200, recorded as `skipped`, handler skipped.
- *   * a new event              -> handler runs; recorded `processed`/`failed`.
+ *   * `signatureOk === false`     -> 401, nothing recorded.
+ *   * a duplicate of a SUCCESS    -> 200, handler skipped (true idempotency).
+ *   * a duplicate of a FAILURE    -> handler RE-RUNS — a provider redelivery is
+ *     the retry path for an event whose prior attempt failed.
+ *   * a new event                -> handler runs; recorded `processed`/`failed`.
  *
  * `handle` performs the domain side effect (update a delivery status, log an
  * inbound WhatsApp reply, ...). It may be a no-op for Phase 1.
@@ -101,9 +117,27 @@ export async function processWebhook(
     };
   }
 
-  // Idempotency: an already-seen event id is acknowledged, not re-processed.
+  // Idempotency: an already-seen event id that previously SUCCEEDED (or is
+  // still mid-flight) is acknowledged, not re-processed. But a prior `failed`
+  // attempt is re-processable — a provider redelivery is its retry path, so
+  // reset the row to `received` and fall through to run the handler again.
   if (recorded.state === "duplicate") {
-    return { ok: true, state: "duplicate", status: 200 };
+    if (recorded.status !== "failed") {
+      return { ok: true, state: "duplicate", status: 200 };
+    }
+    try {
+      await ports.resetEvent({
+        provider: parsed.provider,
+        externalId: parsed.externalId,
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        reason: "error",
+        status: 500,
+        detail: err instanceof Error ? err.message : "reset_failed",
+      };
+    }
   }
 
   try {

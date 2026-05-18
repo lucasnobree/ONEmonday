@@ -4,6 +4,7 @@ import {
   hmacSha256Hex,
   verifyMetaSignature,
   verifyHmacSignature,
+  verifyStaticToken,
 } from "./signature";
 
 describe("integration signature verification", () => {
@@ -71,6 +72,40 @@ describe("integration signature verification", () => {
     it("rejects a missing header or empty secret", () => {
       expect(verifyHmacSignature(secret, body, null)).toBe(false);
       expect(verifyHmacSignature("", body, digest)).toBe(false);
+    });
+  });
+
+  // Regression — Finance B1: Asaas sends a STATIC `asaas-access-token`, not an
+  // HMAC. It must be verified by a timing-safe direct compare of the stored
+  // token vs. the header — NOT by verifyHmacSignature (which would always
+  // reject, since the static token is not a digest of the body).
+  describe("verifyStaticToken (Asaas asaas-access-token)", () => {
+    const token = "asaas-shared-token-xyz";
+
+    it("accepts the exact stored token", () => {
+      expect(verifyStaticToken(token, token)).toBe(true);
+    });
+
+    it("accepts a header with surrounding whitespace", () => {
+      expect(verifyStaticToken(token, `  ${token}  `)).toBe(true);
+    });
+
+    it("rejects a wrong token", () => {
+      expect(verifyStaticToken(token, "wrong-token")).toBe(false);
+    });
+
+    it("rejects a missing header or empty stored token (fails closed)", () => {
+      expect(verifyStaticToken(token, null)).toBe(false);
+      expect(verifyStaticToken("", token)).toBe(false);
+      expect(verifyStaticToken("", null)).toBe(false);
+    });
+
+    it("does NOT treat the token as an HMAC of the body", () => {
+      // The mistaken HMAC approach would compute hmac(token, body) and never
+      // match the static token. The direct compare matches the token itself.
+      const body = '{"event":"PAYMENT_RECEIVED"}';
+      expect(verifyStaticToken(token, token)).toBe(true);
+      expect(verifyHmacSignature(token, body, token)).toBe(false);
     });
   });
 });

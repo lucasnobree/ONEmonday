@@ -9,16 +9,20 @@ import {
 /** A mock {@link WebhookPorts} with a configurable record result. */
 function mockPorts(recordResult: RecordResult | Error) {
   const finalized: { status: string; error?: string }[] = [];
+  const reset: { provider: string; externalId: string }[] = [];
   const ports: WebhookPorts = {
     recordEvent: async () => {
       if (recordResult instanceof Error) throw recordResult;
       return recordResult;
     },
+    resetEvent: async (input) => {
+      reset.push(input);
+    },
     finalizeEvent: async (input) => {
       finalized.push({ status: input.status, error: input.error });
     },
   };
-  return { ports, finalized };
+  return { ports, finalized, reset };
 }
 
 const baseEvent: ParsedWebhook = {
@@ -61,12 +65,49 @@ describe("processWebhook", () => {
     expect(finalized[0].status).toBe("processed");
   });
 
-  it("is idempotent: a duplicate event id is acknowledged, handler skipped", async () => {
-    const { ports } = mockPorts({ state: "duplicate" });
+  it("is idempotent: a duplicate of a PROCESSED event is acknowledged, handler skipped", async () => {
+    const { ports } = mockPorts({ state: "duplicate", status: "processed" });
     const handler = vi.fn().mockResolvedValue(undefined);
     const outcome = await processWebhook(baseEvent, ports, handler);
     expect(outcome).toMatchObject({ ok: true, state: "duplicate", status: 200 });
     // Idempotency: the domain handler must NOT run on a replay.
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("skips the handler for a duplicate still in the `received` state", async () => {
+    const { ports } = mockPorts({ state: "duplicate", status: "received" });
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const outcome = await processWebhook(baseEvent, ports, handler);
+    expect(outcome).toMatchObject({ ok: true, state: "duplicate" });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  // Regression — Integration S1: a redelivery of an event whose stored status
+  // is `failed` must RE-PROCESS — a provider redelivery is the retry path.
+  it("re-processes a duplicate whose stored status is `failed`", async () => {
+    const { ports, finalized, reset } = mockPorts({
+      state: "duplicate",
+      status: "failed",
+    });
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const outcome = await processWebhook(baseEvent, ports, handler);
+    expect(outcome).toMatchObject({ ok: true, state: "processed" });
+    // The failed row was reset to `received`, then the handler ran again.
+    expect(reset).toEqual([
+      { provider: baseEvent.provider, externalId: baseEvent.externalId },
+    ]);
+    expect(handler).toHaveBeenCalledOnce();
+    expect(finalized[0].status).toBe("processed");
+  });
+
+  it("returns 500 when resetting a failed duplicate itself fails", async () => {
+    const { ports } = mockPorts({ state: "duplicate", status: "failed" });
+    ports.resetEvent = async () => {
+      throw new Error("reset db error");
+    };
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const outcome = await processWebhook(baseEvent, ports, handler);
+    expect(outcome).toMatchObject({ ok: false, status: 500 });
     expect(handler).not.toHaveBeenCalled();
   });
 

@@ -34,6 +34,7 @@ async function loadFiscalSecret(): Promise<FiscalSecret | null> {
     .select("secret")
     .eq("capability", "fiscal")
     .eq("is_active", true)
+    .eq("is_enabled", true)
     .is("sector_id", null)
     .maybeSingle<{ secret: string | null }>();
   if (!data?.secret) return null;

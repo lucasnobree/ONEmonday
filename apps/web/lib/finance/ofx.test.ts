@@ -35,10 +35,43 @@ describe("parseOfxAmount", () => {
     expect(parseOfxAmount("-12,34")?.amountCents).toBe(1_234);
   });
 
+  // Regression — Finance S3: pt-BR banks export grouped amounts where "." is
+  // the thousands separator. A naive ","->"." replace turned "1.500,00" into
+  // the broken "1.500.00" -> NaN. parseCents (money.ts) handles it correctly.
+  it("parses a pt-BR grouped amount (dot thousands, comma decimal)", () => {
+    expect(parseOfxAmount("1.500,00")).toEqual({
+      amountCents: 150_000,
+      direction: "credit",
+    });
+  });
+
+  it("parses a negative pt-BR grouped amount as a debit", () => {
+    expect(parseOfxAmount("-2.345,67")).toEqual({
+      amountCents: 234_567,
+      direction: "debit",
+    });
+  });
+
+  it("parses a millions-scale pt-BR grouped amount", () => {
+    expect(parseOfxAmount("1.234.567,89")?.amountCents).toBe(123_456_789);
+  });
+
+  it("still parses an en-US grouped amount (comma thousands)", () => {
+    expect(parseOfxAmount("-1,500.00")?.amountCents).toBe(150_000);
+  });
+
+  it("treats a leading + sign as a credit", () => {
+    expect(parseOfxAmount("+99.90")).toEqual({
+      amountCents: 9_990,
+      direction: "credit",
+    });
+  });
+
   it("returns null for zero or unparseable input", () => {
     expect(parseOfxAmount("0.00")).toBeNull();
     expect(parseOfxAmount("abc")).toBeNull();
     expect(parseOfxAmount(null)).toBeNull();
+    expect(parseOfxAmount("")).toBeNull();
   });
 });
 

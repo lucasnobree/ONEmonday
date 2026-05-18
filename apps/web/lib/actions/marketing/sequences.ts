@@ -12,8 +12,11 @@
  * the entrypoint is ready (an admin "processar agora" button or a future cron
  * both call it). It drains active enrollments whose `next_run_at` is due,
  * evaluates each with the pure `sequence-runner` logic, performs the step's
- * side effect (a `send_email` step calls `sendEmailCampaign`), and persists the
- * advanced enrollment state.
+ * side effect (a `send_email` step calls the per-recipient
+ * `sendCampaignEmailToRecipient` primitive — NOT the campaign-blast
+ * `sendEmailCampaign`, which would lock the campaign to `sent` and let only the
+ * first enrollment through), and persists the advanced enrollment state. A
+ * failed send leaves the enrollment in place so the next run retries it.
  *
  * Honest scope: linear step list, single `segment_entry` trigger — NOT a visual
  * flow canvas or lead-scoring engine (deferred — migration-comercial.md §5).
@@ -31,7 +34,7 @@ import {
   type EnrollmentState,
   type SequenceStep,
 } from "@/lib/marketing/sequence-runner";
-import { sendEmailCampaign } from "@/lib/actions/marketing/email-campaigns";
+import { sendCampaignEmailToRecipient } from "@/lib/actions/marketing/email-campaigns";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -319,6 +322,7 @@ export async function runDueSequenceSteps() {
   let emailsSent = 0;
   let skippedSteps = 0;
   let completed = 0;
+  let sendFailures = 0;
 
   for (const enrollment of enrollments) {
     // Resolve whether the parent sequence is active (only active runs proceed).
@@ -362,16 +366,21 @@ export async function runDueSequenceSteps() {
 
     // Perform the step side effect.
     if (evaluation.action.kind === "send_email") {
-      const result = await sendEmailCampaign({
+      const result = await sendCampaignEmailToRecipient({
         emailCampaignId: evaluation.action.emailCampaignId,
-        recipients: [
-          {
-            email: enrollment.recipient_email,
-            name: enrollment.recipient_name ?? undefined,
-          },
-        ],
+        recipient: {
+          email: enrollment.recipient_email,
+          name: enrollment.recipient_name ?? undefined,
+        },
       });
-      if (!("error" in result)) emailsSent += 1;
+      if (result.status === "failed") {
+        // The send failed — do NOT advance the enrollment. Leaving it in place
+        // (same step, same next_run_at) means the next runner pass retries it,
+        // instead of silently skipping the recipient's email.
+        sendFailures += 1;
+        continue;
+      }
+      if (result.status === "sent") emailsSent += 1;
     } else if (evaluation.action.kind === "skip") {
       skippedSteps += 1;
     }
@@ -402,5 +411,6 @@ export async function runDueSequenceSteps() {
     emailsSent,
     skippedSteps,
     completed,
+    sendFailures,
   };
 }
