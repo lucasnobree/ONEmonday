@@ -144,7 +144,7 @@ export async function startOffboarding(formData: unknown) {
 
   const { data: template } = await supabase
     .from("hr_offboarding_templates")
-    .select("id, items")
+    .select("id, items, sector_id")
     .eq("id", parsed.data.templateId)
     .single();
 
@@ -157,6 +157,12 @@ export async function startOffboarding(formData: unknown) {
     .single();
 
   if (!employee) return { error: "Colaborador nao encontrado" };
+
+  // The template and the employee must belong to the same sector — a template
+  // can carry confidential exit steps, so it must not cross a tenant boundary.
+  if (template.sector_id !== employee.sector_id) {
+    return { error: "Template e colaborador sao de setores diferentes" };
+  }
 
   const perms = await getUserPermissions(user.id);
   if (!hasPermission(perms, employee.sector_id, "employee", "update")) {

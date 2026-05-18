@@ -6,6 +6,7 @@ import {
   useExpenseReceipts,
   useUploadExpenseReceipt,
   useDeleteExpenseReceipt,
+  useExpenseReceiptUrl,
 } from "@/hooks/finance/use-expense-receipts";
 import {
   Dialog,
@@ -14,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
 import { Upload, FileText, Trash2, ExternalLink } from "lucide-react";
@@ -46,6 +47,7 @@ export function ExpenseReceiptsDialog({
   );
   const upload = useUploadExpenseReceipt();
   const remove = useDeleteExpenseReceipt();
+  const openUrl = useExpenseReceiptUrl();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -76,6 +78,19 @@ export function ExpenseReceiptsDialog({
       return;
     }
     toast.success("Comprovante anexado");
+  };
+
+  const handleOpen = async (receiptId: string) => {
+    const result = await openUrl.mutateAsync(receiptId);
+    if (result.error || !result.data) {
+      toast.error(
+        typeof result.error === "string"
+          ? result.error
+          : "Erro ao abrir comprovante"
+      );
+      return;
+    }
+    window.open(result.data, "_blank", "noopener,noreferrer");
   };
 
   const handleDelete = async (receiptId: string) => {
@@ -138,18 +153,15 @@ export function ExpenseReceiptsDialog({
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
-                    <a
-                      href={r.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       aria-label="Abrir comprovante"
-                      className={buttonVariants({
-                        variant: "ghost",
-                        size: "sm",
-                      })}
+                      disabled={openUrl.isPending}
+                      onClick={() => handleOpen(r.id)}
                     >
                       <ExternalLink className="size-4" />
-                    </a>
+                    </Button>
                     <ConfirmDialog
                       title="Remover comprovante"
                       description={`Remover "${r.file_name}"?`}

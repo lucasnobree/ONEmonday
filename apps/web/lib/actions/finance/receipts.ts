@@ -68,17 +68,15 @@ export async function uploadExpenseReceipt(formData: FormData) {
     .upload(path, file, { contentType: file.type });
   if (uploadError) return { error: uploadError.message };
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(RECEIPT_BUCKET).getPublicUrl(path);
-
+  // The bucket is private — store the object path, not a (broken) public URL.
+  // Downloads are served via short-lived signed URLs (getExpenseReceiptUrl).
   const { data: receipt, error: insertError } = await supabase
     .from("finance_expense_receipts")
     .insert({
       expense_id: expenseId,
       sector_id: expense.sector_id,
       file_name: file.name,
-      file_url: publicUrl,
+      file_path: path,
       file_size: file.size,
       mime_type: file.type,
       uploaded_by: user.id,
@@ -108,7 +106,7 @@ export async function deleteExpenseReceipt(receiptId: string) {
 
   const { data: receipt } = await supabase
     .from("finance_expense_receipts")
-    .select("id, file_url, sector_id")
+    .select("id, file_path, sector_id")
     .eq("id", receiptId)
     .single();
   if (!receipt) return { error: "Comprovante nao encontrado" };
@@ -118,13 +116,7 @@ export async function deleteExpenseReceipt(receiptId: string) {
     return { error: "Sem permissao" };
   }
 
-  // Recover the storage path from the public URL to remove the object.
-  const marker = `/object/public/${RECEIPT_BUCKET}/`;
-  const idx = receipt.file_url.indexOf(marker);
-  if (idx !== -1) {
-    const storagePath = receipt.file_url.substring(idx + marker.length);
-    await supabase.storage.from(RECEIPT_BUCKET).remove([storagePath]);
-  }
+  await supabase.storage.from(RECEIPT_BUCKET).remove([receipt.file_path]);
 
   const { error } = await supabase
     .from("finance_expense_receipts")
@@ -135,4 +127,38 @@ export async function deleteExpenseReceipt(receiptId: string) {
 
   revalidatePath("/finance");
   return { success: true };
+}
+
+/**
+ * Mint a short-lived signed URL for a receipt. The bucket is private, so the
+ * UI fetches a fresh URL on demand instead of storing a permanent link.
+ */
+export async function getExpenseReceiptUrl(receiptId: string) {
+  const parsed = z.string().uuid().safeParse(receiptId);
+  if (!parsed.success) return { error: "ID invalido" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado" };
+
+  const { data: receipt } = await supabase
+    .from("finance_expense_receipts")
+    .select("file_path, sector_id")
+    .eq("id", receiptId)
+    .single();
+  if (!receipt) return { error: "Comprovante nao encontrado" };
+
+  const perms = await getUserPermissions(user.id);
+  if (!hasPermission(perms, receipt.sector_id, "expense", "read")) {
+    return { error: "Sem permissao" };
+  }
+
+  const { data, error } = await supabase.storage
+    .from(RECEIPT_BUCKET)
+    .createSignedUrl(receipt.file_path, 60);
+  if (error || !data) return { error: "Nao foi possivel abrir o comprovante" };
+
+  return { data: data.signedUrl };
 }

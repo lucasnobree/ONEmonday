@@ -10,7 +10,8 @@ import { z } from "zod";
 /**
  * Available balance for an employee + policy in a given year, via the
  * get_time_off_available_days RPC (migration 00150). Returns null when the
- * RPC fails so callers can decide whether to proceed.
+ * RPC fails or the balance is otherwise indeterminable — callers must treat
+ * null as "cannot verify" and fail closed, not proceed.
  */
 async function getAvailableDays(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -54,14 +55,21 @@ export async function requestTimeOff(formData: unknown) {
       parsed.data.policyId,
       year
     );
-    if (available !== null) {
-      const check = checkTimeOffBalance(available, parsed.data.daysCount);
-      if (!check.withinBalance) {
-        return {
-          error: `Saldo insuficiente: a solicitação excede o saldo disponível em ${check.shortfall} dia(s).`,
-          balanceShortfall: check.shortfall,
-        };
-      }
+    // Fail closed: if the balance cannot be determined, do not let the
+    // request through silently — the whole point of the guard is to block
+    // over-balance requests.
+    if (available === null) {
+      return {
+        error:
+          "Não foi possível verificar o saldo de férias. Tente novamente.",
+      };
+    }
+    const check = checkTimeOffBalance(available, parsed.data.daysCount);
+    if (!check.withinBalance) {
+      return {
+        error: `Saldo insuficiente: a solicitação excede o saldo disponível em ${check.shortfall} dia(s).`,
+        balanceShortfall: check.shortfall,
+      };
     }
   }
 
@@ -127,17 +135,22 @@ export async function approveTimeOff(
       year,
       requestId
     );
-    if (available !== null) {
-      const check = checkTimeOffBalance(
-        available,
-        request.days_count as number
-      );
-      if (!check.withinBalance) {
-        return {
-          error: `Aprovar esta solicitação deixará o saldo negativo (faltam ${check.shortfall} dia(s)). Confirme para aprovar mesmo assim.`,
-          balanceShortfall: check.shortfall,
-        };
-      }
+    // Fail closed: an unverifiable balance must not silently approve.
+    if (available === null) {
+      return {
+        error:
+          "Não foi possível verificar o saldo de férias. Tente novamente.",
+      };
+    }
+    const check = checkTimeOffBalance(
+      available,
+      request.days_count as number
+    );
+    if (!check.withinBalance) {
+      return {
+        error: `Aprovar esta solicitação deixará o saldo negativo (faltam ${check.shortfall} dia(s)). Confirme para aprovar mesmo assim.`,
+        balanceShortfall: check.shortfall,
+      };
     }
   }
 

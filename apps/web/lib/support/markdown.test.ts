@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMarkdown, parseInline, stripMarkdown } from "./markdown";
+import { parseMarkdown, parseInline, stripMarkdown, isSafeHref } from "./markdown";
 
 describe("stripMarkdown", () => {
   it("removes heading markers", () => {
@@ -51,6 +51,46 @@ describe("parseInline", () => {
     expect(parseInline("sem formatação")).toEqual([
       { type: "text", value: "sem formatação" },
     ]);
+  });
+
+  it("drops a javascript: link to plain text (stored XSS guard)", () => {
+    const nodes = parseInline("[clique](javascript:alert)");
+    expect(nodes).toEqual([{ type: "text", value: "clique" }]);
+  });
+
+  it("drops a data: link to plain text", () => {
+    const nodes = parseInline("[x](data:text/html;base64,abc)");
+    expect(nodes).toEqual([{ type: "text", value: "x" }]);
+  });
+
+  it("keeps a root-relative link", () => {
+    const nodes = parseInline("[kb](/support/knowledge-base)");
+    expect(nodes[0]).toEqual({
+      type: "link",
+      value: "kb",
+      href: "/support/knowledge-base",
+    });
+  });
+
+  it("keeps a mailto: link", () => {
+    const nodes = parseInline("[mail](mailto:a@b.com)");
+    expect(nodes[0]).toMatchObject({ type: "link", href: "mailto:a@b.com" });
+  });
+});
+
+describe("isSafeHref", () => {
+  it("accepts http, https, mailto and root-relative URLs", () => {
+    expect(isSafeHref("https://x.com")).toBe(true);
+    expect(isSafeHref("http://x.com")).toBe(true);
+    expect(isSafeHref("mailto:a@b.com")).toBe(true);
+    expect(isSafeHref("/internal/path")).toBe(true);
+  });
+
+  it("rejects javascript:, data: and other schemes", () => {
+    expect(isSafeHref("javascript:alert(1)")).toBe(false);
+    expect(isSafeHref("data:text/html,abc")).toBe(false);
+    expect(isSafeHref("vbscript:msgbox")).toBe(false);
+    expect(isSafeHref("  javascript:alert(1)")).toBe(false);
   });
 });
 

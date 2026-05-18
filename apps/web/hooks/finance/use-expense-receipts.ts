@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   uploadExpenseReceipt,
   deleteExpenseReceipt,
+  getExpenseReceiptUrl,
 } from "@/lib/actions/finance/receipts";
 
 /** A receipt file attached to an expense. */
@@ -13,7 +14,7 @@ export interface ExpenseReceipt {
   expense_id: string;
   sector_id: string;
   file_name: string;
-  file_url: string;
+  file_path: string;
   file_size: number;
   mime_type: string | null;
   created_at: string;
@@ -30,7 +31,7 @@ export function useExpenseReceipts(expenseId: string | undefined) {
       const { data, error } = await supabase
         .from("finance_expense_receipts")
         .select(
-          `id, expense_id, sector_id, file_name, file_url, file_size,
+          `id, expense_id, sector_id, file_name, file_path, file_size,
            mime_type, created_at`
         )
         .eq("expense_id", expenseId)
@@ -63,5 +64,12 @@ export function useDeleteExpenseReceipt() {
         queryKey: ["finance-expense-receipts"],
       });
     },
+  });
+}
+
+/** Fetches a fresh short-lived signed URL for a receipt. */
+export function useExpenseReceiptUrl() {
+  return useMutation({
+    mutationFn: (receiptId: string) => getExpenseReceiptUrl(receiptId),
   });
 }

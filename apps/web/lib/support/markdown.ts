@@ -43,6 +43,18 @@ export function stripMarkdown(input: string): string {
 const INLINE_PATTERN =
   /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\[[^\]]+\]\([^)]+\)|\*[^*]+\*|_[^_]+_)/;
 
+/**
+ * Only allow link hrefs we are confident cannot execute script. KB articles
+ * are user-authored and rendered to other agents, so `javascript:` / `data:`
+ * URLs must never reach an anchor's href (stored XSS). Anything else degrades
+ * to plain text.
+ */
+export function isSafeHref(href: string): boolean {
+  const trimmed = href.trim();
+  if (trimmed.startsWith("/")) return true; // root-relative
+  return /^(https?:|mailto:)/i.test(trimmed);
+}
+
 /** Parse a single line of inline Markdown into styled nodes. */
 export function parseInline(line: string): InlineNode[] {
   const nodes: InlineNode[] = [];
@@ -64,12 +76,15 @@ export function parseInline(line: string): InlineNode[] {
       nodes.push({ type: "code", value: token.slice(1, -1) });
     } else if (token.startsWith("[")) {
       const linkMatch = token.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      if (linkMatch) {
+      if (linkMatch && isSafeHref(linkMatch[2])) {
         nodes.push({
           type: "link",
           value: linkMatch[1],
-          href: linkMatch[2],
+          href: linkMatch[2].trim(),
         });
+      } else if (linkMatch) {
+        // Unsafe scheme (javascript:, data:, …) — keep the label, drop the link.
+        nodes.push({ type: "text", value: linkMatch[1] });
       } else {
         nodes.push({ type: "text", value: token });
       }

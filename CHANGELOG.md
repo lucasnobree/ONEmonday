@@ -179,12 +179,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than relying on RLS alone.
 - The Legal dashboard RPC now verifies sector access (it previously leaked
   aggregate counts cross-tenant); rewritten Wave 2 RPCs pin `search_path`.
+- Module-backlog senior-review fixes (migration `00180`): the KB Markdown
+  renderer drops `javascript:`/`data:` link hrefs (stored-XSS guard); the new
+  storage buckets (`finance-receipts`, `support-attachments`,
+  `legal-documents`) scope reads to the object's sector instead of any
+  authenticated user; the four new `SECURITY DEFINER` functions pin
+  `search_path`; the time-off balance guard fails closed when a balance
+  cannot be verified; offboarding rejects a template from another sector;
+  and expense receipts are served via signed URLs (the private bucket made
+  the stored public URL unusable).
 
 ### Migrations
 - `00016` card completion tracking · `00017` WIP-limit trigger ·
   `00020` CRM deal health · `00030` HR wave 1 · `00040` Support ticket tags ·
   `00050` Analytics · `00060` Dev-Tools · `00070` Finance · `00080` Legal ·
-  `00090` Marketing · `00100` Wave 2 review fixes.
+  `00090` Marketing · `00100` Wave 2 review fixes ·
+  `00180` module-backlog review security fixes.
 
 ## [0.1.0] - 2026-05-15
 
