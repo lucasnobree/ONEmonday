@@ -56,21 +56,31 @@ export async function applyContractApproval(formData: unknown) {
     return { error: "Ação inválida para o status atual do contrato" };
   }
 
-  const { error } = await supabase
+  // Optimistic-concurrency guard: only transition if the status is still what
+  // we validated against, so two concurrent approvers cannot both apply.
+  const { data: updated, error } = await supabase
     .from("legal_contracts")
     .update({ status: nextStatus })
-    .eq("id", parsed.data.contractId);
+    .eq("id", parsed.data.contractId)
+    .eq("status", existing.status)
+    .select("id");
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) {
+    return { error: "O status do contrato mudou. Recarregue e tente novamente." };
+  }
 
-  await supabase.from("legal_status_history").insert({
-    entity_type: "contract",
-    entity_id: parsed.data.contractId,
-    sector_id: existing.sector_id,
-    from_status: existing.status,
-    to_status: nextStatus,
-    note: parsed.data.note?.trim() || null,
-    changed_by: user.id,
-  });
+  const { error: historyError } = await supabase
+    .from("legal_status_history")
+    .insert({
+      entity_type: "contract",
+      entity_id: parsed.data.contractId,
+      sector_id: existing.sector_id,
+      from_status: existing.status,
+      to_status: nextStatus,
+      note: parsed.data.note?.trim() || null,
+      changed_by: user.id,
+    });
+  if (historyError) return { error: historyError.message };
 
   revalidatePath("/legal");
   revalidatePath("/legal/contracts");
@@ -108,21 +118,30 @@ export async function changeMatterStatus(formData: unknown) {
     ? (existing.resolved_at ?? new Date().toISOString())
     : null;
 
-  const { error } = await supabase
+  // Optimistic-concurrency guard: the matter must still hold the status we read.
+  const { data: updated, error } = await supabase
     .from("legal_matters")
     .update({ status: parsed.data.status, resolved_at: resolvedAt })
-    .eq("id", parsed.data.matterId);
+    .eq("id", parsed.data.matterId)
+    .eq("status", existing.status)
+    .select("id");
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) {
+    return { error: "O status da demanda mudou. Recarregue e tente novamente." };
+  }
 
-  await supabase.from("legal_status_history").insert({
-    entity_type: "matter",
-    entity_id: parsed.data.matterId,
-    sector_id: existing.sector_id,
-    from_status: existing.status,
-    to_status: parsed.data.status,
-    note: parsed.data.note?.trim() || null,
-    changed_by: user.id,
-  });
+  const { error: historyError } = await supabase
+    .from("legal_status_history")
+    .insert({
+      entity_type: "matter",
+      entity_id: parsed.data.matterId,
+      sector_id: existing.sector_id,
+      from_status: existing.status,
+      to_status: parsed.data.status,
+      note: parsed.data.note?.trim() || null,
+      changed_by: user.id,
+    });
+  if (historyError) return { error: historyError.message };
 
   revalidatePath("/legal");
   revalidatePath("/legal/matters");

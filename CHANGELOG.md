@@ -232,6 +232,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than relying on RLS alone.
 - The Legal dashboard RPC now verifies sector access (it previously leaked
   aggregate counts cross-tenant); rewritten Wave 2 RPCs pin `search_path`.
+- Wave 5 senior-review fixes (migration `00207`): the HR survey anonymity
+  guarantee is restored — `hr_survey_participants` and `hr_survey_responses`
+  no longer share a `now()`-stamped column a manager could join on to
+  de-anonymise responses; `get_support_operational_metrics` now enforces
+  sector access; the email-campaign HTML body is sanitized server-side and
+  previewed inside a sandboxed `<iframe>` instead of `dangerouslySetInnerHTML`
+  (stored-XSS guard); the long-standing `support_tickets` write policies that
+  referenced an unseeded `support_ticket` permission resource were corrected
+  to `ticket`; legal status changes use an optimistic-concurrency guard with
+  an atomic audit-trail write; project-member adds are constrained to the
+  project's sectors.
 - Module-backlog senior-review fixes (migration `00180`): the KB Markdown
   renderer drops `javascript:`/`data:` link hrefs (stored-XSS guard); the new
   storage buckets (`finance-receipts`, `support-attachments`,
@@ -247,7 +258,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `00020` CRM deal health · `00030` HR wave 1 · `00040` Support ticket tags ·
   `00050` Analytics · `00060` Dev-Tools · `00070` Finance · `00080` Legal ·
   `00090` Marketing · `00100` Wave 2 review fixes ·
-  `00180` module-backlog review security fixes.
+  `00180` module-backlog review security fixes ·
+  `00207` Wave 5 review security fixes.
 
 ## [0.1.0] - 2026-05-15
 

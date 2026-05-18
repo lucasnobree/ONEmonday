@@ -41,26 +41,68 @@ export function textToHtml(text: string): string {
     .join("\n");
 }
 
+/** HTML elements that may never appear in a campaign body. */
+const FORBIDDEN_ELEMENTS = [
+  "script",
+  "style",
+  "iframe",
+  "object",
+  "embed",
+  "applet",
+  "form",
+  "svg",
+  "math",
+  "link",
+  "meta",
+  "base",
+];
+
 /**
- * Conservatively sanitises a raw HTML e-mail body. Removes `<script>` and
- * `<style>` blocks, inline `on*` event handlers, and `javascript:` URLs. It is
- * a string-level pass (no DOM dependency) so it runs identically on the server
+ * Conservatively sanitises a raw HTML e-mail body: drops active/embedding
+ * elements and their content, inline `on*` event handlers, `style` attributes
+ * (CSS `expression()` / `url(javascript:)` vectors) and dangerous URL schemes.
+ * A string-level pass (no DOM dependency) so it runs identically on the server
  * and client.
+ *
+ * IMPORTANT: this is defence-in-depth, not the sole XSS control. The in-app
+ * preview must still render this HTML inside a sandboxed `<iframe>` (no
+ * `allow-scripts`); a regex pass alone is not a sufficient guard for a
+ * `dangerouslySetInnerHTML` sink. It is always applied server-side before the
+ * body is persisted, so a stored value is never attacker-controlled.
  */
 export function sanitizeEmailHtml(html: string): string {
-  return html
-    // Drop whole <script>/<style> elements including their content.
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, "")
-    // Drop any standalone closing tags left behind.
-    .replace(/<\/?(?:script|style)\b[^>]*>/gi, "")
-    // Strip inline event handlers: on...="..." / on...='...' / on...=value.
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
-    // Neutralise javascript: URLs in href/src attributes.
-    .replace(/(href|src)\s*=\s*"javascript:[^"]*"/gi, '$1="#"')
-    .replace(/(href|src)\s*=\s*'javascript:[^']*'/gi, "$1='#'");
+  let out = html;
+
+  // Drop whole forbidden elements including their content.
+  for (const tag of FORBIDDEN_ELEMENTS) {
+    out = out.replace(
+      new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}\\s*>`, "gi"),
+      ""
+    );
+    // ...and any standalone / unclosed forbidden tag left behind.
+    out = out.replace(new RegExp(`<\\/?${tag}\\b[^>]*>?`, "gi"), "");
+  }
+
+  return (
+    out
+      // Strip inline event handlers: on...="..." / on...='...' / on...=value.
+      .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+      .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+      .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+      // Strip style attributes entirely (CSS-based script vectors).
+      .replace(/\sstyle\s*=\s*"[^"]*"/gi, "")
+      .replace(/\sstyle\s*=\s*'[^']*'/gi, "")
+      // Neutralise dangerous URL schemes in href/src — match after optional
+      // whitespace and HTML-entity obfuscation of the scheme separator.
+      .replace(
+        /(href|src)\s*=\s*"(?:\s|&#?\w+;)*(?:javascript|vbscript|data)\b[^"]*"/gi,
+        '$1="#"'
+      )
+      .replace(
+        /(href|src)\s*=\s*'(?:\s|&#?\w+;)*(?:javascript|vbscript|data)\b[^']*'/gi,
+        "$1='#'"
+      )
+  );
 }
 
 /**

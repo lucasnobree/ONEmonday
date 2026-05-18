@@ -78,6 +78,40 @@ describe("sanitizeEmailHtml", () => {
     const html = '<h1>Título</h1><p><strong>Olá</strong></p>';
     expect(sanitizeEmailHtml(html)).toBe(html);
   });
+
+  it("strips an unclosed <script> tag", () => {
+    expect(sanitizeEmailHtml("<p>oi</p><script>alert(1)")).not.toMatch(
+      /<script/i
+    );
+  });
+
+  it("strips embedding elements (iframe, object, embed, svg)", () => {
+    for (const tag of ["iframe", "object", "embed", "svg"]) {
+      const out = sanitizeEmailHtml(`<p>a</p><${tag}>x</${tag}><p>b</p>`);
+      expect(out).not.toMatch(new RegExp(`<${tag}`, "i"));
+    }
+  });
+
+  it("strips style attributes (CSS-based vectors)", () => {
+    expect(
+      sanitizeEmailHtml(`<p style="background:url(javascript:x)">oi</p>`)
+    ).toBe("<p>oi</p>");
+  });
+
+  it("neutralises data: and vbscript: URLs", () => {
+    expect(sanitizeEmailHtml(`<a href="data:text/html,<x>">x</a>`)).toContain(
+      'href="#"'
+    );
+    expect(sanitizeEmailHtml(`<a href="vbscript:msgbox">x</a>`)).toContain(
+      'href="#"'
+    );
+  });
+
+  it("strips an onerror handler with no quotes", () => {
+    expect(sanitizeEmailHtml("<img src=x onerror=alert(1)>")).not.toMatch(
+      /onerror/i
+    );
+  });
 });
 
 describe("resolveBodyHtml", () => {

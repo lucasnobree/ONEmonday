@@ -273,20 +273,23 @@ export function EmailCampaignFormDialog({
                 </TabsContent>
 
                 <TabsContent value="preview" className="mt-2">
-                  <div className="rounded-md border bg-white p-4 text-sm text-black">
-                    {resolvedHtml.trim().length > 0 ? (
-                      <div
-                        // Preview only — the same sanitised HTML that will be
-                        // persisted and sent. resolveBodyHtml/sanitizeEmailHtml
-                        // strip script/style/handler vectors.
-                        dangerouslySetInnerHTML={{ __html: resolvedHtml }}
-                      />
-                    ) : (
+                  {resolvedHtml.trim().length > 0 ? (
+                    // Rendered in a sandboxed iframe with NO allow-scripts —
+                    // the body is operator-supplied HTML, so even though it is
+                    // sanitised the preview must not be a live script sink.
+                    <iframe
+                      title="Pré-visualização do e-mail"
+                      sandbox=""
+                      srcDoc={resolvedHtml}
+                      className="h-64 w-full rounded-md border bg-white"
+                    />
+                  ) : (
+                    <div className="rounded-md border bg-white p-4 text-sm text-black">
                       <p className="text-muted-foreground">
                         Sem conteúdo para pré-visualizar.
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>

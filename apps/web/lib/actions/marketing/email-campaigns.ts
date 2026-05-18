@@ -23,6 +23,7 @@ import {
   sendEmailCampaignTestSchema,
 } from "@/lib/validations/marketing";
 import { resolveSegmentRecipients } from "@/lib/actions/marketing/segment-contacts";
+import { sanitizeEmailHtml } from "@/lib/marketing/email-body";
 import { loadEmailCredential } from "@/lib/integrations/email-credential-loader";
 import {
   resolveEmailAdapter,
@@ -59,7 +60,8 @@ export async function createEmailCampaign(formData: unknown) {
       from_name: parsed.data.fromName,
       from_email: parsed.data.fromEmail,
       reply_to: parsed.data.replyTo || null,
-      body_html: parsed.data.bodyHtml,
+      // Never trust a client-sanitized body — sanitize on the server too.
+      body_html: sanitizeEmailHtml(parsed.data.bodyHtml),
       body_text: parsed.data.bodyText,
       created_by: user.id,
     })
@@ -111,7 +113,7 @@ export async function updateEmailCampaign(formData: unknown) {
       from_name: parsed.data.fromName,
       from_email: parsed.data.fromEmail,
       reply_to: parsed.data.replyTo || null,
-      body_html: parsed.data.bodyHtml,
+      body_html: sanitizeEmailHtml(parsed.data.bodyHtml),
       body_text: parsed.data.bodyText,
     })
     .eq("id", parsed.data.id);

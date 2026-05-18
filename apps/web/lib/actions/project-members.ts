@@ -50,6 +50,17 @@ export async function addProjectMember(formData: unknown) {
   );
   if (!canManage) return { error: "Sem permissao" };
 
+  // The added user must actually belong to one of the project's sectors —
+  // the roster must not pull in arbitrary org users from unrelated sectors.
+  const { data: candidateRoles } = await supabase
+    .from("user_sector_roles")
+    .select("sector_id")
+    .eq("user_id", parsed.data.userId)
+    .in("sector_id", sectorIds.length > 0 ? sectorIds : ["__none__"]);
+  if (!candidateRoles || candidateRoles.length === 0) {
+    return { error: "Usuario nao pertence aos setores do projeto" };
+  }
+
   const { error } = await supabase.from("project_members").upsert(
     {
       project_id: parsed.data.projectId,
