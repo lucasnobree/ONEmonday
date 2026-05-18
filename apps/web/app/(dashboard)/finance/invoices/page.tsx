@@ -8,6 +8,7 @@ import {
 } from "@/hooks/finance/use-invoices";
 import type { Invoice, InvoiceStatus } from "@/hooks/finance/use-invoices";
 import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
+import { InvoiceFiscalDialog } from "@/components/finance/invoice-fiscal-dialog";
 import {
   INVOICE_STATUS_LABELS,
   INVOICE_STATUS_VARIANTS,
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
-import { Plus, Download, Pencil, Trash2, Receipt } from "lucide-react";
+import { Plus, Download, Pencil, Trash2, Receipt, FileText } from "lucide-react";
 
 const STATUS_TABS: (InvoiceStatus | "all")[] = [
   "all",
@@ -41,6 +42,8 @@ export default function InvoicesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Invoice | undefined>();
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all");
+  const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
+  const [fiscalInvoice, setFiscalInvoice] = useState<Invoice | undefined>();
 
   // Each row carries an `effectiveStatus`: a `sent` invoice past its due date
   // is shown (and filtered) as `overdue` even though the stored status lags.
@@ -72,6 +75,11 @@ export default function InvoicesPage() {
   const openEdit = (invoice: Invoice) => {
     setEditing(invoice);
     setDialogOpen(true);
+  };
+
+  const openFiscal = (invoice: Invoice) => {
+    setFiscalInvoice(invoice);
+    setFiscalDialogOpen(true);
   };
 
   const handleDelete = async (invoice: Invoice) => {
@@ -201,6 +209,14 @@ export default function InvoicesPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label="Fiscal e cobrança"
+                            onClick={() => openFiscal(inv)}
+                          >
+                            <FileText className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             aria-label="Editar fatura"
                             onClick={() => openEdit(inv)}
                           >
@@ -235,6 +251,12 @@ export default function InvoicesPage() {
         onOpenChange={setDialogOpen}
         sectorId={currentSector.id}
         invoice={editing}
+      />
+
+      <InvoiceFiscalDialog
+        open={fiscalDialogOpen}
+        onOpenChange={setFiscalDialogOpen}
+        invoice={fiscalInvoice}
       />
     </div>
   );
