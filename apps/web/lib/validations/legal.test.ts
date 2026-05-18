@@ -4,11 +4,14 @@ import {
   updateContractSchema,
   createMatterSchema,
   createClauseSchema,
+  createContractDocumentSchema,
+  linkClauseSchema,
 } from "./legal";
 
 const SECTOR = "11111111-1111-4111-8111-111111111111";
 const CONTRACT = "22222222-2222-4222-8222-222222222222";
 const USER = "33333333-3333-4333-8333-333333333333";
+const CLAUSE = "44444444-4444-4444-8444-444444444444";
 
 describe("createContractSchema", () => {
   const base = {
@@ -214,6 +217,70 @@ describe("createClauseSchema", () => {
   it("rejects an unknown category", () => {
     expect(
       createClauseSchema.safeParse({ ...base, category: "pricing" }).success
+    ).toBe(false);
+  });
+});
+
+describe("createContractDocumentSchema", () => {
+  const base = {
+    contractId: CONTRACT,
+    filePath: "sector/contract/123-arquivo.pdf",
+    fileName: "arquivo.pdf",
+    fileSize: 1024,
+  };
+
+  it("accepts a valid document payload", () => {
+    const parsed = createContractDocumentSchema.parse(base);
+    expect(parsed.contractId).toBe(CONTRACT);
+    expect(parsed.fileSize).toBe(1024);
+  });
+
+  it("rejects a non-uuid contract id", () => {
+    expect(
+      createContractDocumentSchema.safeParse({ ...base, contractId: "x" })
+        .success
+    ).toBe(false);
+  });
+
+  it("rejects an empty file path or name", () => {
+    expect(
+      createContractDocumentSchema.safeParse({ ...base, filePath: "" }).success
+    ).toBe(false);
+    expect(
+      createContractDocumentSchema.safeParse({ ...base, fileName: "" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a negative file size", () => {
+    expect(
+      createContractDocumentSchema.safeParse({ ...base, fileSize: -1 }).success
+    ).toBe(false);
+  });
+
+  it("accepts an optional label and mime type", () => {
+    const result = createContractDocumentSchema.safeParse({
+      ...base,
+      mimeType: "application/pdf",
+      docLabel: "Versão assinada",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("linkClauseSchema", () => {
+  it("accepts a valid contract+clause pair", () => {
+    const parsed = linkClauseSchema.parse({
+      contractId: CONTRACT,
+      clauseId: CLAUSE,
+    });
+    expect(parsed.contractId).toBe(CONTRACT);
+    expect(parsed.clauseId).toBe(CLAUSE);
+  });
+
+  it("rejects a non-uuid clause id", () => {
+    expect(
+      linkClauseSchema.safeParse({ contractId: CONTRACT, clauseId: "nope" })
+        .success
     ).toBe(false);
   });
 });
