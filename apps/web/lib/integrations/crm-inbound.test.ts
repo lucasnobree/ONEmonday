@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   parseInboundMessages,
   logInboundWhatsApp,
+  nationalNumber,
 } from "./crm-inbound";
 
 /** A WhatsApp Cloud API webhook body carrying one inbound text message. */
@@ -224,5 +225,78 @@ describe("logInboundWhatsApp", () => {
       textMessageBody()
     );
     expect(result).toMatchObject({ logged: 0, duplicate: 1 });
+  });
+
+  // Regression — CRM #1: a contact stored WITHOUT the country code must still
+  // match a WhatsApp number that carries `55`, via the national number.
+  it("matches a contact stored without the country code", async () => {
+    const { client, inserted } = stubClient({
+      contacts: [{ id: "c1", sector_id: "s1", phone: "(11) 99999-8888" }],
+      deal: { id: "d1" },
+    });
+    const result = await logInboundWhatsApp(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client as any,
+      textMessageBody({ from: "5511999998888" })
+    );
+    expect(result).toMatchObject({ logged: 1, unmatched: 0 });
+    expect(inserted[0].contact_id).toBe("c1");
+  });
+
+  // Regression — CRM #1: a bare 8-digit local suffix collides across area
+  // codes. A contact in a different DDD sharing `99998888` must NOT match a
+  // sender whose national number matches it in full.
+  it("does not cross-match a contact in a different area code", async () => {
+    const { client, inserted } = stubClient({
+      // Sender is 11-99999-8888; this contact is 21-99999-8888 — same local
+      // 8 digits, different DDD. The old endsWith(suffix) match accepted it.
+      contacts: [{ id: "c-rio", sector_id: "s2", phone: "5521999998888" }],
+    });
+    const result = await logInboundWhatsApp(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client as any,
+      textMessageBody({ from: "5511999998888" })
+    );
+    expect(result).toMatchObject({ logged: 0, unmatched: 1 });
+    expect(inserted).toHaveLength(0);
+  });
+
+  // Regression — CRM #1: when more than one distinct contact matches the
+  // sender's national number, the sender is ambiguous -> treated as unmatched
+  // rather than threading the message onto the wrong contact's deal.
+  it("treats an ambiguous multi-match as unmatched", async () => {
+    const { client, inserted } = stubClient({
+      contacts: [
+        { id: "c1", sector_id: "s1", phone: "5511999998888" },
+        { id: "c2", sector_id: "s2", phone: "+55 (11) 99999-8888" },
+      ],
+      deal: { id: "d1" },
+    });
+    const result = await logInboundWhatsApp(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client as any,
+      textMessageBody({ from: "5511999998888" })
+    );
+    expect(result).toMatchObject({ logged: 0, unmatched: 1 });
+    expect(inserted).toHaveLength(0);
+  });
+});
+
+describe("nationalNumber", () => {
+  it("strips the Brazil country code from a 13-digit mobile", () => {
+    expect(nationalNumber("5511999998888")).toBe("11999998888");
+  });
+
+  it("strips the country code from a 12-digit landline", () => {
+    expect(nationalNumber("551133334444")).toBe("1133334444");
+  });
+
+  it("keeps an already-national 11-digit number", () => {
+    expect(nationalNumber("11999998888")).toBe("11999998888");
+  });
+
+  it("returns null for a too-short fragment", () => {
+    expect(nationalNumber("99998888")).toBeNull();
+    expect(nationalNumber("")).toBeNull();
   });
 });
