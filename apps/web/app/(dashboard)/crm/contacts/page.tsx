@@ -20,13 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FilterSelect } from "@/components/shared/filter-select";
 import {
   Plus,
   Search,
@@ -170,22 +164,16 @@ export default function ContactsPage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <FilterSelect
           value={companyFilter}
-          onValueChange={(v) => setCompanyFilter(v ?? "all")}
-        >
-          <SelectTrigger className="h-8 w-52 text-sm">
-            <SelectValue placeholder="Empresa" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toda empresa</SelectItem>
-            {companyOptions.map(([id, name]) => (
-              <SelectItem key={id} value={id}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onValueChange={setCompanyFilter}
+          className="w-52"
+          aria-label="Filtrar por empresa"
+          options={[
+            { value: "all", label: "Toda empresa" },
+            ...companyOptions.map(([id, name]) => ({ value: id, label: name })),
+          ]}
+        />
         <Button
           variant={primaryOnly ? "default" : "outline"}
           size="sm"

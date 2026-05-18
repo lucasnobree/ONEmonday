@@ -31,8 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { LEAD_SOURCES, leadSourceLabel } from "@/lib/crm/lead-sources";
 
 interface LeadFormBuilderDialogProps {
   open: boolean;
@@ -218,12 +219,36 @@ export function LeadFormBuilderDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="form-source">Origem dos leads</Label>
-                <Input
-                  id="form-source"
+                <Select
                   value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  placeholder="form"
-                />
+                  onValueChange={(v) => setSource(v ?? "form")}
+                >
+                  <SelectTrigger id="form-source" className="w-full">
+                    <SelectValue>
+                      {(value: string | null) =>
+                        value ? leadSourceLabel(value) : "Origem"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* A legacy form may carry a source outside the canonical
+                        list — keep it selectable so editing does not silently
+                        change it. */}
+                    {!LEAD_SOURCES.includes(
+                      source as (typeof LEAD_SOURCES)[number]
+                    ) &&
+                      source.trim() !== "" && (
+                        <SelectItem value={source}>
+                          {leadSourceLabel(source)}
+                        </SelectItem>
+                      )}
+                    {LEAD_SOURCES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {leadSourceLabel(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label>Status</Label>
@@ -270,7 +295,6 @@ export function LeadFormBuilderDialog({
                   className="rounded-lg border p-3 space-y-3 bg-muted/30"
                 >
                   <div className="flex items-start gap-2">
-                    <GripVertical className="size-4 mt-2.5 text-muted-foreground shrink-0" />
                     <div className="grid flex-1 grid-cols-2 gap-2">
                       <Input
                         value={field.label}

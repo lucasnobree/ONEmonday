@@ -20,13 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FilterSelect } from "@/components/shared/filter-select";
+import { leadSourceLabel } from "@/lib/crm/lead-sources";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Plus, Search, Inbox } from "lucide-react";
 
@@ -176,47 +171,42 @@ export default function LeadsInboxPage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <FilterSelect
           value={statusFilter}
-          onValueChange={(v) => setStatusFilter((v as LeadStatus | "all") ?? "all")}
-        >
-          <SelectTrigger className="h-8 w-44 text-sm">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {LEAD_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {leadStatusLabel(s)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
+          onValueChange={(v) => setStatusFilter(v as LeadStatus | "all")}
+          className="w-44"
+          aria-label="Filtrar por status"
+          options={[
+            { value: "all", label: "Todos os status" },
+            ...LEAD_STATUSES.map((s) => ({
+              value: s,
+              label: leadStatusLabel(s),
+            })),
+          ]}
+        />
+        <FilterSelect
           value={sourceFilter}
-          onValueChange={(v) => setSourceFilter(v ?? "all")}
-        >
-          <SelectTrigger className="h-8 w-44 text-sm">
-            <SelectValue placeholder="Origem" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toda origem</SelectItem>
-            {sourceOptions.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={(v) => setSort((v as SortKey) ?? "score")}>
-          <SelectTrigger className="h-8 w-44 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="score">Maior score</SelectItem>
-            <SelectItem value="recent">Mais recentes</SelectItem>
-          </SelectContent>
-        </Select>
+          onValueChange={setSourceFilter}
+          className="w-44"
+          aria-label="Filtrar por origem"
+          options={[
+            { value: "all", label: "Toda origem" },
+            ...sourceOptions.map((s) => ({
+              value: s,
+              label: leadSourceLabel(s),
+            })),
+          ]}
+        />
+        <FilterSelect
+          value={sort}
+          onValueChange={(v) => setSort(v as SortKey)}
+          className="w-44"
+          aria-label="Ordenar leads"
+          options={[
+            { value: "score", label: "Maior score" },
+            { value: "recent", label: "Mais recentes" },
+          ]}
+        />
         {hasFilter && (
           <Button
             variant="ghost"
@@ -286,7 +276,7 @@ export default function LeadsInboxPage() {
                     {lead.company ?? "—"}
                   </td>
                   <td className="py-2.5 text-muted-foreground">
-                    {lead.source}
+                    {leadSourceLabel(lead.source)}
                   </td>
                   <td className="py-2.5">
                     <Badge variant={leadStatusVariant(lead.status)}>

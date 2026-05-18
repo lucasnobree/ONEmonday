@@ -19,13 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FilterSelect } from "@/components/shared/filter-select";
 import {
   Phone,
   Mail,
@@ -327,19 +321,19 @@ export default function ActivitiesPage() {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Responsável</Label>
-          <Select value={ownerFilter} onValueChange={(v) => setOwnerFilter(v ?? "all")}>
-            <SelectTrigger className="h-8 w-44 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {(members || []).map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            value={ownerFilter}
+            onValueChange={setOwnerFilter}
+            className="w-44 text-xs"
+            aria-label="Filtrar por responsável"
+            options={[
+              { value: "all", label: "Todos" },
+              ...(members || []).map((m) => ({
+                value: m.id,
+                label: m.full_name,
+              })),
+            ]}
+          />
         </div>
         <div className="flex items-end gap-2">
           <div className="space-y-1">
