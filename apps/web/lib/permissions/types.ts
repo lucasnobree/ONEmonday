@@ -29,6 +29,9 @@ export type Resource =
   | "job_opening"
   | "candidate"
   | "onboarding"
+  | "performance"
+  | "pdi"
+  | "survey"
   // Finance
   | "invoice"
   | "expense"
