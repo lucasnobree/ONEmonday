@@ -289,3 +289,97 @@ export async function sendEmailCampaign(formData: unknown) {
       : undefined,
   };
 }
+
+/** Outcome of a single per-recipient campaign send. */
+export interface RecipientSendResult {
+  /** "sent" — accepted by the ESP; "skipped" — no-op mode; "failed" — error. */
+  status: "sent" | "skipped" | "failed";
+  /** Failure reason when `status` is "failed". */
+  error?: string;
+}
+
+/**
+ * Sends ONE email-campaign message to a SINGLE recipient and records a single
+ * `marketing_email_sends` row — without ever mutating the campaign's status or
+ * roll-up counters.
+ *
+ * This is the primitive the automation-sequence runner uses: a sequence sends
+ * the same campaign once per enrolled recipient over time, so it must NOT lock
+ * the campaign to `sent` (the campaign-blast `sendEmailCampaign` does, which
+ * would let only the first enrollment through). Drip sends and one-shot blasts
+ * are deliberately different operations.
+ *
+ * It is an internal primitive (no own permission gate) — every caller has
+ * already authorised the action. Never throws: an unconfigured ESP yields
+ * `skipped`, an ESP error yields `failed` with a reason.
+ */
+export async function sendCampaignEmailToRecipient(input: {
+  emailCampaignId: string;
+  recipient: { email: string; name?: string };
+}): Promise<RecipientSendResult> {
+  const supabase = await createClient();
+
+  const { data: campaign } = await supabase
+    .from("marketing_email_campaigns")
+    .select(
+      "id, sector_id, subject, from_name, from_email, reply_to, body_html, body_text"
+    )
+    .eq("id", input.emailCampaignId)
+    .eq("is_active", true)
+    .single();
+  if (!campaign) {
+    return { status: "failed", error: "Campanha de e-mail não encontrada" };
+  }
+
+  // Resolve the ESP gateway credential (no-op mode when unconfigured).
+  const credential = await loadEmailCredential(supabase, campaign.sector_id);
+  const provider = credential.provider ?? DEFAULT_EMAIL_PROVIDER;
+  const adapter = resolveEmailAdapter(provider, credential.config);
+
+  const sendResult = await adapter.send({
+    to: input.recipient.email,
+    toName: input.recipient.name,
+    from: campaign.from_email,
+    fromName: campaign.from_name,
+    replyTo: campaign.reply_to ?? undefined,
+    subject: campaign.subject,
+    html: campaign.body_html,
+    text: campaign.body_text || undefined,
+    // Deterministic idempotency key — a redelivery never double-sends at the
+    // ESP. Scoped per (campaign, recipient): a sequence sends each campaign to
+    // a given recipient exactly once.
+    idempotencyKey: `seq-${campaign.id}-${input.recipient.email}`,
+  });
+
+  let status: RecipientSendResult["status"];
+  if (sendResult.noop) {
+    status = "skipped";
+  } else if (sendResult.ok) {
+    status = "sent";
+  } else {
+    status = "failed";
+  }
+
+  const { error: sendErr } = await supabase
+    .from("marketing_email_sends")
+    .insert({
+      sector_id: campaign.sector_id,
+      email_campaign_id: campaign.id,
+      recipient_email: input.recipient.email,
+      recipient_name: input.recipient.name ?? null,
+      status,
+      provider_ref: sendResult.providerRef ?? null,
+      error: sendResult.noop
+        ? "Gateway de e-mail nao configurado — nada foi enviado"
+        : (sendResult.error ?? null),
+      sent_at:
+        sendResult.ok && !sendResult.noop ? new Date().toISOString() : null,
+    });
+  if (sendErr) {
+    return { status: "failed", error: sendErr.message };
+  }
+
+  return status === "failed"
+    ? { status, error: sendResult.error ?? "Falha no envio do e-mail" }
+    : { status };
+}
