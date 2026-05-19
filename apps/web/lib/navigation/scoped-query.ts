@@ -43,3 +43,35 @@ export function shouldFilterBySector(scope: SectorScope): boolean {
 export function sectorFilterValue(scope: SectorScope): string | undefined {
   return scope === ALL_SECTORS ? undefined : scope;
 }
+
+/**
+ * Resolves the concrete sector a create/edit dialog should write to (nav
+ * phase 2b convention for the secondary module screens).
+ *
+ * Create and edit dialogs always need a single sector, even when the screen
+ * itself is scoped to {@link ALL_SECTORS}. The precedence is:
+ *
+ *  1. **the edited record's own sector** — editing never moves a record
+ *     between sectors, so an already-loaded record's `sector_id` wins;
+ *  2. **the scope's concrete sector** — when the screen is scoped to one
+ *     sector, new records target it;
+ *  3. **the sidebar's current sector** — the fallback under the all-sectors
+ *     scope, so an admin can still create from a cross-sector screen;
+ *  4. `null` — no target sector; the caller disables the create action.
+ *
+ * @param scope             the screen's resolved sector scope
+ * @param currentSectorId   the sidebar's current sector id, if any
+ * @param editingSectorId   the `sector_id` of the record being edited, if any
+ */
+export function resolveTargetSector(
+  scope: SectorScope,
+  currentSectorId: string | null | undefined,
+  editingSectorId?: string | null
+): string | null {
+  return (
+    editingSectorId ??
+    sectorFilterValue(scope) ??
+    currentSectorId ??
+    null
+  );
+}
