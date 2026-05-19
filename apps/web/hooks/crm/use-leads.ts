@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
   isScopeReady,
+  rpcSectorParam,
   sectorFilterValue,
 } from "@/lib/navigation/scoped-query";
 import type { SectorScope } from "@/lib/navigation/sector-scope";
@@ -103,20 +104,20 @@ export function useLeads(scope: SectorScope | undefined) {
 /**
  * Inbox KPI counts (the `get_crm_lead_stats` RPC).
  *
- * The RPC is single-sector by contract (`p_sector_id`), so under the
- * all-sectors scope this hook resolves to `null` — the inbox simply hides
- * the per-sector KPI strip rather than aggregating across sectors.
+ * The RPC accepts a nullable `p_sector_id`: under the all-sectors scope this
+ * hook passes `null` and the RPC returns a cross-sector aggregate (admin-only,
+ * enforced server-side).
  */
 export function useLeadStats(scope: SectorScope | undefined) {
   const supabase = createClient();
-  const sectorId = scope ? sectorFilterValue(scope) : undefined;
+  const sectorParam = rpcSectorParam(scope);
 
   return useQuery({
     queryKey: ["crm-lead-stats", scope],
     queryFn: async () => {
-      if (!sectorId) return null;
+      if (sectorParam === undefined) return null;
       const { data, error } = await supabase.rpc("get_crm_lead_stats", {
-        p_sector_id: sectorId,
+        p_sector_id: sectorParam,
       });
       if (error) throw error;
       return data as LeadStats;
@@ -126,19 +127,23 @@ export function useLeadStats(scope: SectorScope | undefined) {
 }
 
 /**
- * Inbox SLA-aging counts (the `get_crm_lead_aging` RPC). Single-sector by
- * contract — resolves to `null` under the all-sectors scope.
+ * Inbox SLA-aging counts (the `get_crm_lead_aging` RPC).
+ *
+ * The RPC accepts a nullable `p_sector_id`: under the all-sectors scope this
+ * hook passes `null` and the RPC returns a cross-sector aggregate (admin-only,
+ * enforced server-side). The aggregate reports `sla_hours: 0` since each
+ * sector has its own SLA window, but still sums `overdue` per-sector.
  */
 export function useLeadAging(scope: SectorScope | undefined) {
   const supabase = createClient();
-  const sectorId = scope ? sectorFilterValue(scope) : undefined;
+  const sectorParam = rpcSectorParam(scope);
 
   return useQuery({
     queryKey: ["crm-lead-aging", scope],
     queryFn: async () => {
-      if (!sectorId) return null;
+      if (sectorParam === undefined) return null;
       const { data, error } = await supabase.rpc("get_crm_lead_aging", {
-        p_sector_id: sectorId,
+        p_sector_id: sectorParam,
       });
       if (error) throw error;
       return data as LeadAgingStats;

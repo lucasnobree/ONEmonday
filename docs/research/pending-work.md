@@ -167,13 +167,14 @@ As Fases 1, 2, 2b e 3 estão entregues (sidebar Setor▸Módulo, landing por
 perfil, Meu Trabalho, dashboard global, filtro de setor, polimento do board).
 O que ficou pendente dela:
 
-- [ ] **Alta** — Filtro de setor "Todos": os dashboards de módulo movidos a
+- [x] **Alta** — Filtro de setor "Todos": os dashboards de módulo movidos a
       RPC single-sector (Financeiro, Marketing, Analytics, Jurídico,
-      Dev-Tools, métricas do Support, documentos/headcount de RH) mostram
-      KPIs **vazios** quando o admin escolhe "Todos". Um agregado cross-setor
-      real exige RPCs novas. O dashboard global do admin (`/overview`) já
-      cobre a visão agregada, mas as telas de módulo sob "Todos" deveriam
-      somar em vez de zerar.
+      Dev-Tools, métricas do Support, documentos/headcount de RH, lead
+      stats/aging do CRM) mostravam KPIs **vazios** quando o admin escolhia
+      "Todos". Resolvido: migrations `00209`-`00216` recriam cada RPC com
+      `p_sector_id` anulável (`NULL` = todos os setores, exigindo
+      `is_global_admin()`); os hooks passam `null` sob o escopo all-sectors
+      e renderizam o agregado real.
 - [ ] **Média** — Fase 2b: telas secundárias ainda não ligadas ao filtro de
       setor (leem `useCurrentSector` direto): CRM pipeline/atividades/
       propostas/formulários; RH onboarding/offboarding/férias/desempenho/

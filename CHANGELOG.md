@@ -29,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     sector managers and contributors have no selector and are locked to
     their own sector. Wired into each module's main and primary list
     screens.
+  - **Cross-sector dashboards**: under "Todos" the module dashboards now
+    show a real cross-sector aggregate instead of empty KPIs. The ten
+    dashboard RPCs (finance/marketing/analytics/legal/dev-tools summary,
+    support operational metrics, HR headcount + expiring documents, CRM
+    lead stats + aging) take a nullable `p_sector_id` where `NULL` means
+    "every sector" and is gated to global admins; migrations
+    `00209`–`00216`.
   - **Phase 3 — board/card visual polish**: the Boards surfaces brought to
     the Monday.com visual spec (`docs/research/monday-board-card-spec.md`)
     — a shared `StatusPill` primitive (compact + full-bleed cell modes),

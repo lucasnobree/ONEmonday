@@ -2,10 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import {
-  isScopeReady,
-  sectorFilterValue,
-} from "@/lib/navigation/scoped-query";
+import { isScopeReady, rpcSectorParam } from "@/lib/navigation/scoped-query";
 import type { SectorScope } from "@/lib/navigation/sector-scope";
 import type { MarketingChannel } from "@/lib/validations/marketing";
 
@@ -31,20 +28,21 @@ export interface MarketingSummary {
  * Marketing KPI totals and the per-channel breakdown, computed server-side
  * by the `get_marketing_summary` RPC (which enforces sector access).
  *
- * The RPC is single-sector by contract (`p_sector_id`), so under the
- * all-sectors scope this hook resolves to `null`.
+ * The RPC accepts a nullable `p_sector_id`: under the all-sectors scope this
+ * hook passes `null` and the RPC returns a cross-sector aggregate (admin-only,
+ * enforced server-side).
  */
 export function useMarketingSummary(scope: SectorScope | undefined) {
   const supabase = createClient();
-  const sectorId = scope ? sectorFilterValue(scope) : undefined;
+  const sectorParam = rpcSectorParam(scope);
 
   return useQuery({
     queryKey: ["marketing-summary", scope],
     queryFn: async (): Promise<MarketingSummary | null> => {
-      if (!sectorId) return null;
+      if (sectorParam === undefined) return null;
 
       const { data, error } = await supabase.rpc("get_marketing_summary", {
-        p_sector_id: sectorId,
+        p_sector_id: sectorParam,
       });
 
       if (error) throw error;

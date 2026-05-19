@@ -2,10 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import {
-  isScopeReady,
-  sectorFilterValue,
-} from "@/lib/navigation/scoped-query";
+import { isScopeReady, rpcSectorParam } from "@/lib/navigation/scoped-query";
 import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface LegalStats {
@@ -30,21 +27,22 @@ interface RawLegalStats {
 }
 
 /**
- * Legal dashboard KPIs from the `get_legal_dashboard_stats` RPC. The RPC is
- * single-sector by contract (`p_sector_id`), so under the all-sectors scope
- * this hook resolves to the empty stat set.
+ * Legal dashboard KPIs from the `get_legal_dashboard_stats` RPC. The RPC
+ * accepts a nullable `p_sector_id`: under the all-sectors scope this hook
+ * passes `null` and the RPC returns a cross-sector aggregate (admin-only,
+ * enforced server-side).
  */
 export function useLegalStats(scope: SectorScope | undefined) {
-  const sectorId = scope ? sectorFilterValue(scope) : undefined;
+  const sectorParam = rpcSectorParam(scope);
 
   return useQuery<LegalStats>({
     queryKey: ["legal-stats", scope],
     queryFn: async () => {
-      if (!sectorId) return EMPTY_STATS;
+      if (sectorParam === undefined) return EMPTY_STATS;
 
       const supabase = createClient();
       const { data, error } = await supabase.rpc("get_legal_dashboard_stats", {
-        p_sector_id: sectorId,
+        p_sector_id: sectorParam,
       });
 
       if (error) throw error;
