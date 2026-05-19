@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createOnboardingTemplate,
   updateOnboardingTemplate,
   deleteOnboardingTemplate,
@@ -89,19 +94,24 @@ function flattenInstance(row: RawOnboardingInstance): OnboardingInstance {
   } as OnboardingInstance;
 }
 
-export function useOnboardingInstances(sectorId: string | undefined) {
+export function useOnboardingInstances(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-onboarding", sectorId],
+    queryKey: ["hr-onboarding", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_onboarding_instances")
-        .select(INSTANCE_SELECT)
-        .eq("sector_id", sectorId)
-        .order("created_at", { ascending: false });
+        .select(INSTANCE_SELECT);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("created_at", {
+        ascending: false,
+      });
 
       if (error) throw error;
 
@@ -109,7 +119,7 @@ export function useOnboardingInstances(sectorId: string | undefined) {
         flattenInstance
       );
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

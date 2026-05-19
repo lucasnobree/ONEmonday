@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface Employee {
   id: string;
@@ -21,23 +26,26 @@ export interface Employee {
   created_at: string;
 }
 
-export function useEmployees(sectorId: string | undefined) {
+export function useEmployees(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-employees", sectorId],
+    queryKey: ["hr-employees", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
-        .from("hr_employees")
-        .select("*")
-        .eq("sector_id", sectorId)
-        .order("full_name", { ascending: true });
+      let query = supabase.from("hr_employees").select("*");
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("full_name", {
+        ascending: true,
+      });
 
       if (error) throw error;
       return (data as Employee[]) ?? [];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
