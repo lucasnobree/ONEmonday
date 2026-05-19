@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createProposal,
   updateProposal,
   updateProposalStatus,
@@ -75,15 +80,15 @@ function mapProposalRow(p: ProposalRow): Proposal {
 }
 
 export function useProposals(
-  sectorId: string | undefined,
+  scope: SectorScope | undefined,
   statusFilter?: string
 ) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["crm-proposals", sectorId, statusFilter],
+    queryKey: ["crm-proposals", scope, statusFilter],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
       let query = supabase
         .from("crm_proposals")
@@ -94,9 +99,11 @@ export function useProposals(
           crm_deals (id, card_id, cards (title))
         `
         )
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
 
       if (statusFilter && statusFilter !== "all") {
         query = query.eq("status", statusFilter);
@@ -107,7 +114,7 @@ export function useProposals(
 
       return ((data ?? []) as unknown as ProposalRow[]).map(mapProposalRow);
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

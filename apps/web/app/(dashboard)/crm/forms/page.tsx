@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useLeadForms,
   useSetLeadFormPublished,
@@ -37,10 +40,15 @@ function publicFormUrl(token: string): string {
 }
 
 export default function LeadFormsPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: forms, isLoading } = useLeadForms(currentSector?.id);
+  const { data: forms, isLoading: formsLoading } = useLeadForms(scope);
   const setPublished = useSetLeadFormPublished();
   const deleteForm = useDeleteLeadForm();
+  const isLoading = scopeLoading || formsLoading;
+  // Creating a form needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<LeadForm | null>(null);
@@ -101,13 +109,9 @@ export default function LeadFormsPage() {
     return base;
   };
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para gerenciar formulários de captura.
-      </p>
-    );
-  }
+  // When editing an existing form, target its own sector; for a new form use
+  // the create-target sector resolved from the on-screen scope.
+  const builderSectorId = editingForm?.sector_id ?? createSectorId;
 
   if (isLoading) {
     return (
@@ -126,10 +130,13 @@ export default function LeadFormsPage() {
           Formulários de captura de leads. Cada formulário publicado expõe uma
           URL pública que cria leads automaticamente.
         </p>
-        <Button onClick={openCreate}>
-          <Plus className="size-4 mr-1" />
-          Novo formulário
-        </Button>
+        <div className="flex items-center gap-2">
+          <SectorScopeFilter />
+          <Button onClick={openCreate} disabled={!createSectorId}>
+            <Plus className="size-4 mr-1" />
+            Novo formulário
+          </Button>
+        </div>
       </div>
 
       {!forms?.length ? (
@@ -138,7 +145,7 @@ export default function LeadFormsPage() {
           title="Nenhum formulário de captura"
           description="Crie um formulário para capturar leads de inbound sem depender do RD Station."
           action={
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} disabled={!createSectorId}>
               <Plus className="size-4 mr-1" />
               Novo formulário
             </Button>
@@ -231,12 +238,14 @@ export default function LeadFormsPage() {
         </div>
       )}
 
-      <LeadFormBuilderDialog
-        open={showBuilder}
-        onOpenChange={setShowBuilder}
-        sectorId={currentSector.id}
-        form={editingForm}
-      />
+      {builderSectorId && (
+        <LeadFormBuilderDialog
+          open={showBuilder}
+          onOpenChange={setShowBuilder}
+          sectorId={builderSectorId}
+          form={editingForm}
+        />
+      )}
     </div>
   );
 }

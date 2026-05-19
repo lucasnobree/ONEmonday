@@ -65,14 +65,12 @@ const statusConfig: Record<
 
 interface ProposalDetailSheetProps {
   proposalId: string | null;
-  sectorId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function ProposalDetailSheet({
   proposalId,
-  sectorId,
   open,
   onOpenChange,
 }: ProposalDetailSheetProps) {
@@ -320,7 +318,7 @@ export function ProposalDetailSheet({
         <ProposalFormDialog
           open={showEdit}
           onOpenChange={setShowEdit}
-          sectorId={sectorId}
+          sectorId={proposal.sector_id}
           proposal={proposal}
         />
       )}

@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createActivity,
   completeActivity,
   rescheduleActivity,
@@ -40,14 +45,19 @@ export interface Activity {
 }
 
 interface UseActivitiesOptions {
-  sectorId: string | undefined;
+  /**
+   * The sector scope: a concrete sector id filters by `sector_id`; the
+   * all-sectors sentinel skips that filter (admins have cross-sector
+   * visibility via RLS); `undefined` means scope not resolved yet.
+   */
+  scope: SectorScope | undefined;
   dealId?: string;
   contactId?: string;
   companyId?: string;
 }
 
 export function useActivities({
-  sectorId,
+  scope,
   dealId,
   contactId,
   companyId,
@@ -55,9 +65,9 @@ export function useActivities({
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["crm-activities", sectorId, dealId, contactId, companyId],
+    queryKey: ["crm-activities", scope, dealId, contactId, companyId],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
       let query = supabase
         .from("crm_activities")
@@ -74,10 +84,11 @@ export function useActivities({
           assignee:users!crm_activities_assigned_to_fkey (full_name)
         `
         )
-        .eq("sector_id", sectorId)
         .order("created_at", { ascending: false })
         .limit(200);
 
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
       if (dealId) query = query.eq("deal_id", dealId);
       if (contactId) query = query.eq("contact_id", contactId);
       if (companyId) query = query.eq("company_id", companyId);
@@ -95,7 +106,7 @@ export function useActivities({
         assignee: a.assignee,
       })) as unknown as Activity[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

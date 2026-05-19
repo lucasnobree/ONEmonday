@@ -124,7 +124,7 @@ export function DealDetailSheet({
 }: DealDetailSheetProps) {
   const { data: deal, isLoading } = useDealDetail(dealId);
   const { data: activities } = useActivities({
-    sectorId,
+    scope: sectorId,
     dealId: dealId ?? undefined,
   });
   const { data: members } = useCrmMembers(sectorId);
@@ -725,7 +725,6 @@ export function DealDetailSheet({
           />
           <ProposalDetailSheet
             proposalId={selectedProposalId}
-            sectorId={sectorId}
             open={!!selectedProposalId}
             onOpenChange={(o) => !o && setSelectedProposalId(null)}
           />
