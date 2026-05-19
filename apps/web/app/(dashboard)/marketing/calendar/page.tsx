@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useContentItems, type ContentItem } from "@/hooks/marketing/use-content-items";
 import { useCampaigns } from "@/hooks/marketing/use-campaigns";
 import { ContentCalendar } from "@/components/marketing/content-calendar";
@@ -11,29 +14,29 @@ import { currentMonth } from "@/lib/marketing/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MarketingCalendarPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const {
     data: items,
     isLoading,
     isError,
     refetch,
-  } = useContentItems(currentSector?.id);
-  const { data: campaigns } = useCampaigns(currentSector?.id);
+  } = useContentItems(scope);
+  const { data: campaigns } = useCampaigns(scope);
 
   const [month, setMonth] = useState(currentMonth());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContentItem>();
   const [defaultDate, setDefaultDate] = useState<string>();
 
-  if (!currentSector) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver o calendário.
-      </p>
-    );
-  }
+  // Creating content needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited item keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const dialogSectorId = editing?.sector_id ?? createSectorId;
 
   const openForDate = (date: string) => {
+    if (!createSectorId) return;
     setEditing(undefined);
     setDefaultDate(date);
     setDialogOpen(true);
@@ -47,7 +50,10 @@ export default function MarketingCalendarPage() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Calendário Editorial</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Calendário Editorial</h2>
+        <SectorScopeFilter />
+      </div>
 
       {isLoading ? (
         <Skeleton className="h-96 w-full" />
@@ -66,14 +72,16 @@ export default function MarketingCalendarPage() {
         />
       )}
 
-      <ContentFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        campaigns={campaigns ?? []}
-        item={editing}
-        defaultDate={defaultDate}
-      />
+      {dialogSectorId && (
+        <ContentFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={dialogSectorId}
+          campaigns={campaigns ?? []}
+          item={editing}
+          defaultDate={defaultDate}
+        />
+      )}
     </div>
   );
 }

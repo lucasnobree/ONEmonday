@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createSequence,
   updateSequence,
   deleteSequence,
@@ -46,28 +51,32 @@ export interface SequenceEnrollment {
   next_run_at: string;
 }
 
-export function useSequences(sectorId: string | undefined) {
+export function useSequences(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["marketing-sequences", sectorId],
+    queryKey: ["marketing-sequences", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("marketing_sequences")
         .select(
           `id, sector_id, name, description, trigger_type, segment_id,
            status, created_at`
         )
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data ?? []) as Sequence[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

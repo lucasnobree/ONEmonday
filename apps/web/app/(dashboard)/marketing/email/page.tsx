@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Mail, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useEmailCampaigns,
   useDeleteEmailCampaign,
@@ -23,13 +26,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 export default function MarketingEmailPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const {
     data: emailCampaigns,
     isLoading,
     isError,
     refetch,
-  } = useEmailCampaigns(currentSector?.id);
+  } = useEmailCampaigns(scope);
   const deleteEmailCampaign = useDeleteEmailCampaign();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -37,13 +41,11 @@ export default function MarketingEmailPage() {
   const [editing, setEditing] = useState<EmailCampaign>();
   const [sending, setSending] = useState<EmailCampaign>();
 
-  if (!currentSector) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver as campanhas de e-mail.
-      </p>
-    );
-  }
+  // Creating a campaign needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited campaign keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const dialogSectorId = editing?.sector_id ?? createSectorId;
 
   const handleDelete = async (id: string) => {
     const result = await deleteEmailCampaign.mutateAsync(id);
@@ -65,16 +67,20 @@ export default function MarketingEmailPage() {
             Componha e envie e-mails para uma audiência via gateway ESP.
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(undefined);
-            setFormOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Nova Campanha
-        </Button>
+        <div className="flex items-center gap-2">
+          <SectorScopeFilter />
+          <Button
+            size="sm"
+            disabled={!createSectorId}
+            onClick={() => {
+              setEditing(undefined);
+              setFormOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Nova Campanha
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -165,12 +171,14 @@ export default function MarketingEmailPage() {
         </div>
       )}
 
-      <EmailCampaignFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        sectorId={currentSector.id}
-        emailCampaign={editing}
-      />
+      {dialogSectorId && (
+        <EmailCampaignFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          sectorId={dialogSectorId}
+          emailCampaign={editing}
+        />
+      )}
       <EmailSendDialog
         open={sendOpen}
         onOpenChange={setSendOpen}

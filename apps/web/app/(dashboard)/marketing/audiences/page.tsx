@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useSegments,
   useDeleteSegment,
@@ -19,25 +22,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 export default function MarketingAudiencesPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const {
     data: segments,
     isLoading,
     isError,
     refetch,
-  } = useSegments(currentSector?.id);
+  } = useSegments(scope);
   const deleteSegment = useDeleteSegment();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AudienceSegment>();
 
-  if (!currentSector) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver as audiências.
-      </p>
-    );
-  }
+  // Creating a segment needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited segment keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const dialogSectorId = editing?.sector_id ?? createSectorId;
 
   const handleDelete = async (id: string) => {
     const result = await deleteSegment.mutateAsync(id);
@@ -54,16 +56,20 @@ export default function MarketingAudiencesPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Audiências</h2>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(undefined);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Nova Audiência
-        </Button>
+        <div className="flex items-center gap-2">
+          <SectorScopeFilter />
+          <Button
+            size="sm"
+            disabled={!createSectorId}
+            onClick={() => {
+              setEditing(undefined);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Nova Audiência
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -130,12 +136,14 @@ export default function MarketingAudiencesPage() {
         </div>
       )}
 
-      <SegmentFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        segment={editing}
-      />
+      {dialogSectorId && (
+        <SegmentFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={dialogSectorId}
+          segment={editing}
+        />
+      )}
     </div>
   );
 }

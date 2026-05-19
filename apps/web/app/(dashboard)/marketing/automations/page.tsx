@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Plus, Workflow, Play, ListOrdered, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useSequences,
   useDeleteSequence,
@@ -27,13 +30,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 export default function MarketingAutomationsPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const {
     data: sequences,
     isLoading,
     isError,
     refetch,
-  } = useSequences(currentSector?.id);
+  } = useSequences(scope);
   const deleteSequence = useDeleteSequence();
   const runSteps = useRunSequenceSteps();
 
@@ -44,13 +48,11 @@ export default function MarketingAutomationsPage() {
   const [editing, setEditing] = useState<Sequence>();
   const [active, setActive] = useState<Sequence>();
 
-  if (!currentSector) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver as automações.
-      </p>
-    );
-  }
+  // Creating a sequence needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited sequence keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const dialogSectorId = editing?.sector_id ?? createSectorId;
 
   const handleDelete = async (id: string) => {
     const result = await deleteSequence.mutateAsync(id);
@@ -85,7 +87,8 @@ export default function MarketingAutomationsPage() {
             Sequências gatilho → passo (esperar / enviar e-mail).
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <SectorScopeFilter />
           <Button
             size="sm"
             variant="outline"
@@ -97,6 +100,7 @@ export default function MarketingAutomationsPage() {
           </Button>
           <Button
             size="sm"
+            disabled={!createSectorId}
             onClick={() => {
               setEditing(undefined);
               setFormOpen(true);
@@ -202,12 +206,14 @@ export default function MarketingAutomationsPage() {
         </div>
       )}
 
-      <SequenceFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        sectorId={currentSector.id}
-        sequence={editing}
-      />
+      {dialogSectorId && (
+        <SequenceFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          sectorId={dialogSectorId}
+          sequence={editing}
+        />
+      )}
       <SequenceStepsDialog
         open={stepsOpen}
         onOpenChange={setStepsOpen}
