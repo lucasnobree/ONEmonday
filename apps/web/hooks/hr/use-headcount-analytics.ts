@@ -2,10 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import {
-  isScopeReady,
-  sectorFilterValue,
-} from "@/lib/navigation/scoped-query";
+import { isScopeReady, rpcSectorParam } from "@/lib/navigation/scoped-query";
 import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface HeadcountAnalytics {
@@ -27,28 +24,31 @@ const EMPTY: HeadcountAnalytics = {
 };
 
 /**
- * Headcount & turnover metrics for the trailing `windowMonths` of a sector,
- * backed by the get_hr_headcount_analytics RPC (migration 00149).
+ * Headcount & turnover metrics for the trailing `windowMonths`, backed by the
+ * get_hr_headcount_analytics RPC (migration 00149).
  *
- * The RPC is single-sector by contract (`p_sector_id`), so under the
- * all-sectors scope this hook resolves to the empty metric set.
+ * The RPC accepts a nullable `p_sector_id`: under the all-sectors scope this
+ * hook passes `null` and the RPC returns a cross-sector aggregate (admin-only,
+ * enforced server-side).
  */
 export function useHeadcountAnalytics(
   scope: SectorScope | undefined,
   windowMonths = 12
 ) {
-  const sectorId = scope ? sectorFilterValue(scope) : undefined;
+  const sectorParam = rpcSectorParam(scope);
 
   return useQuery<HeadcountAnalytics>({
     queryKey: ["hr-headcount-analytics", scope, windowMonths],
     queryFn: async () => {
-      if (!sectorId) return { ...EMPTY, window_months: windowMonths };
+      if (sectorParam === undefined) {
+        return { ...EMPTY, window_months: windowMonths };
+      }
 
       const supabase = createClient();
       const { data, error } = await supabase.rpc(
         "get_hr_headcount_analytics",
         {
-          p_sector_id: sectorId,
+          p_sector_id: sectorParam,
           p_window_months: windowMonths,
         }
       );

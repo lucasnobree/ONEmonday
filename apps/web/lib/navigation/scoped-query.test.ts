@@ -3,6 +3,7 @@ import {
   isScopeReady,
   shouldFilterBySector,
   sectorFilterValue,
+  rpcSectorParam,
 } from "./scoped-query";
 import { ALL_SECTORS } from "./sector-scope";
 
@@ -37,5 +38,29 @@ describe("sectorFilterValue", () => {
 
   it("is the concrete sector id otherwise", () => {
     expect(sectorFilterValue("sector-a")).toBe("sector-a");
+  });
+});
+
+describe("rpcSectorParam", () => {
+  it("is undefined while the scope is still unresolved", () => {
+    // The hook's early-return / disabled guard keeps the RPC from firing.
+    expect(rpcSectorParam(undefined)).toBeUndefined();
+  });
+
+  it("is null for the all-sectors sentinel — RPC takes its aggregate branch", () => {
+    // Distinct from sectorFilterValue (undefined): the dashboard RPCs need an
+    // explicit null so p_sector_id IS NULL selects the cross-sector aggregate.
+    expect(rpcSectorParam(ALL_SECTORS)).toBeNull();
+  });
+
+  it("is the concrete sector id for a single-sector scope", () => {
+    expect(rpcSectorParam("sector-a")).toBe("sector-a");
+  });
+
+  it("never collapses all-sectors to undefined (regression for empty KPIs)", () => {
+    // Phase 2b bug: hooks used sectorFilterValue, so all-sectors became
+    // undefined and the dashboard short-circuited to an empty result instead
+    // of aggregating. rpcSectorParam must keep all-sectors distinguishable.
+    expect(rpcSectorParam(ALL_SECTORS)).not.toBeUndefined();
   });
 });
