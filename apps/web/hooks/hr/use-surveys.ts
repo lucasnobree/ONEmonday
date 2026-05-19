@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface SurveyQuestion {
   id: string;
@@ -23,20 +28,24 @@ export interface Survey {
   response_count: number;
 }
 
-export function useSurveys(sectorId: string | undefined) {
+export function useSurveys(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-surveys", sectorId],
+    queryKey: ["hr-surveys", scope],
     queryFn: async (): Promise<Survey[]> => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_surveys")
         .select("*, hr_survey_questions(id), hr_survey_responses(id)")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -54,7 +63,7 @@ export function useSurveys(sectorId: string | undefined) {
         })) ?? []
       ) as Survey[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

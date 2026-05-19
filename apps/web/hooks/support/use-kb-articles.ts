@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createKBArticle,
   updateKBArticle,
   deleteKBArticle,
@@ -27,20 +32,22 @@ export interface KBArticle {
 }
 
 export function useKBArticles(
-  sectorId: string | undefined,
+  scope: SectorScope | undefined,
   publishedFilter: PublishedFilter = "all"
 ) {
   return useQuery<KBArticle[]>({
-    queryKey: ["kb-articles", sectorId, publishedFilter],
+    queryKey: ["kb-articles", scope, publishedFilter],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
       const supabase = createClient();
       let query = supabase
         .from("kb_articles")
         .select("*")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
 
       if (publishedFilter === "published") {
         query = query.eq("is_published", true);
@@ -51,7 +58,7 @@ export function useKBArticles(
       const { data } = await query;
       return (data || []) as KBArticle[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 import type { Employee } from "@/hooks/hr/use-employees";
 
 export interface OrgNode {
@@ -97,44 +102,52 @@ export function filterTreeByDepartment(
   return { tree: prune(tree), matchedIds };
 }
 
-export function useOrgChart(sectorId: string | undefined) {
+export function useOrgChart(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-org-chart", sectorId],
+    queryKey: ["hr-org-chart", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_employees")
         .select("*")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .neq("status", "terminated")
         .order("full_name", { ascending: true });
 
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
+
       if (error) throw error;
       return buildTree((data as Employee[]) ?? []);
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
-export function useDepartments(sectorId: string | undefined) {
+export function useDepartments(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-departments", sectorId],
+    queryKey: ["hr-departments", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_employees")
         .select("department")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .neq("status", "terminated")
         .not("department", "is", null);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -144,6 +157,6 @@ export function useDepartments(sectorId: string | undefined) {
       });
       return Array.from(depts).sort();
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

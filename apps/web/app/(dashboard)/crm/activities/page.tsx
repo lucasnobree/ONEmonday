@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useActivities,
   useCompleteActivity,
@@ -90,12 +93,18 @@ const dateTimeFormat = new Intl.DateTimeFormat("pt-BR", {
 });
 
 export default function ActivitiesPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: activities, isLoading } = useActivities({
-    sectorId: currentSector?.id,
+  const { data: activities, isLoading: activitiesLoading } = useActivities({
+    scope,
   });
-  const { data: members } = useCrmMembers(currentSector?.id);
+  // Creating an activity needs a concrete target sector; under the
+  // all-sectors scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  // The members select is single-sector; scope it to the create-target sector.
+  const { data: members } = useCrmMembers(createSectorId ?? undefined);
   const completeActivity = useCompleteActivity();
+  const isLoading = scopeLoading || activitiesLoading;
   const [tab, setTab] = useState<"tasks" | "history">("tasks");
   const [typeFilter, setTypeFilter] = useState("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -169,20 +178,11 @@ export default function ActivitiesPage() {
     toast.success(completed ? "Tarefa concluída" : "Tarefa reaberta");
   };
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as atividades.
-      </p>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Atividades</h2>
-          <ActivityCreateDialog sectorId={currentSector.id} />
         </div>
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />
@@ -198,6 +198,7 @@ export default function ActivitiesPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Atividades</h2>
         <div className="flex items-center gap-2">
+          <SectorScopeFilter />
           <Button
             variant="outline"
             size="sm"
@@ -240,7 +241,9 @@ export default function ActivitiesPage() {
             <Download className="size-4 mr-1" />
             Exportar
           </Button>
-          <ActivityCreateDialog sectorId={currentSector.id} />
+          {createSectorId && (
+            <ActivityCreateDialog sectorId={createSectorId} />
+          )}
         </div>
       </div>
 

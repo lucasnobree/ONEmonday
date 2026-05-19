@@ -86,7 +86,7 @@ export function ContactDetailSheet({
   });
 
   const { data: activities } = useActivities({
-    sectorId,
+    scope: sectorId,
     contactId: contactId ?? undefined,
   });
 

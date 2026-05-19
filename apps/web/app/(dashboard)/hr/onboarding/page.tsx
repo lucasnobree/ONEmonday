@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useOnboardingInstances,
   useOnboardingTemplates,
@@ -67,13 +70,17 @@ const statusMap: Record<
 };
 
 export default function OnboardingPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const { data: instances, isLoading: loadingInstances } =
-    useOnboardingInstances(currentSector?.id);
+    useOnboardingInstances(scope);
   const { data: templates, isLoading: loadingTemplates } =
-    useOnboardingTemplates(currentSector?.id);
+    useOnboardingTemplates(scope);
   const completeItem = useCompleteOnboardingItem();
   const deleteTemplate = useDeleteOnboardingTemplate();
+  // Starting an onboarding / creating a template needs a concrete target
+  // sector; under the all-sectors scope fall back to the sidebar sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const [activeTab, setActiveTab] = useState<"ativos" | "templates">("ativos");
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -81,13 +88,8 @@ export default function OnboardingPage() {
   const [editTemplate, setEditTemplate] = useState<OnboardingTemplate | undefined>();
   const [detailInstanceId, setDetailInstanceId] = useState<string | null>(null);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver os onboardings.
-      </p>
-    );
-  }
+  // When editing a template, target its own sector.
+  const templateSectorId = editTemplate?.sector_id ?? createSectorId;
 
   async function handleToggleItem(itemId: string, completed: boolean) {
     try {
@@ -111,8 +113,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
           <button
             onClick={() => setActiveTab("ativos")}
             className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all ${
@@ -133,16 +136,23 @@ export default function OnboardingPage() {
           >
             Templates
           </button>
+          </div>
+          <SectorScopeFilter />
         </div>
 
         {activeTab === "ativos" ? (
-          <Button size="sm" onClick={() => setStartDialogOpen(true)}>
+          <Button
+            size="sm"
+            onClick={() => setStartDialogOpen(true)}
+            disabled={!createSectorId}
+          >
             <Play className="h-4 w-4 mr-1" />
             Iniciar Onboarding
           </Button>
         ) : (
           <Button
             size="sm"
+            disabled={!createSectorId}
             onClick={() => {
               setEditTemplate(undefined);
               setTemplateDialogOpen(true);
@@ -176,19 +186,23 @@ export default function OnboardingPage() {
         />
       )}
 
-      <OnboardingTemplateFormDialog
-        open={templateDialogOpen}
-        onOpenChange={setTemplateDialogOpen}
-        sectorId={currentSector.id}
-        template={editTemplate}
-      />
+      {templateSectorId && (
+        <OnboardingTemplateFormDialog
+          open={templateDialogOpen}
+          onOpenChange={setTemplateDialogOpen}
+          sectorId={templateSectorId}
+          template={editTemplate}
+        />
+      )}
 
-      <StartOnboardingDialog
-        open={startDialogOpen}
-        onOpenChange={setStartDialogOpen}
-        sectorId={currentSector.id}
-        templates={templates ?? []}
-      />
+      {createSectorId && (
+        <StartOnboardingDialog
+          open={startDialogOpen}
+          onOpenChange={setStartDialogOpen}
+          sectorId={createSectorId}
+          templates={templates ?? []}
+        />
+      )}
 
       <OnboardingDetailSheet
         instanceId={detailInstanceId}

@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface Clause {
   id: string;
@@ -16,24 +21,28 @@ export interface Clause {
   updated_at: string;
 }
 
-export function useClauses(sectorId: string | undefined) {
+export function useClauses(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["legal-clauses", sectorId],
+    queryKey: ["legal-clauses", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("legal_clauses")
         .select("*")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("title", { ascending: true });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data as Clause[]) ?? [];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

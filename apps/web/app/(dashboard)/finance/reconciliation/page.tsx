@@ -2,6 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useBankTransactions,
   useImportOfx,
@@ -40,12 +43,15 @@ import { toast } from "sonner";
 import { Upload, Landmark, Link2, Link2Off } from "lucide-react";
 
 export default function FinanceReconciliationPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const sectorId = currentSector?.id;
+  // Importing an OFX statement targets one sector's bank account; under the
+  // all-sectors scope fall back to the sidebar's current sector.
+  const importSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
-  const { data: transactions, isLoading } = useBankTransactions(sectorId);
-  const { data: invoices } = useInvoices(sectorId);
-  const { data: expenses } = useExpenses(sectorId);
+  const { data: transactions, isLoading } = useBankTransactions(scope);
+  const { data: invoices } = useInvoices(scope);
+  const { data: expenses } = useExpenses(scope);
   const importOfx = useImportOfx();
   const reconcile = useReconcileTransaction();
   const unreconcile = useUnreconcileTransaction();
@@ -110,18 +116,11 @@ export default function FinanceReconciliationPage() {
     return map;
   }, [suggestions]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar a conciliação bancária.
-      </p>
-    );
-  }
-
   const handleFile = async (file: File) => {
+    if (!importSectorId) return;
     const content = await file.text();
     const result = await importOfx.mutateAsync({
-      sectorId: currentSector.id,
+      sectorId: importSectorId,
       ofxContent: content,
     });
     if (result.error) {
@@ -192,6 +191,10 @@ export default function FinanceReconciliationPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       {/* Import controls */}
       <Card>
         <CardHeader>
@@ -216,11 +219,16 @@ export default function FinanceReconciliationPage() {
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
-            disabled={importOfx.isPending}
+            disabled={importOfx.isPending || !importSectorId}
           >
             <Upload className="size-4 mr-1" />
             {importOfx.isPending ? "Importando..." : "Importar OFX"}
           </Button>
+          {!importSectorId && (
+            <p className="text-sm text-muted-foreground">
+              Selecione um setor específico para importar um extrato.
+            </p>
+          )}
           {unmatched.length > 0 && (
             <p className="text-sm text-muted-foreground">
               {exactCount} de {unmatched.length} com sugestão de

@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createOffboardingTemplate,
   updateOffboardingTemplate,
   deleteOffboardingTemplate,
@@ -104,19 +109,23 @@ function parseTemplateItems(raw: unknown): OffboardingTemplateItem[] {
   }
 }
 
-export function useOffboardingInstances(sectorId: string | undefined) {
+export function useOffboardingInstances(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-offboarding", sectorId],
+    queryKey: ["hr-offboarding", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_offboarding_instances")
         .select(INSTANCE_SELECT)
-        .eq("sector_id", sectorId)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -124,24 +133,28 @@ export function useOffboardingInstances(sectorId: string | undefined) {
         flattenInstance
       );
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
-export function useOffboardingTemplates(sectorId: string | undefined) {
+export function useOffboardingTemplates(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-offboarding-templates", sectorId],
+    queryKey: ["hr-offboarding-templates", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_offboarding_templates")
         .select("*")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("name", { ascending: true });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -153,7 +166,7 @@ export function useOffboardingTemplates(sectorId: string | undefined) {
           }) as OffboardingTemplate
       );
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

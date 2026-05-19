@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 /** A raw aging line returned by the `get_finance_aging` RPC. */
 export interface AgingLine {
@@ -24,12 +29,16 @@ export interface AgingPayload {
  * AR/AP aging snapshot for a sector as of today, computed server-side by the
  * `get_finance_aging` RPC (which enforces sector access). Bucketing is done
  * client-side by `lib/finance/aging.ts`.
+ *
+ * The RPC is single-sector by contract (`p_sector_id`), so under the
+ * all-sectors scope this hook resolves to `null`.
  */
-export function useFinanceAging(sectorId: string | undefined) {
+export function useFinanceAging(scope: SectorScope | undefined) {
   const supabase = createClient();
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
 
   return useQuery({
-    queryKey: ["finance-aging", sectorId],
+    queryKey: ["finance-aging", scope],
     queryFn: async (): Promise<AgingPayload | null> => {
       if (!sectorId) return null;
       const { data, error } = await supabase.rpc("get_finance_aging", {
@@ -38,6 +47,6 @@ export function useFinanceAging(sectorId: string | undefined) {
       if (error) throw error;
       return data as AgingPayload;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

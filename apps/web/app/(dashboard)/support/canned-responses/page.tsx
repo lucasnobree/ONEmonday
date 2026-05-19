@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useCannedResponses,
   useDeleteCannedResponse,
@@ -31,8 +34,9 @@ import {
 } from "lucide-react";
 
 export default function CannedResponsesPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: responses, isLoading } = useCannedResponses(currentSector?.id);
+  const { data: responses, isLoading } = useCannedResponses(scope);
   const deleteMutation = useDeleteCannedResponse();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -40,6 +44,15 @@ export default function CannedResponsesPage() {
   const [editingResponse, setEditingResponse] = useState<
     CannedResponse | undefined
   >(undefined);
+
+  // The permission gate is keyed by a concrete sector; admins bypass the
+  // check regardless, non-admins are locked to their own sector.
+  const gateSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? "";
+  // Creating a response needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited response keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const dialogSectorId = editingResponse?.sector_id ?? createSectorId;
 
   function handleCopy(content: string, id: string) {
     navigator.clipboard.writeText(content);
@@ -71,17 +84,9 @@ export default function CannedResponsesPage() {
     toast.success("Resposta excluída");
   }
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as Respostas Prontas.
-      </p>
-    );
-  }
-
   return (
     <PermissionGate
-      sectorId={currentSector.id}
+      sectorId={gateSectorId}
       resource="canned_response"
       action="read"
       fallback={
@@ -91,14 +96,21 @@ export default function CannedResponsesPage() {
       }
     >
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
             Respostas reutilizáveis para agilizar o atendimento de tickets.
           </p>
-          <Button size="sm" onClick={handleCreate}>
-            <Plus className="size-4 mr-1" />
-            Nova Resposta
-          </Button>
+          <div className="flex items-center gap-2">
+            <SectorScopeFilter />
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={!createSectorId}
+            >
+              <Plus className="size-4 mr-1" />
+              Nova Resposta
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -208,15 +220,17 @@ export default function CannedResponsesPage() {
         )}
       </div>
 
-      <CannedResponseFormDialog
-        open={dialogOpen}
-        onOpenChange={(o) => {
-          setDialogOpen(o);
-          if (!o) setEditingResponse(undefined);
-        }}
-        sectorId={currentSector.id}
-        response={editingResponse}
-      />
+      {dialogSectorId && (
+        <CannedResponseFormDialog
+          open={dialogOpen}
+          onOpenChange={(o) => {
+            setDialogOpen(o);
+            if (!o) setEditingResponse(undefined);
+          }}
+          sectorId={dialogSectorId}
+          response={editingResponse}
+        />
+      )}
     </PermissionGate>
   );
 }

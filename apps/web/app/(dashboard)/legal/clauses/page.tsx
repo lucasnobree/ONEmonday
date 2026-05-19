@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useClauses, type Clause } from "@/hooks/legal/use-clauses";
 import { useClauseUsage } from "@/hooks/legal/use-contract-clauses";
 import { ClauseFormDialog } from "@/components/legal/clause-form-dialog";
@@ -27,9 +28,9 @@ import { CLAUSE_CATEGORIES } from "@/lib/validations/legal";
 import { CLAUSE_CATEGORY_LABELS, clauseUsageLabel } from "@/lib/legal/labels";
 
 export default function ClausesPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: clauses, isLoading } = useClauses(currentSector?.id);
-  const { data: clauseUsage } = useClauseUsage(currentSector?.id);
+  const { scope } = useSectorScope();
+  const { data: clauses, isLoading } = useClauses(scope);
+  const { data: clauseUsage } = useClauseUsage(scope);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selected, setSelected] = useState<Clause | null>(null);
@@ -47,18 +48,11 @@ export default function ClausesPage() {
     });
   }, [clauses, categoryFilter, search]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver a biblioteca de cláusulas.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <SectorScopeFilter />
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input

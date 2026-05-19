@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useSurveys, type Survey } from "@/hooks/hr/use-surveys";
 import { updateSurveyStatus } from "@/lib/actions/hr/surveys";
 import { SurveyFormDialog } from "@/components/hr/survey-form-dialog";
@@ -31,10 +34,14 @@ const STATUS_MAP: Record<
 };
 
 export default function SurveysPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const queryClient = useQueryClient();
-  const { data: surveys, isLoading } = useSurveys(currentSector?.id);
+  const { data: surveys, isLoading } = useSurveys(scope);
   const [resultsFor, setResultsFor] = useState<Survey | null>(null);
+  // Creating a survey needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const statusMutation = useMutation({
     mutationFn: (vars: { surveyId: string; status: "open" | "closed" }) =>
@@ -53,18 +60,11 @@ export default function SurveysPage() {
     },
   });
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para gerenciar pesquisas.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <SurveyFormDialog sectorId={currentSector.id} />
+      <div className="flex items-center justify-between gap-2">
+        <SectorScopeFilter />
+        {createSectorId && <SurveyFormDialog sectorId={createSectorId} />}
       </div>
 
       <Card>
@@ -83,7 +83,11 @@ export default function SurveysPage() {
               icon={MessageSquareHeart}
               title="Nenhuma pesquisa criada"
               description="Crie pesquisas de clima e eNPS para medir o engajamento da equipe."
-              action={<SurveyFormDialog sectorId={currentSector.id} />}
+              action={
+                createSectorId ? (
+                  <SurveyFormDialog sectorId={createSectorId} />
+                ) : undefined
+              }
             />
           ) : (
             <div className="space-y-2">

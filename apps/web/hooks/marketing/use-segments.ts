@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createSegment,
   updateSegment,
   deleteSegment,
@@ -19,27 +24,31 @@ export interface AudienceSegment {
   created_at: string;
 }
 
-export function useSegments(sectorId: string | undefined) {
+export function useSegments(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["marketing-segments", sectorId],
+    queryKey: ["marketing-segments", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("marketing_audience_segments")
         .select(
           `id, sector_id, name, description, channel, estimated_size, created_at`
         )
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("name", { ascending: true });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data ?? []) as AudienceSegment[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

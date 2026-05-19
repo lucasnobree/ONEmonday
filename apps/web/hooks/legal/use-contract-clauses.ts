@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 /** A clause linked to a contract, joined with the library clause. */
 export interface ContractClauseLink {
@@ -25,19 +30,23 @@ export interface ContractClauseLink {
  * "usada em N contratos" signal — `legal_contract_clauses` is one row per
  * (contract, clause) link, so a plain tally is correct.
  */
-export function useClauseUsage(sectorId: string | undefined) {
+export function useClauseUsage(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["legal-clause-usage", sectorId],
+    queryKey: ["legal-clause-usage", scope],
     queryFn: async () => {
       const usage = new Map<string, number>();
-      if (!sectorId) return usage;
+      if (!isScopeReady(scope)) return usage;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("legal_contract_clauses")
-        .select("clause_id")
-        .eq("sector_id", sectorId);
+        .select("clause_id");
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       for (const row of (data as { clause_id: string }[]) ?? []) {
@@ -45,7 +54,7 @@ export function useClauseUsage(sectorId: string | undefined) {
       }
       return usage;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

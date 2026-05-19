@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { isScopeReady, sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useDeals, type Deal } from "@/hooks/crm/use-deals";
 import { buildStageColumns } from "@/lib/crm/pipeline-stages";
 import {
@@ -61,13 +64,23 @@ const probabilityVariant = (prob: number | null) => {
 };
 
 export default function PipelinePage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: deals, isLoading: dealsLoading } = useDeals(currentSector?.id);
-  const { data: stageDefaults } = useStageDefaults(currentSector?.id);
-  const { data: boards, isLoading: boardsLoading } = useBoards(
-    currentSector?.id
+  // The deal list honours the on-screen scope (a concrete sector filters by
+  // `sector_id`; the all-sectors sentinel skips that filter). The pipeline's
+  // board/stage/owner lookups and the create dialog are single-sector by
+  // contract, so they fall back to the sidebar's current sector under the
+  // all-sectors scope.
+  const effectiveSectorId =
+    sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const { data: deals, isLoading: dealsLoading } = useDeals(scope);
+  const { data: stageDefaults } = useStageDefaults(
+    effectiveSectorId ?? undefined
   );
-  const { data: members } = useCrmMembers(currentSector?.id);
+  const { data: boards, isLoading: boardsLoading } = useBoards(
+    effectiveSectorId ?? undefined
+  );
+  const { data: members } = useCrmMembers(effectiveSectorId ?? undefined);
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("open");
@@ -187,7 +200,7 @@ export default function PipelinePage() {
     return result;
   }, [deals, statusFilter, ownerFilter, priorityFilter, search]);
 
-  if (!currentSector) {
+  if (isScopeReady(scope) && !effectiveSectorId) {
     return (
       <p className="text-muted-foreground">
         Selecione um setor para acessar o pipeline.
@@ -195,7 +208,7 @@ export default function PipelinePage() {
     );
   }
 
-  const isLoading = dealsLoading || boardsLoading;
+  const isLoading = scopeLoading || dealsLoading || boardsLoading;
 
   if (isLoading) {
     return (
@@ -259,7 +272,10 @@ export default function PipelinePage() {
           </p>
         </div>
         {crmBoard && (
-          <Button onClick={() => setShowCreateDeal(true)}>
+          <Button
+            onClick={() => setShowCreateDeal(true)}
+            disabled={!effectiveSectorId}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Novo Deal
           </Button>
@@ -268,6 +284,7 @@ export default function PipelinePage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <SectorScopeFilter />
         <div className="relative w-56">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -412,21 +429,23 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {crmBoard && (
+      {crmBoard && effectiveSectorId && (
         <DealCreateDialog
           open={showCreateDeal}
           onOpenChange={setShowCreateDeal}
-          sectorId={currentSector.id}
+          sectorId={effectiveSectorId}
           boardId={crmBoard.id}
         />
       )}
 
-      <DealDetailSheet
-        dealId={selectedDealId}
-        sectorId={currentSector.id}
-        open={!!selectedDealId}
-        onOpenChange={(o) => !o && setSelectedDealId(null)}
-      />
+      {effectiveSectorId && (
+        <DealDetailSheet
+          dealId={selectedDealId}
+          sectorId={effectiveSectorId}
+          open={!!selectedDealId}
+          onOpenChange={(o) => !o && setSelectedDealId(null)}
+        />
+      )}
     </div>
   );
 }

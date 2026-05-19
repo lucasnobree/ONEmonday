@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import {
   useOrgChart,
   useDepartments,
@@ -192,11 +193,11 @@ function OrgChartNode({
 }
 
 export default function OrgChartPage() {
-  const { currentSector } = useCurrentSector();
+  const { scope } = useSectorScope();
   const [deptFilter, setDeptFilter] = useState("");
   const [search, setSearch] = useState("");
-  const { data: fullTree, isLoading } = useOrgChart(currentSector?.id);
-  const { data: departments } = useDepartments(currentSector?.id);
+  const { data: fullTree, isLoading } = useOrgChart(scope);
+  const { data: departments } = useDepartments(scope);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
     null
   );
@@ -287,17 +288,10 @@ export default function OrgChartPage() {
     });
   }
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver o organograma.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
+        <SectorScopeFilter />
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

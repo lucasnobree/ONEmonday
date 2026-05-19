@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useSLARules,
   useDeleteSlaRule,
@@ -62,20 +65,22 @@ function formatHours(hours: number): string {
 }
 
 export default function SLARulesPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: rules, isLoading } = useSLARules(currentSector?.id);
+  const { data: rules, isLoading } = useSLARules(scope);
   const deleteMutation = useDeleteSlaRule();
   const toggleMutation = useToggleSlaRule();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<SlaRule | undefined>();
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as Regras SLA.
-      </p>
-    );
-  }
+  // The permission gate is keyed by a concrete sector; admins bypass the
+  // check regardless, non-admins are locked to their own sector.
+  const gateSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? "";
+  // Creating a rule needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited rule keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
+  const dialogSectorId = editingRule?.sector_id ?? createSectorId;
 
   function handleEdit(rule: SlaRule) {
     setEditingRule(rule);
@@ -115,7 +120,7 @@ export default function SLARulesPage() {
 
   return (
     <PermissionGate
-      sectorId={currentSector.id}
+      sectorId={gateSectorId}
       resource="sla_rule"
       action="read"
       fallback={
@@ -134,10 +139,17 @@ export default function SLARulesPage() {
                   Tempos de resposta e resolução configurados por prioridade
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={handleCreate}>
-                <Plus className="size-4 mr-1" />
-                Nova Regra SLA
-              </Button>
+              <div className="flex items-center gap-2">
+                <SectorScopeFilter />
+                <Button
+                  size="sm"
+                  onClick={handleCreate}
+                  disabled={!createSectorId}
+                >
+                  <Plus className="size-4 mr-1" />
+                  Nova Regra SLA
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -266,15 +278,17 @@ export default function SLARulesPage() {
         </Card>
       </div>
 
-      <SlaRuleFormDialog
-        open={dialogOpen}
-        onOpenChange={(o) => {
-          setDialogOpen(o);
-          if (!o) setEditingRule(undefined);
-        }}
-        sectorId={currentSector.id}
-        rule={editingRule}
-      />
+      {dialogSectorId && (
+        <SlaRuleFormDialog
+          open={dialogOpen}
+          onOpenChange={(o) => {
+            setDialogOpen(o);
+            if (!o) setEditingRule(undefined);
+          }}
+          sectorId={dialogSectorId}
+          rule={editingRule}
+        />
+      )}
     </PermissionGate>
   );
 }

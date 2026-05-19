@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useProposals } from "@/hooks/crm/use-proposals";
 import { ProposalFormDialog } from "@/components/crm/proposal-form-dialog";
 import { ProposalDetailSheet } from "@/components/crm/proposal-detail-sheet";
@@ -65,12 +68,17 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 export default function ProposalsPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const [statusFilter, setStatusFilter] = useState("all");
-  const { data: proposals, isLoading } = useProposals(
-    currentSector?.id,
+  const { data: proposals, isLoading: proposalsLoading } = useProposals(
+    scope,
     statusFilter
   );
+  const isLoading = scopeLoading || proposalsLoading;
+  // Creating a proposal needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(
@@ -88,14 +96,6 @@ export default function ProposalsPage() {
     );
   }, [proposals, search]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as propostas.
-      </p>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -109,6 +109,7 @@ export default function ProposalsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
+          <SectorScopeFilter />
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -169,7 +170,10 @@ export default function ProposalsPage() {
             <Download className="size-4 mr-1" />
             Exportar
           </Button>
-          <Button onClick={() => setShowCreate(true)}>
+          <Button
+            onClick={() => setShowCreate(true)}
+            disabled={!createSectorId}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Nova Proposta
           </Button>
@@ -182,7 +186,10 @@ export default function ProposalsPage() {
           title="Nenhuma proposta cadastrada"
           description="Crie sua primeira proposta comercial para um deal."
           action={
-            <Button onClick={() => setShowCreate(true)}>
+            <Button
+              onClick={() => setShowCreate(true)}
+              disabled={!createSectorId}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Nova Proposta
             </Button>
@@ -241,15 +248,16 @@ export default function ProposalsPage() {
         </div>
       )}
 
-      <ProposalFormDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        sectorId={currentSector.id}
-      />
+      {createSectorId && (
+        <ProposalFormDialog
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          sectorId={createSectorId}
+        />
+      )}
 
       <ProposalDetailSheet
         proposalId={selectedProposalId}
-        sectorId={currentSector.id}
         open={!!selectedProposalId}
         onOpenChange={(o) => !o && setSelectedProposalId(null)}
       />
