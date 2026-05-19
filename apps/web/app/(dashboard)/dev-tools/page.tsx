@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Plus, Rocket, Server, ToggleLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useDevToolsStats } from "@/hooks/dev-tools/use-dev-tools-stats";
 import {
   useIncidents,
@@ -60,14 +63,16 @@ function Row({ children }: { children: React.ReactNode }) {
 }
 
 export default function DevToolsPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const sectorId = currentSector?.id;
+  // Create dialogs need a concrete target sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
-  const { data: stats } = useDevToolsStats(sectorId);
-  const { data: incidents } = useIncidents(sectorId);
-  const { data: services } = useServices(sectorId);
-  const { data: deployments } = useDeployments(sectorId);
-  const { data: flags } = useFeatureFlags(sectorId);
+  const { data: stats } = useDevToolsStats(scope);
+  const { data: incidents } = useIncidents(scope);
+  const { data: services } = useServices(scope);
+  const { data: deployments } = useDeployments(scope);
+  const { data: flags } = useFeatureFlags(scope);
 
   const deleteIncident = useDeleteIncident();
   const deleteService = useDeleteService();
@@ -98,17 +103,6 @@ export default function DevToolsPage() {
     return map;
   }, [services]);
 
-  if (!currentSector) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold">Dev Tools</h1>
-        <p className="mt-1 text-muted-foreground">
-          Selecione um setor no menu lateral para visualizar as ferramentas.
-        </p>
-      </div>
-    );
-  }
-
   const handleToggleFlag = async (flag: DevFeatureFlag) => {
     const result = await toggleFlag.mutateAsync({
       id: flag.id,
@@ -125,9 +119,9 @@ export default function DevToolsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dev Tools</h1>
-        <p className="text-muted-foreground">{currentSector.name}</p>
+        <SectorScopeFilter />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -208,6 +202,7 @@ export default function DevToolsPage() {
         <TabsContent value="incidents" className="space-y-3">
           <SectionHeader
             title="Incidentes"
+            newDisabled={!createSectorId}
             onNew={() => {
               setEditIncident(undefined);
               setIncidentDialog(true);
@@ -260,6 +255,7 @@ export default function DevToolsPage() {
         <TabsContent value="services" className="space-y-3">
           <SectionHeader
             title="Serviços"
+            newDisabled={!createSectorId}
             onNew={() => {
               setEditService(undefined);
               setServiceDialog(true);
@@ -310,6 +306,7 @@ export default function DevToolsPage() {
         <TabsContent value="deployments" className="space-y-3">
           <SectionHeader
             title="Deploys"
+            newDisabled={!createSectorId}
             onNew={() => {
               setEditDeploy(undefined);
               setDeployDialog(true);
@@ -363,6 +360,7 @@ export default function DevToolsPage() {
         <TabsContent value="flags" className="space-y-3">
           <SectionHeader
             title="Feature Flags"
+            newDisabled={!createSectorId}
             onNew={() => {
               setEditFlag(undefined);
               setFlagDialog(true);
@@ -408,30 +406,34 @@ export default function DevToolsPage() {
         </TabsContent>
       </Tabs>
 
-      <ServiceFormDialog
-        open={serviceDialog}
-        onOpenChange={setServiceDialog}
-        sectorId={currentSector.id}
-        service={editService}
-      />
-      <IncidentFormDialog
-        open={incidentDialog}
-        onOpenChange={setIncidentDialog}
-        sectorId={currentSector.id}
-        incident={editIncident}
-      />
-      <DeploymentFormDialog
-        open={deployDialog}
-        onOpenChange={setDeployDialog}
-        sectorId={currentSector.id}
-        deployment={editDeploy}
-      />
-      <FeatureFlagFormDialog
-        open={flagDialog}
-        onOpenChange={setFlagDialog}
-        sectorId={currentSector.id}
-        flag={editFlag}
-      />
+      {createSectorId && (
+        <>
+          <ServiceFormDialog
+            open={serviceDialog}
+            onOpenChange={setServiceDialog}
+            sectorId={createSectorId}
+            service={editService}
+          />
+          <IncidentFormDialog
+            open={incidentDialog}
+            onOpenChange={setIncidentDialog}
+            sectorId={createSectorId}
+            incident={editIncident}
+          />
+          <DeploymentFormDialog
+            open={deployDialog}
+            onOpenChange={setDeployDialog}
+            sectorId={createSectorId}
+            deployment={editDeploy}
+          />
+          <FeatureFlagFormDialog
+            open={flagDialog}
+            onOpenChange={setFlagDialog}
+            sectorId={createSectorId}
+            flag={editFlag}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -489,11 +491,20 @@ function StatCard({
   );
 }
 
-function SectionHeader({ title, onNew }: { title: string; onNew: () => void }) {
+function SectionHeader({
+  title,
+  onNew,
+  newDisabled = false,
+}: {
+  title: string;
+  onNew: () => void;
+  /** Disables the "Novo" button — set when no concrete sector is in scope. */
+  newDisabled?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between">
       <h2 className="text-lg font-semibold">{title}</h2>
-      <Button size="sm" onClick={onNew}>
+      <Button size="sm" onClick={onNew} disabled={newDisabled}>
         <Plus className="mr-1 h-4 w-4" />
         Novo
       </Button>

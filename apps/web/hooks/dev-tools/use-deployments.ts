@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createDeployment,
   updateDeployment,
   deleteDeployment,
@@ -22,24 +27,27 @@ export interface DevDeployment {
   updated_at: string;
 }
 
-export function useDeployments(sectorId: string | undefined) {
+export function useDeployments(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["dev-deployments", sectorId],
+    queryKey: ["dev-deployments", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
-        .from("dev_deployments")
-        .select("*")
-        .eq("sector_id", sectorId)
-        .order("deployed_at", { ascending: false });
+      let query = supabase.from("dev_deployments").select("*");
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("deployed_at", {
+        ascending: false,
+      });
 
       if (error) throw error;
       return (data as DevDeployment[]) ?? [];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
