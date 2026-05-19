@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useJobOpenings, type JobOpening } from "@/hooks/hr/use-job-openings";
 import { JobOpeningFormDialog } from "@/components/hr/job-opening-form-dialog";
 import { JobOpeningStatusMenu } from "@/components/hr/job-opening-status-menu";
@@ -50,8 +51,8 @@ const STATUS_FILTER_LABELS: Record<string, string> = {
 
 export default function RecruitmentPage() {
   const router = useRouter();
-  const { currentSector } = useCurrentSector();
-  const { data: openings, isLoading } = useJobOpenings(currentSector?.id);
+  const { scope } = useSectorScope();
+  const { data: openings, isLoading } = useJobOpenings(scope);
   const [statusFilter, setStatusFilter] = useState("all");
 
   const filteredOpenings = useMemo(() => {
@@ -60,19 +61,13 @@ export default function RecruitmentPage() {
     return openings.filter((o) => o.status === statusFilter);
   }, [openings, statusFilter]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver as vagas.
-      </p>
-    );
-  }
-
   const hasOpenings = !!openings && openings.length > 0;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+        <SectorScopeFilter />
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v ?? "all")}
@@ -92,6 +87,7 @@ export default function RecruitmentPage() {
             ))}
           </SelectContent>
         </Select>
+        </div>
         <JobOpeningFormDialog />
       </div>
 

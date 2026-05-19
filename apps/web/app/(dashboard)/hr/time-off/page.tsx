@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import {
   useTimeOffRequests,
   type TimeOffRequest,
@@ -91,8 +92,8 @@ function BalanceCell({
 }
 
 export default function TimeOffPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: requests, isLoading } = useTimeOffRequests(currentSector?.id);
+  const { scope } = useSectorScope();
+  const { data: requests, isLoading } = useTimeOffRequests(scope);
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status");
@@ -182,17 +183,11 @@ export default function TimeOffPage() {
     rejectMutation.mutate({ id: rejectId, reason: rejectReason.trim() });
   }
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver as solicitações.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+        <SectorScopeFilter />
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Status">
@@ -206,6 +201,7 @@ export default function TimeOffPage() {
             <SelectItem value="rejected">Rejeitados</SelectItem>
           </SelectContent>
         </Select>
+        </div>
         <TimeOffRequestDialog />
       </div>
 

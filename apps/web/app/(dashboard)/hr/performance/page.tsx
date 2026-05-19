@@ -3,6 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 import {
   useReviewCycles,
   useEvaluations,
@@ -39,36 +43,36 @@ const CYCLE_STATUS: Record<
 };
 
 export default function PerformancePage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const sectorId = currentSector?.id;
-  const { data: cycles, isLoading: cyclesLoading } = useReviewCycles(sectorId);
+  const { data: cycles, isLoading: cyclesLoading } = useReviewCycles(scope);
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para gerenciar o desempenho.
-      </p>
-    );
-  }
+  // Creating cycles / evaluations / PDIs needs a concrete target sector;
+  // under the all-sectors scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const activeCycleId =
     selectedCycleId ?? (cycles && cycles.length > 0 ? cycles[0].id : null);
 
   return (
     <Tabs defaultValue="cycles">
-      <TabsList>
-        <TabsTrigger value="cycles">Avaliações</TabsTrigger>
-        <TabsTrigger value="ninebox">Matriz 9-Box</TabsTrigger>
-        <TabsTrigger value="pdi">PDI</TabsTrigger>
-      </TabsList>
+      <div className="flex items-center justify-between gap-2">
+        <TabsList>
+          <TabsTrigger value="cycles">Avaliações</TabsTrigger>
+          <TabsTrigger value="ninebox">Matriz 9-Box</TabsTrigger>
+          <TabsTrigger value="pdi">PDI</TabsTrigger>
+        </TabsList>
+        <SectorScopeFilter />
+      </div>
 
       <TabsContent value="cycles" className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="md:col-span-1">
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="text-base">Ciclos</CardTitle>
-              <ReviewCycleDialog sectorId={currentSector.id} />
+              {createSectorId && (
+                <ReviewCycleDialog sectorId={createSectorId} />
+              )}
             </CardHeader>
             <CardContent className="space-y-2">
               {cyclesLoading ? (
@@ -117,7 +121,9 @@ export default function PerformancePage() {
               cycleStatus={
                 cycles?.find((c) => c.id === activeCycleId)?.status ?? null
               }
-              sectorId={currentSector.id}
+              sectorId={
+                cycles?.find((c) => c.id === activeCycleId)?.sector_id ?? null
+              }
             />
           </div>
         </div>
@@ -140,7 +146,7 @@ export default function PerformancePage() {
       </TabsContent>
 
       <TabsContent value="pdi" className="space-y-4">
-        <PdiPanel sectorId={currentSector.id} />
+        <PdiPanel scope={scope} sectorId={createSectorId} />
       </TabsContent>
     </Tabs>
   );
@@ -153,7 +159,7 @@ function EvaluationsPanel({
 }: {
   cycleId: string | null;
   cycleStatus: string | null;
-  sectorId: string;
+  sectorId: string | null;
 }) {
   const { data: evaluations, isLoading } = useEvaluations(cycleId);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -247,24 +253,32 @@ function EvaluationsPanel({
         )}
       </CardContent>
 
-      <EvaluationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        cycleId={cycleId}
-        sectorId={sectorId}
-        evaluation={editing}
-      />
+      {sectorId && (
+        <EvaluationDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          cycleId={cycleId}
+          sectorId={sectorId}
+          evaluation={editing}
+        />
+      )}
     </Card>
   );
 }
 
-function PdiPanel({ sectorId }: { sectorId: string }) {
-  const { data: plans, isLoading } = useDevelopmentPlans(sectorId);
+function PdiPanel({
+  scope,
+  sectorId,
+}: {
+  scope: SectorScope;
+  sectorId: string | null;
+}) {
+  const { data: plans, isLoading } = useDevelopmentPlans(scope);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
-        <DevelopmentPlanDialog sectorId={sectorId} />
+        {sectorId && <DevelopmentPlanDialog sectorId={sectorId} />}
       </div>
 
       {isLoading ? (
@@ -280,7 +294,11 @@ function PdiPanel({ sectorId }: { sectorId: string }) {
               icon={Target}
               title="Nenhum PDI cadastrado"
               description="Crie planos de desenvolvimento individual para apoiar o crescimento da equipe."
-              action={<DevelopmentPlanDialog sectorId={sectorId} />}
+              action={
+                sectorId ? (
+                  <DevelopmentPlanDialog sectorId={sectorId} />
+                ) : undefined
+              }
             />
           </CardContent>
         </Card>

@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface ReviewCycle {
   id: string;
@@ -15,20 +20,24 @@ export interface ReviewCycle {
   evaluation_count: number;
 }
 
-export function useReviewCycles(sectorId: string | undefined) {
+export function useReviewCycles(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-review-cycles", sectorId],
+    queryKey: ["hr-review-cycles", scope],
     queryFn: async (): Promise<ReviewCycle[]> => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_review_cycles")
         .select("*, hr_evaluations(id)")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -42,7 +51,7 @@ export function useReviewCycles(sectorId: string | undefined) {
         })) ?? []
       ) as ReviewCycle[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
@@ -233,22 +242,26 @@ export interface DevelopmentPlan {
   actions: DevelopmentAction[];
 }
 
-export function useDevelopmentPlans(sectorId: string | undefined) {
+export function useDevelopmentPlans(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-development-plans", sectorId],
+    queryKey: ["hr-development-plans", scope],
     queryFn: async (): Promise<DevelopmentPlan[]> => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_development_plans")
         .select(
           "*, hr_employees!hr_development_plans_employee_id_fkey(full_name), hr_development_actions(*)"
         )
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -272,6 +285,6 @@ export function useDevelopmentPlans(sectorId: string | undefined) {
         }) ?? []
       ) as DevelopmentPlan[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

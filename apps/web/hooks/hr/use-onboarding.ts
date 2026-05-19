@@ -145,20 +145,24 @@ export function useOnboardingDetail(instanceId: string | null) {
   });
 }
 
-export function useOnboardingTemplates(sectorId: string | undefined) {
+export function useOnboardingTemplates(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-onboarding-templates", sectorId],
+    queryKey: ["hr-onboarding-templates", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_onboarding_templates")
         .select("*")
-        .eq("sector_id", sectorId)
         .eq("is_active", true)
         .order("name", { ascending: true });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -175,7 +179,7 @@ export function useOnboardingTemplates(sectorId: string | undefined) {
         return { ...t, items } as OnboardingTemplate;
       });
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

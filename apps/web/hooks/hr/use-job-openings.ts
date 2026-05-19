@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface JobOpening {
   id: string;
@@ -22,15 +27,15 @@ export interface JobOpening {
   candidates_count: number;
 }
 
-export function useJobOpenings(sectorId: string | undefined) {
+export function useJobOpenings(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-job-openings", sectorId],
+    queryKey: ["hr-job-openings", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("hr_job_openings")
         .select(
           `
@@ -38,8 +43,12 @@ export function useJobOpenings(sectorId: string | undefined) {
           hr_candidates (id)
         `
         )
-        .eq("sector_id", sectorId)
         .order("created_at", { ascending: false });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -53,6 +62,6 @@ export function useJobOpenings(sectorId: string | undefined) {
         })) ?? []
       ) as JobOpening[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
