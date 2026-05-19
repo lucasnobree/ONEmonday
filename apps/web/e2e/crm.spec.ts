@@ -94,12 +94,20 @@ test.describe("CRM module", () => {
   });
 
   test("CRM sub-navigation routes between sections", async ({ page }) => {
+    // Post nav-shell refactor: sub-pages live in the collapsible sidebar
+    // tree, not an in-screen tab strip. Expand the CRM module first.
     await page.goto("/crm");
 
-    await page.getByRole("link", { name: "Propostas" }).click();
+    const nav = page.getByRole("navigation", { name: "Navegação por setor" });
+    const crmModule = nav.getByRole("button", { name: "CRM" }).first();
+    if ((await crmModule.getAttribute("aria-expanded")) !== "true") {
+      await crmModule.click();
+    }
+
+    await nav.getByRole("link", { name: "Propostas" }).click();
     await expect(page).toHaveURL(/\/crm\/proposals/);
 
-    await page.getByRole("link", { name: "Atividades" }).click();
+    await nav.getByRole("link", { name: "Atividades" }).click();
     await expect(page).toHaveURL(/\/crm\/activities/);
   });
 

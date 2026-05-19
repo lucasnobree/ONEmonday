@@ -97,15 +97,25 @@ test.describe("Finance module", () => {
   });
 
   test("finance sub-navigation routes between sections", async ({ page }) => {
+    // Post nav-shell refactor: sub-pages live in the collapsible sidebar
+    // tree, not an in-screen tab strip. Expand the Financeiro module first.
     await page.goto("/finance");
 
-    await page.getByRole("link", { name: "Faturas" }).click();
+    const nav = page.getByRole("navigation", { name: "Navegação por setor" });
+    const financeModule = nav
+      .getByRole("button", { name: "Financeiro" })
+      .first();
+    if ((await financeModule.getAttribute("aria-expanded")) !== "true") {
+      await financeModule.click();
+    }
+
+    await nav.getByRole("link", { name: "Faturas" }).click();
     await expect(page).toHaveURL(/\/finance\/invoices/);
 
-    await page.getByRole("link", { name: "Despesas" }).click();
+    await nav.getByRole("link", { name: "Despesas" }).click();
     await expect(page).toHaveURL(/\/finance\/expenses/);
 
-    await page.getByRole("link", { name: "Orcamentos" }).click();
+    await nav.getByRole("link", { name: "Orçamentos" }).click();
     await expect(page).toHaveURL(/\/finance\/budgets/);
   });
 });

@@ -45,19 +45,29 @@ test.describe("Legal dashboard", () => {
     ).toBeVisible();
   });
 
-  test("navigates between the module tabs", async ({ page }) => {
+  test("navigates between Legal sub-pages via the sidebar tree", async ({
+    page,
+  }) => {
+    // Post nav-shell refactor: sub-pages live in the collapsible sidebar
+    // tree, not an in-screen tab strip. Expand the Jurídico module first.
     await page.goto("/legal");
 
-    await page.getByRole("link", { name: "Contratos" }).click();
+    const nav = page.getByRole("navigation", { name: "Navegação por setor" });
+    const legalModule = nav.getByRole("button", { name: "Jurídico" }).first();
+    if ((await legalModule.getAttribute("aria-expanded")) !== "true") {
+      await legalModule.click();
+    }
+
+    await nav.getByRole("link", { name: "Contratos" }).click();
     await expect(page).toHaveURL(/\/legal\/contracts/);
     await expect(
       page.getByPlaceholder("Buscar por titulo ou contraparte")
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "Demandas" }).click();
+    await nav.getByRole("link", { name: "Demandas" }).click();
     await expect(page).toHaveURL(/\/legal\/matters/);
 
-    await page.getByRole("link", { name: "Clausulas" }).click();
+    await nav.getByRole("link", { name: "Cláusulas" }).click();
     await expect(page).toHaveURL(/\/legal\/clauses/);
   });
 });

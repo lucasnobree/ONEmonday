@@ -5,15 +5,27 @@ import { test, expect } from "@playwright/test";
  * (saved admin session); anchors on roles and stable text.
  */
 test.describe("Marketing module", () => {
-  test("the module shell exposes the four nav tabs", async ({ page }) => {
+  test("the sidebar tree exposes the Marketing sub-pages", async ({
+    page,
+  }) => {
+    // Post nav-shell refactor: Marketing sub-pages live in the sidebar tree,
+    // not an in-screen tab strip. Expand the Marketing module to reveal them.
     await page.goto("/marketing");
 
     await expect(
       page.getByRole("heading", { name: "Marketing" })
     ).toBeVisible();
 
-    for (const tab of ["Visao Geral", "Campanhas", "Calendario", "Audiencias"]) {
-      await expect(page.getByRole("link", { name: tab })).toBeVisible();
+    const nav = page.getByRole("navigation", { name: "Navegação por setor" });
+    const marketingModule = nav
+      .getByRole("button", { name: "Marketing" })
+      .first();
+    if ((await marketingModule.getAttribute("aria-expanded")) !== "true") {
+      await marketingModule.click();
+    }
+
+    for (const sub of ["Visão Geral", "Campanhas", "Calendário", "Audiências"]) {
+      await expect(nav.getByRole("link", { name: sub })).toBeVisible();
     }
   });
 

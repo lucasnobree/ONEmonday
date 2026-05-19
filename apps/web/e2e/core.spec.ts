@@ -21,9 +21,36 @@ async function login(page: Page): Promise<void> {
   await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
 }
 
+/**
+ * Drills the sidebar tree to a Boards-module sub-page.
+ *
+ * Post nav-shell refactor the Boards/Projetos links live under the "Boards"
+ * module of a sector branch, behind disclosure toggles. This expands the
+ * first sector (if collapsed) and the Boards module, then clicks `subPage`.
+ */
+async function gotoBoardsSubPage(
+  page: Page,
+  subPage: "Quadros" | "Projetos"
+): Promise<void> {
+  const nav = page.getByRole("navigation", { name: "Navegação por setor" });
+  await expect(nav).toBeVisible();
+
+  // Expand the first sector group when it is not already open.
+  const collapsedSector = nav.getByRole("button", { expanded: false }).first();
+  if ((await collapsedSector.count()) > 0) {
+    await collapsedSector.click();
+  }
+
+  const boardsModule = nav.getByRole("button", { name: "Boards" }).first();
+  if ((await boardsModule.getAttribute("aria-expanded")) !== "true") {
+    await boardsModule.click();
+  }
+  await nav.getByRole("link", { name: subPage }).first().click();
+}
+
 /** Opens the first board found in the current sector, if any. */
 async function openFirstBoard(page: Page): Promise<boolean> {
-  await page.getByRole("link", { name: "Boards" }).click();
+  await gotoBoardsSubPage(page, "Quadros");
   await expect(page.getByRole("heading", { name: "Boards" })).toBeVisible();
   const firstBoard = page.locator('a[href*="/boards/"]').first();
   if ((await firstBoard.count()) === 0) return false;
@@ -67,7 +94,7 @@ test.describe("Core — fluxos autenticados", () => {
   test("a lista de boards abre e permite criar um board", async ({
     page,
   }) => {
-    await page.getByRole("link", { name: "Boards" }).click();
+    await gotoBoardsSubPage(page, "Quadros");
     await expect(
       page.getByRole("heading", { name: "Boards" })
     ).toBeVisible();
@@ -88,7 +115,7 @@ test.describe("Core — fluxos autenticados", () => {
   test("o seletor de ordenacao mostra o rotulo, nao o valor cru", async ({
     page,
   }) => {
-    await page.getByRole("link", { name: "Boards" }).click();
+    await gotoBoardsSubPage(page, "Quadros");
     await expect(
       page.getByRole("heading", { name: "Boards" })
     ).toBeVisible();
@@ -144,7 +171,7 @@ test.describe("Core — fluxos autenticados", () => {
   });
 
   test("a lista de projetos abre", async ({ page }) => {
-    await page.getByRole("link", { name: "Projetos" }).click();
+    await gotoBoardsSubPage(page, "Projetos");
     await expect(
       page.getByRole("heading", { name: "Projetos" })
     ).toBeVisible();
