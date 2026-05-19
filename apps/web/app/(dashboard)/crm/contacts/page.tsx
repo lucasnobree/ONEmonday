@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useContacts, type Contact } from "@/hooks/crm/use-contacts";
 import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
 import { ContactDetailSheet } from "@/components/crm/contact-detail-sheet";
@@ -43,8 +46,13 @@ function contactValue(contact: Contact, key: ContactSortKey): unknown {
 }
 
 export default function ContactsPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: contacts, isLoading } = useContacts(currentSector?.id);
+  const { data: contacts, isLoading: contactsLoading } = useContacts(scope);
+  const isLoading = scopeLoading || contactsLoading;
+  // New records / the detail sheet's company picker need a concrete sector;
+  // fall back to the sidebar sector under the all-sectors scope.
+  const formSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState("all");
   const [primaryOnly, setPrimaryOnly] = useState(false);
@@ -90,14 +98,6 @@ export default function ContactsPage() {
 
   const hasActiveFilter =
     search.trim() !== "" || companyFilter !== "all" || primaryOnly;
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar os contatos.
-      </p>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -155,7 +155,10 @@ export default function ContactsPage() {
             <Download className="size-4 mr-1" />
             Exportar
           </Button>
-          <Button onClick={() => setShowCreate(true)}>
+          <Button
+            onClick={() => setShowCreate(true)}
+            disabled={!formSectorId}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Novo Contato
           </Button>
@@ -164,6 +167,7 @@ export default function ContactsPage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
+        <SectorScopeFilter />
         <FilterSelect
           value={companyFilter}
           onValueChange={setCompanyFilter}
@@ -230,7 +234,10 @@ export default function ContactsPage() {
           title="Nenhum contato cadastrado"
           description="Adicione seu primeiro contato para começar a gerenciar seu relacionamento com clientes."
           action={
-            <Button onClick={() => setShowCreate(true)}>
+            <Button
+              onClick={() => setShowCreate(true)}
+              disabled={!formSectorId}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Novo Contato
             </Button>
@@ -354,18 +361,22 @@ export default function ContactsPage() {
         </div>
       )}
 
-      <ContactFormDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        sectorId={currentSector.id}
-      />
+      {formSectorId && (
+        <ContactFormDialog
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          sectorId={formSectorId}
+        />
+      )}
 
-      <ContactDetailSheet
-        contactId={selectedContactId}
-        sectorId={currentSector.id}
-        open={!!selectedContactId}
-        onOpenChange={(o) => !o && setSelectedContactId(null)}
-      />
+      {formSectorId && (
+        <ContactDetailSheet
+          contactId={selectedContactId}
+          sectorId={formSectorId}
+          open={!!selectedContactId}
+          onOpenChange={(o) => !o && setSelectedContactId(null)}
+        />
+      )}
     </div>
   );
 }

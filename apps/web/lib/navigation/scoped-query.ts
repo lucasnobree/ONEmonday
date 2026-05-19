@@ -7,14 +7,15 @@
  * sector filter adds a third case — the {@link ALL_SECTORS} sentinel — meaning
  * "every sector, no `sector_id` filter". These helpers let a hook handle all
  * three cases without duplicating the branching logic.
+ *
+ * Note: there is deliberately no generic "apply `.eq` to the builder" helper.
+ * Supabase's filter-builder types are so deeply nested that threading them
+ * through a generic trips TypeScript's "type instantiation is excessively
+ * deep" guard. Hooks instead branch inline on {@link shouldFilterBySector} /
+ * {@link sectorFilterValue}, keeping the builder's concrete inferred type.
  */
 
 import { ALL_SECTORS, type SectorScope } from "@/lib/navigation/sector-scope";
-
-/** Minimal shape of the Supabase filter-builder methods we chain. */
-interface SectorEqFilterable<T> {
-  eq(column: string, value: string): T;
-}
 
 /**
  * True when a scope value is "ready" — either a concrete sector id or the
@@ -28,16 +29,17 @@ export function isScopeReady(
 }
 
 /**
- * Applies the `sector_id` filter implied by a scope to a query builder:
- *  - a concrete sector id → adds `.eq("sector_id", id)`;
- *  - {@link ALL_SECTORS}   → returns the query unchanged (cross-sector).
- *
- * Pass the scope only when it is ready (see {@link isScopeReady}).
+ * Whether a (ready) scope should add a `.eq("sector_id", …)` clause.
+ * `false` for the {@link ALL_SECTORS} sentinel (cross-sector query).
  */
-export function applySectorScope<T extends SectorEqFilterable<T>>(
-  query: T,
-  scope: SectorScope,
-  column = "sector_id"
-): T {
-  return scope === ALL_SECTORS ? query : query.eq(column, scope);
+export function shouldFilterBySector(scope: SectorScope): boolean {
+  return scope !== ALL_SECTORS;
+}
+
+/**
+ * The concrete sector id to filter by for a ready scope, or `undefined` for
+ * {@link ALL_SECTORS}. Pair with `if (id)` to chain `.eq` conditionally.
+ */
+export function sectorFilterValue(scope: SectorScope): string | undefined {
+  return scope === ALL_SECTORS ? undefined : scope;
 }

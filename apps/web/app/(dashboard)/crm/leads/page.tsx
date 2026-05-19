@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useLeads,
   useLeadStats,
@@ -37,10 +40,15 @@ type SortKey = "score" | "recent";
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 
 export default function LeadsInboxPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: leads, isLoading } = useLeads(currentSector?.id);
-  const { data: stats } = useLeadStats(currentSector?.id);
-  const { data: aging } = useLeadAging(currentSector?.id);
+  const { data: leads, isLoading: leadsLoading } = useLeads(scope);
+  const { data: stats } = useLeadStats(scope);
+  const { data: aging } = useLeadAging(scope);
+  const isLoading = scopeLoading || leadsLoading;
+  // Creating a lead needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const slaHours = aging?.sla_hours ?? 0;
 
@@ -86,14 +94,6 @@ export default function LeadsInboxPage() {
 
   const hasFilter =
     search.trim() !== "" || statusFilter !== "all" || sourceFilter !== "all";
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar a caixa de entrada de leads.
-      </p>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -192,7 +192,10 @@ export default function LeadsInboxPage() {
             className="pl-8"
           />
         </div>
-        <Button onClick={() => setShowCreate(true)}>
+        <Button
+          onClick={() => setShowCreate(true)}
+          disabled={!createSectorId}
+        >
           <Plus className="size-4 mr-1" />
           Novo lead
         </Button>
@@ -200,6 +203,7 @@ export default function LeadsInboxPage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
+        <SectorScopeFilter />
         <FilterSelect
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as LeadStatus | "all")}
@@ -258,7 +262,10 @@ export default function LeadsInboxPage() {
           title="Nenhum lead na caixa de entrada"
           description="Publique um formulário de captura ou adicione um lead manualmente para começar."
           action={
-            <Button onClick={() => setShowCreate(true)}>
+            <Button
+              onClick={() => setShowCreate(true)}
+              disabled={!createSectorId}
+            >
               <Plus className="size-4 mr-1" />
               Novo lead
             </Button>
@@ -341,11 +348,13 @@ export default function LeadsInboxPage() {
         </div>
       )}
 
-      <LeadCreateDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        sectorId={currentSector.id}
-      />
+      {createSectorId && (
+        <LeadCreateDialog
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          sectorId={createSectorId}
+        />
+      )}
 
       <LeadDetailSheet
         lead={selectedLead}

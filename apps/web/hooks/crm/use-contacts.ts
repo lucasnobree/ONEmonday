@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createContact,
   updateContact,
   deleteContact,
@@ -26,15 +31,15 @@ export interface Contact {
   } | null;
 }
 
-export function useContacts(sectorId: string | undefined) {
+export function useContacts(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["crm-contacts", sectorId],
+    queryKey: ["crm-contacts", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("crm_contacts")
         .select(
           `
@@ -43,9 +48,14 @@ export function useContacts(sectorId: string | undefined) {
           crm_companies (id, name)
         `
         )
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("full_name", { ascending: true });
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("full_name", {
+        ascending: true,
+      });
 
       if (error) throw error;
 
@@ -55,7 +65,7 @@ export function useContacts(sectorId: string | undefined) {
         crm_companies: undefined,
       })) as unknown as Contact[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
