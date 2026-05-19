@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Monday.com-style navigation refactor (Phases 1–2)
+- A restructure of the whole navigation toward Monday.com conventions
+  (research in `docs/research/monday-ux-patterns.md` and
+  `docs/research/monday-board-card-spec.md`):
+  - **Phase 1 — navigation shell**: the flat module sidebar + header
+    sector dropdown + in-screen module tab strips are replaced by a single
+    collapsible **Sector → Module → Sub-page** sidebar tree. Admins see
+    every sector; other users see only theirs. Expansion state persists and
+    the active route auto-expands. Module screens keep only their own data
+    filters.
+  - **Phase 2 — role-based landing & cross-board screens**: `/` now routes
+    by role — admins land on a new **Global Overview** dashboard
+    (per-sector cards + drill-down, migration `00208`), sector managers on
+    their sector dashboard, individual contributors on a new **"Meu
+    Trabalho"** cross-board task view (every card assigned to you, grouped
+    Atrasado / Hoje / Esta semana / Depois). The sidebar gained Início,
+    Meu Trabalho, Visão Geral and a Settings sub-page group.
+
 ### Module depth (Wave 5 — high-impact backlog)
 - The larger, High-impact items each Wave 4 audit deferred, built per
   module and integrated together:
