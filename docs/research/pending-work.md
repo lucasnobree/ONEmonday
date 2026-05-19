@@ -175,12 +175,12 @@ O que ficou pendente dela:
       `p_sector_id` anulável (`NULL` = todos os setores, exigindo
       `is_global_admin()`); os hooks passam `null` sob o escopo all-sectors
       e renderizam o agregado real.
-- [ ] **Média** — Fase 2b: telas secundárias ainda não ligadas ao filtro de
-      setor (leem `useCurrentSector` direto): CRM pipeline/atividades/
-      propostas/formulários; RH onboarding/offboarding/férias/desempenho/
-      recrutamento/pesquisas/organograma; Support KB/SLA/respostas;
-      Financeiro orçamentos/relatórios/conciliação; Jurídico cláusulas;
-      Marketing audiências/automações/calendário/e-mail.
+- [x] **Média** — Fase 2b: as ~21 telas secundárias restantes foram ligadas
+      ao filtro de setor (CRM pipeline/atividades/propostas/formulários; RH
+      onboarding/offboarding/férias/desempenho/recrutamento/pesquisas/
+      organograma; Support KB/SLA/respostas; Financeiro orçamentos/relatórios/
+      conciliação; Jurídico cláusulas; Marketing audiências/automações/
+      calendário/e-mail). Resolvido.
 - [ ] **Baixa** — `InvoicePrintButton` usa o setor da sidebar em vez do setor
       da própria fatura.
 - [ ] **Baixa** — Dev-Tools ainda usa abas por estado (`<Tabs>`) em vez de

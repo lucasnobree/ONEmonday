@@ -27,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Phase 2b — on-screen sector filter**: module screens carry a
     `Setor: [Todos ▾]` selector for admins (default "Todos" = all sectors);
     sector managers and contributors have no selector and are locked to
-    their own sector. Wired into each module's main and primary list
-    screens.
+    their own sector. Wired into every module screen — main, primary and
+    secondary.
   - **Cross-sector dashboards**: under "Todos" the module dashboards now
     show a real cross-sector aggregate instead of empty KPIs. The ten
     dashboard RPCs (finance/marketing/analytics/legal/dev-tools summary,
