@@ -8,6 +8,8 @@ import {
   Menu,
   Settings,
   ChevronRight,
+  ListTodo,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -69,6 +71,40 @@ function SubPageRow({ label, href, active, onNavigate }: SubPageRowProps) {
       )}
     >
       {label}
+    </Link>
+  );
+}
+
+/* ── Quick link: a flat top/bottom-zone nav row ──────────────────── */
+
+interface QuickLinkProps {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  active: boolean;
+  onNavigate: () => void;
+}
+
+/**
+ * A flat, icon + label navigation row for the sidebar's top and bottom
+ * zones (Início, Meu Trabalho, Visão Geral, Configurações sub-pages). Kept
+ * separate from the tree rows, which carry expand/collapse chrome.
+ */
+function QuickLink({ label, href, icon: Icon, active, onNavigate }: QuickLinkProps) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+        active
+          ? "bg-accent text-accent-foreground"
+          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+      )}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span className="flex-1">{label}</span>
     </Link>
   );
 }
@@ -230,6 +266,91 @@ function SectorGroup({
   );
 }
 
+/* ── Bottom zone: settings group ─────────────────────────────────── */
+
+/** A settings sub-page link, with whether it is admin-gated. */
+interface SettingsLink {
+  label: string;
+  href: string;
+  adminOnly: boolean;
+}
+
+const SETTINGS_LINKS: SettingsLink[] = [
+  { label: "Geral", href: "/settings", adminOnly: false },
+  { label: "Perfil", href: "/settings/profile", adminOnly: false },
+  { label: "Administração", href: "/settings/admin", adminOnly: true },
+  { label: "Integrações", href: "/settings/integrations", adminOnly: true },
+];
+
+interface SettingsGroupProps {
+  pathname: string;
+  expanded: boolean;
+  isGlobalAdmin: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+}
+
+/**
+ * Expandable "Configurações" group for the sidebar bottom zone. Phase 1 left
+ * the Settings sub-pages (Perfil / Administração / Integrações) unreachable
+ * from the sidebar — this group exposes every one. Admin-only sub-pages are
+ * hidden from non-admins, matching the Settings layout's own gating.
+ */
+function SettingsGroup({
+  pathname,
+  expanded,
+  isGlobalAdmin,
+  onToggle,
+  onNavigate,
+}: SettingsGroupProps) {
+  const links = SETTINGS_LINKS.filter(
+    (link) => isGlobalAdmin || !link.adminOnly
+  );
+  const onSettingsRoute =
+    pathname === "/settings" || pathname.startsWith("/settings/");
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls="nav-settings-children"
+        className={cn(
+          "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          onSettingsRoute
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+        )}
+      >
+        <Settings className="h-4 w-4" aria-hidden="true" />
+        <span className="flex-1 text-left">Configurações</span>
+        <ChevronRight
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 transition-transform",
+            expanded && "rotate-90"
+          )}
+          aria-hidden="true"
+        />
+      </button>
+      {expanded && (
+        <ul id="nav-settings-children" className="mt-0.5 space-y-0.5">
+          {links.map((link) => (
+            <li key={link.href}>
+              <SubPageRow
+                label={link.label}
+                href={link.href}
+                active={pathname === link.href}
+                onNavigate={onNavigate}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* ── Sidebar body ────────────────────────────────────────────────── */
 
 function SidebarContent({
@@ -265,14 +386,19 @@ function SidebarContent({
   // and no-ops when they are already open, so this stays cheap on every nav.
   const branchSectorId = activeBranch.sectorId;
   const branchModuleId = activeBranch.moduleId;
+  // Settings is a flat bottom-zone group; auto-expand it when on a settings
+  // route so the active sub-page is never hidden behind a collapsed group.
+  const onSettingsRoute =
+    pathname === "/settings" || pathname.startsWith("/settings/");
   useEffect(() => {
     expandBranch([
       branchSectorId ? `sector:${branchSectorId}` : null,
       branchSectorId && branchModuleId
         ? `${branchSectorId}:${branchModuleId}`
         : null,
+      onSettingsRoute ? "settings" : null,
     ]);
-  }, [branchSectorId, branchModuleId, expandBranch]);
+  }, [branchSectorId, branchModuleId, onSettingsRoute, expandBranch]);
 
   // The single-sector user always has that sector as the current context.
   // `setSector` writes to localStorage + dispatches an event (a side effect
@@ -301,20 +427,29 @@ function SidebarContent({
       </div>
 
       <div className="space-y-1 px-3 pb-2">
-        <Link
+        <QuickLink
+          label="Início"
           href="/"
-          onClick={onNavigate}
-          aria-current={pathname === "/" ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            pathname === "/"
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-          )}
-        >
-          <Home className="h-4 w-4" aria-hidden="true" />
-          <span className="flex-1">Início</span>
-        </Link>
+          icon={Home}
+          active={pathname === "/"}
+          onNavigate={onNavigate}
+        />
+        <QuickLink
+          label="Meu Trabalho"
+          href="/meu-trabalho"
+          icon={ListTodo}
+          active={pathname === "/meu-trabalho"}
+          onNavigate={onNavigate}
+        />
+        {isGlobalAdmin && (
+          <QuickLink
+            label="Visão Geral"
+            href="/overview"
+            icon={Globe}
+            active={pathname === "/overview"}
+            onNavigate={onNavigate}
+          />
+        )}
         <CommandPaletteTrigger />
       </div>
 
@@ -364,26 +499,15 @@ function SidebarContent({
 
       <Separator />
 
-      {/* Bottom zone: settings, notifications, theme, user */}
+      {/* Bottom zone: settings group, notifications, theme, user */}
       <div className="space-y-1 p-3">
-        <Link
-          href="/settings"
-          onClick={onNavigate}
-          aria-current={
-            pathname === "/settings" || pathname.startsWith("/settings/")
-              ? "page"
-              : undefined
-          }
-          className={cn(
-            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            pathname === "/settings" || pathname.startsWith("/settings/")
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-          )}
-        >
-          <Settings className="h-4 w-4" aria-hidden="true" />
-          <span className="flex-1">Configurações</span>
-        </Link>
+        <SettingsGroup
+          pathname={pathname}
+          expanded={isExpanded("settings")}
+          isGlobalAdmin={isGlobalAdmin}
+          onToggle={() => toggle("settings")}
+          onNavigate={onNavigate}
+        />
         <div className="flex items-center gap-1">
           <NotificationBell />
           <ThemeToggle />
