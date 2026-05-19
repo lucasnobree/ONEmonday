@@ -42,7 +42,12 @@ export function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<span />}>{children}</DialogTrigger>
+      {/* The trigger renders a <span> (not a native <button>) so a button
+          child — the common case — is never nested inside a button. Tell
+          Base UI so explicitly, otherwise it warns expecting a <button>. */}
+      <DialogTrigger render={<span />} nativeButton={false}>
+        {children}
+      </DialogTrigger>
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
