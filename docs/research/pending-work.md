@@ -161,9 +161,38 @@ referenciavam um recurso de permissão `support_ticket` nunca semeado (o certo
 
 ---
 
-## 5. Próxima auditoria
+## 5. Reformulação de navegação estilo Monday — follow-ups
+
+As Fases 1, 2, 2b e 3 estão entregues (sidebar Setor▸Módulo, landing por
+perfil, Meu Trabalho, dashboard global, filtro de setor, polimento do board).
+O que ficou pendente dela:
+
+- [ ] **Alta** — Filtro de setor "Todos": os dashboards de módulo movidos a
+      RPC single-sector (Financeiro, Marketing, Analytics, Jurídico,
+      Dev-Tools, métricas do Support, documentos/headcount de RH) mostram
+      KPIs **vazios** quando o admin escolhe "Todos". Um agregado cross-setor
+      real exige RPCs novas. O dashboard global do admin (`/overview`) já
+      cobre a visão agregada, mas as telas de módulo sob "Todos" deveriam
+      somar em vez de zerar.
+- [ ] **Média** — Fase 2b: telas secundárias ainda não ligadas ao filtro de
+      setor (leem `useCurrentSector` direto): CRM pipeline/atividades/
+      propostas/formulários; RH onboarding/offboarding/férias/desempenho/
+      recrutamento/pesquisas/organograma; Support KB/SLA/respostas;
+      Financeiro orçamentos/relatórios/conciliação; Jurídico cláusulas;
+      Marketing audiências/automações/calendário/e-mail.
+- [ ] **Baixa** — `InvoicePrintButton` usa o setor da sidebar em vez do setor
+      da própria fatura.
+- [ ] **Baixa** — Dev-Tools ainda usa abas por estado (`<Tabs>`) em vez de
+      sub-páginas roteadas no submenu lateral.
+- [ ] **Baixa** — Fase 3: ordenação por grupo na lista; faixa de imagem de
+      capa no card; reações/respostas aninhadas nos Updates e pills inline no
+      Activity Log do Item Card.
+
+---
+
+## 6. Próxima auditoria
 
 Quando os itens de produto da §2 avançarem, vale uma **UX Audit Wave 6** das
 telas novas/alteradas (organograma, performance, surveys, conciliação,
-detail sheets, automações) — mesmo método das Waves 3-4 (agentes ux-auditor +
-prints + relatórios `docs/research/ux-audit-*-waveN.md`).
+detail sheets, automações, e a navegação nova) — mesmo método das Waves 3-4
+(agentes ux-auditor + prints + relatórios `docs/research/ux-audit-*-waveN.md`).

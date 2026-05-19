@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Monday.com-style navigation refactor (Phases 1–2b)
+### Monday.com-style navigation refactor (Phases 1–3)
 - A restructure of the whole navigation toward Monday.com conventions
   (research in `docs/research/monday-ux-patterns.md` and
   `docs/research/monday-board-card-spec.md`):
@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     sector managers and contributors have no selector and are locked to
     their own sector. Wired into each module's main and primary list
     screens.
+  - **Phase 3 — board/card visual polish**: the Boards surfaces brought to
+    the Monday.com visual spec (`docs/research/monday-board-card-spec.md`)
+    — a shared `StatusPill` primitive (compact + full-bleed cell modes),
+    Kanban cards with a colored left accent / status pill / updates count /
+    hover menu, a sticky two-row board header, an `+ Add column` tile, and
+    a group-banded list view with checkbox column, inline name editing and
+    per-group summary rows. Behavior (drag-drop, swimlanes, filters, WIP,
+    column management) unchanged.
 
 ### Module depth (Wave 5 — high-impact backlog)
 - The larger, High-impact items each Wave 4 audit deferred, built per
