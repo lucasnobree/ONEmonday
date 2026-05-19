@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 import type { MarketingChannel } from "@/lib/validations/marketing";
 
 export interface ChannelBreakdown {
@@ -25,12 +30,16 @@ export interface MarketingSummary {
 /**
  * Marketing KPI totals and the per-channel breakdown, computed server-side
  * by the `get_marketing_summary` RPC (which enforces sector access).
+ *
+ * The RPC is single-sector by contract (`p_sector_id`), so under the
+ * all-sectors scope this hook resolves to `null`.
  */
-export function useMarketingSummary(sectorId: string | undefined) {
+export function useMarketingSummary(scope: SectorScope | undefined) {
   const supabase = createClient();
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
 
   return useQuery({
-    queryKey: ["marketing-summary", sectorId],
+    queryKey: ["marketing-summary", scope],
     queryFn: async (): Promise<MarketingSummary | null> => {
       if (!sectorId) return null;
 
@@ -41,6 +50,6 @@ export function useMarketingSummary(sectorId: string | undefined) {
       if (error) throw error;
       return data as MarketingSummary;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
