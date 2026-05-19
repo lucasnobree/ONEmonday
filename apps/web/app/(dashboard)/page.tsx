@@ -1,82 +1,66 @@
 "use client";
 
-import { useCurrentSector } from "@/hooks/use-current-sector";
-import { useDashboardStats } from "@/hooks/use-dashboard-stats";
-import { StatsCards } from "@/components/dashboard/stats-cards";
-import { PriorityChart } from "@/components/dashboard/priority-chart";
-import { ColumnDistribution } from "@/components/dashboard/column-distribution";
-import { RecentActivity } from "@/components/dashboard/recent-activity";
+import { useMemo } from "react";
+import { usePermissions } from "@/hooks/use-permissions";
+import { resolveLanding } from "@/lib/navigation/landing";
+import { SectorDashboard } from "@/components/dashboard/sector-dashboard";
+import { GlobalOverviewView } from "@/components/overview/global-overview-view";
+import { MyWorkView } from "@/components/my-work/my-work-view";
+import { Skeleton } from "@/components/ui/skeleton";
 
-function DashboardSkeleton() {
+/**
+ * Role-based landing for `/`.
+ *
+ * The screen rendered depends on the signed-in user's role:
+ *  - **admin**   → the cross-sector Global Overview
+ *  - **manager** → their sector Dashboard
+ *  - **ic**      → "Meu Trabalho"
+ *
+ * The branch is decided from `usePermissions()` and resolved synchronously by
+ * {@link resolveLanding}; rendering the right screen in place (instead of a
+ * client redirect) keeps the landing flicker-free. All three screens stay
+ * reachable for everyone via the sidebar — role only sets the default.
+ */
+function HomeSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-lg border border-border bg-card p-4 h-20"
-          >
-            <div className="h-3 w-20 bg-muted rounded mb-2" />
-            <div className="h-6 w-12 bg-muted rounded" />
-          </div>
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 rounded-lg" />
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-lg border border-border bg-card p-6 h-52">
-          <div className="h-3 w-32 bg-muted rounded mb-4" />
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-3 bg-muted rounded w-full" />
-            ))}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-6 h-52">
-          <div className="h-3 w-32 bg-muted rounded mb-4" />
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-3 bg-muted rounded w-full" />
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Skeleton className="h-52 rounded-lg" />
+        <Skeleton className="h-52 rounded-lg" />
       </div>
     </div>
   );
 }
 
 export default function DashboardPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: stats, isLoading } = useDashboardStats(currentSector?.id);
+  const { isGlobalAdmin, sectorRoles, isLoading } = usePermissions();
 
-  if (!currentSector) {
+  const decision = useMemo(
+    () => resolveLanding(isGlobalAdmin, sectorRoles),
+    [isGlobalAdmin, sectorRoles]
+  );
+
+  // Wait for permissions so the landing branch is decided once, not flipped.
+  if (isLoading) return <HomeSkeleton />;
+
+  if (decision.target === "overview") {
+    return <GlobalOverviewView />;
+  }
+
+  if (decision.target === "sector-dashboard" && decision.sector) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Selecione um setor no menu lateral para visualizar as metricas.
-        </p>
-      </div>
+      <SectorDashboard
+        sectorId={decision.sector.id}
+        sectorName={decision.sector.name}
+      />
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">{currentSector.name}</p>
-      </div>
-
-      {isLoading || !stats ? (
-        <DashboardSkeleton />
-      ) : (
-        <>
-          <StatsCards stats={stats} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PriorityChart data={stats.cardsByPriority} />
-            <ColumnDistribution data={stats.cardsByColumn} />
-          </div>
-          <RecentActivity sectorId={currentSector.id} />
-        </>
-      )}
-    </div>
-  );
+  return <MyWorkView />;
 }

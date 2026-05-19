@@ -22,9 +22,9 @@ test.describe("Navigation shell", () => {
     await expect(page.getByRole("link", { name: "Início" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Buscar/i })).toBeVisible();
 
-    // Bottom zone: Configurações link.
+    // Bottom zone: Configurações is now an expandable group (a button).
     await expect(
-      page.getByRole("link", { name: "Configurações" })
+      page.getByRole("button", { name: "Configurações" })
     ).toBeVisible();
 
     // The legacy header sector <select> must be gone.
