@@ -1,6 +1,9 @@
 "use client";
 
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useTickets } from "@/hooks/support/use-tickets";
 import { useSupportStats } from "@/hooks/support/use-support-stats";
 import { useSupportMetrics } from "@/hooks/support/use-support-metrics";
@@ -50,24 +53,17 @@ const priorityLabels: Record<string, string> = {
 };
 
 export default function SupportDashboardPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: stats, isLoading: statsLoading } = useSupportStats(
-    currentSector?.id
-  );
-  const { data: metrics, isLoading: metricsLoading } = useSupportMetrics(
-    currentSector?.id
-  );
-  const { data: tickets, isLoading: ticketsLoading } = useTickets(
-    currentSector?.id
-  );
+  const { data: stats, isLoading: statsLoading } = useSupportStats(scope);
+  const { data: metrics, isLoading: metricsLoading } =
+    useSupportMetrics(scope);
+  const { data: tickets, isLoading: ticketsLoading } = useTickets(scope);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar o Support Desk.
-      </p>
-    );
-  }
+  // The permission gate is keyed by a concrete sector; admins bypass the
+  // check regardless, and non-admins are locked to their own sector.
+  const gateSectorId =
+    sectorFilterValue(scope) ?? currentSector?.id ?? "";
 
   const statCards = [
     {
@@ -133,7 +129,7 @@ export default function SupportDashboardPage() {
 
   return (
     <PermissionGate
-      sectorId={currentSector.id}
+      sectorId={gateSectorId}
       resource="ticket"
       action="read"
       fallback={
@@ -143,6 +139,10 @@ export default function SupportDashboardPage() {
       }
     >
       <div className="space-y-6">
+        <div className="flex items-center justify-end">
+          <SectorScopeFilter />
+        </div>
+
         <SlaAlertBanner />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
