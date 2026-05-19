@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createExpense,
   updateExpense,
   deleteExpense,
@@ -34,29 +39,34 @@ export interface Expense {
   created_at: string;
 }
 
-export function useExpenses(sectorId: string | undefined) {
+export function useExpenses(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["finance-expenses", sectorId],
+    queryKey: ["finance-expenses", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("finance_expenses")
         .select(
           `id, sector_id, vendor_name, description, category, amount_cents,
            currency, status, expense_date, due_date, paid_at, approved_by,
            approved_at, rejection_reason, created_at`
         )
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("expense_date", { ascending: false });
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("expense_date", {
+        ascending: false,
+      });
 
       if (error) throw error;
       return (data ?? []) as Expense[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

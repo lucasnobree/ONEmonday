@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useExpenses,
   useDeleteExpense,
@@ -36,9 +39,13 @@ import { toast } from "sonner";
 import { Plus, Download, Pencil, Trash2, CreditCard, Paperclip } from "lucide-react";
 
 export default function ExpensesPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: expenses, isLoading } = useExpenses(currentSector?.id);
+  const { data: expenses, isLoading: expensesLoading } = useExpenses(scope);
+  const isLoading = scopeLoading || expensesLoading;
   const deleteExpense = useDeleteExpense();
+  // Creating an expense needs a concrete target sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | undefined>();
@@ -65,14 +72,6 @@ export default function ExpensesPage() {
     () => sumCents(filtered.map((e) => e.amount_cents)),
     [filtered]
   );
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as despesas.
-      </p>
-    );
-  }
 
   const openCreate = () => {
     setEditing(undefined);
@@ -103,7 +102,10 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Despesas</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Despesas</h2>
+          <SectorScopeFilter />
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -132,7 +134,7 @@ export default function ExpensesPage() {
             <Download className="size-4 mr-1" />
             Exportar
           </Button>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" onClick={openCreate} disabled={!createSectorId}>
             <Plus className="size-4 mr-1" />
             Nova Despesa
           </Button>
@@ -225,7 +227,7 @@ export default function ExpensesPage() {
           title="Nenhuma despesa"
           description="Registre contas a pagar para controlar seus custos."
           action={
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} disabled={!createSectorId}>
               <Plus className="size-4 mr-1" />
               Nova Despesa
             </Button>
@@ -330,12 +332,14 @@ export default function ExpensesPage() {
         </Card>
       )}
 
-      <ExpenseFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        expense={editing}
-      />
+      {createSectorId && (
+        <ExpenseFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={createSectorId}
+          expense={editing}
+        />
+      )}
 
       <ExpenseReceiptsDialog
         open={receiptsOpen}
