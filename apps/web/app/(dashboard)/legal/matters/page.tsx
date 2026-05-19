@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useMatters, type Matter } from "@/hooks/legal/use-matters";
 import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { MatterFormDialog } from "@/components/legal/matter-form-dialog";
@@ -36,9 +39,11 @@ import {
 } from "@/lib/legal/matters";
 
 export default function MattersPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: matters, isLoading } = useMatters(currentSector?.id);
-  const { data: members } = useSectorMembers(currentSector?.id);
+  const { data: matters, isLoading } = useMatters(scope);
+  const memberSectorId = sectorFilterValue(scope) ?? currentSector?.id;
+  const { data: members } = useSectorMembers(memberSectorId);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<Matter | null>(null);
@@ -68,18 +73,11 @@ export default function MattersPage() {
       .sort(compareMatterByPriority);
   }, [matters, statusFilter, search]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver as demandas.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <SectorScopeFilter />
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input

@@ -2,7 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useContracts, type Contract } from "@/hooks/legal/use-contracts";
 import { useSectorMembers } from "@/hooks/legal/use-sector-members";
 import { ContractFormDialog } from "@/components/legal/contract-form-dialog";
@@ -35,9 +38,12 @@ import { getRenewalStatus } from "@/lib/legal/renewal";
 import { formatDateOnly } from "@/lib/legal/dates";
 
 export default function ContractsPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: contracts, isLoading } = useContracts(currentSector?.id);
-  const { data: members } = useSectorMembers(currentSector?.id);
+  const { data: contracts, isLoading } = useContracts(scope);
+  // Member names are looked up against the resolved/sidebar sector.
+  const memberSectorId = sectorFilterValue(scope) ?? currentSector?.id;
+  const { data: members } = useSectorMembers(memberSectorId);
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -69,18 +75,11 @@ export default function ContractsPage() {
     });
   }, [contracts, statusFilter, search]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver os contratos.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <SectorScopeFilter />
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
