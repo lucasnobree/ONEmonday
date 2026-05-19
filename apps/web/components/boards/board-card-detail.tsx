@@ -32,6 +32,9 @@ import { deleteCard } from "@/lib/actions/cards";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CardEditDialog } from "./card-edit-dialog";
 import { CardTagsEditor } from "./card-tags-editor";
+import { StatusPill } from "./status-pill";
+import { PRIORITY_STATUS_COLOR } from "@/lib/status-colors";
+import type { Priority } from "@/lib/constants";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,12 +69,6 @@ const priorityLabels: Record<string, string> = {
   high: "Alta",
   medium: "Média",
   low: "Baixa",
-};
-const priorityColors: Record<string, string> = {
-  critical: "text-red-500",
-  high: "text-orange-500",
-  medium: "text-yellow-500",
-  low: "text-green-500",
 };
 
 function getInitials(name: string | undefined): string {
@@ -499,16 +496,15 @@ export function BoardCardDetail({
                   </ConfirmDialog>
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-                <span
-                  className={cn(
-                    "font-medium",
-                    priorityColors[card.priority]
-                  )}
-                >
-                  {priorityLabels[card.priority]}
-                </span>
-                <span>em {card.board_columns?.name}</span>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <StatusPill
+                  mode="compact"
+                  label={priorityLabels[card.priority] ?? card.priority}
+                  color={PRIORITY_STATUS_COLOR[card.priority as Priority]}
+                />
+                {card.board_columns?.name && (
+                  <span>em {card.board_columns.name}</span>
+                )}
                 {card.due_date && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -605,18 +601,18 @@ export function BoardCardDetail({
 
             {/* Tabs */}
             <Tabs defaultValue={0}>
-              <TabsList>
+              <TabsList variant="line">
                 <TabsTrigger value={0}>
-                  <MessageSquare className="h-4 w-4 mr-1" /> Comentarios
+                  <MessageSquare className="mr-1 h-4 w-4" /> Atualizações
                 </TabsTrigger>
                 <TabsTrigger value={1}>
-                  <CheckSquare className="h-4 w-4 mr-1" /> Checklists
+                  <CheckSquare className="mr-1 h-4 w-4" /> Checklists
                 </TabsTrigger>
                 <TabsTrigger value={2}>
-                  <Paperclip className="h-4 w-4 mr-1" /> Anexos
+                  <Paperclip className="mr-1 h-4 w-4" /> Arquivos
                 </TabsTrigger>
                 <TabsTrigger value={3}>
-                  <Activity className="h-4 w-4 mr-1" /> Atividade
+                  <Activity className="mr-1 h-4 w-4" /> Atividade
                 </TabsTrigger>
               </TabsList>
 

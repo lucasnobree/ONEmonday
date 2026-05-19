@@ -36,6 +36,7 @@ function makeCard(
     assignees: [],
     tags: [],
     cross_ref_count: 0,
+    comment_count: 0,
   };
 }
 

@@ -30,6 +30,8 @@ export interface BoardCard {
   }[];
   tags: { id: string; name: string; color: string }[];
   cross_ref_count: number;
+  /** Number of active updates/comments on the card — footer `💬 N`. */
+  comment_count: number;
 }
 
 export interface BoardData {
@@ -62,6 +64,7 @@ interface RawCardRow {
     | { tags: { id: string; name: string; color: string } | null }[]
     | null;
   card_cross_references: { id: string }[] | null;
+  card_comments: { id: string }[] | null;
 }
 
 export function useBoardData(boardId: string | undefined) {
@@ -94,7 +97,8 @@ export function useBoardData(boardId: string | undefined) {
           id, title, description, position, priority, due_date, column_id, sector_id, created_by, created_at,
           card_assignees ( user_id, users ( full_name, avatar_url ) ),
           card_tags ( tags ( id, name, color ) ),
-          card_cross_references!card_cross_references_source_card_id_fkey ( id )
+          card_cross_references!card_cross_references_source_card_id_fkey ( id ),
+          card_comments ( id )
         `
         )
         .eq("board_id", boardId)
@@ -130,6 +134,7 @@ export function useBoardData(boardId: string | undefined) {
               .filter((t): t is NonNullable<typeof t> => t !== null)
               .map((t) => ({ id: t.id, name: t.name, color: t.color })),
             cross_ref_count: (card.card_cross_references ?? []).length,
+            comment_count: (card.card_comments ?? []).length,
           })),
       }));
 
