@@ -1,25 +1,15 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-
-const financeNav = [
-  { label: "Visão Geral", href: "/finance" },
-  { label: "Faturas", href: "/finance/invoices" },
-  { label: "Despesas", href: "/finance/expenses" },
-  { label: "Orçamentos", href: "/finance/budgets" },
-  { label: "Relatórios", href: "/finance/reports" },
-  { label: "Conciliação", href: "/finance/reconciliation" },
-];
-
+/**
+ * Financeiro (Finance) module layout.
+ *
+ * The in-screen navigation tab strip was removed in the nav-shell refactor —
+ * Finance sub-pages now live in the collapsible sidebar tree. This layout is
+ * a clean pass-through that keeps only the module title.
+ */
 export default function FinanceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
   return (
     <div className="space-y-6">
       <div>
@@ -27,30 +17,6 @@ export default function FinanceLayout({
         <p className="text-muted-foreground text-sm">
           Contas a pagar e receber, orçamentos e fluxo de caixa
         </p>
-      </div>
-
-      <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
-        {financeNav.map((item) => {
-          const isActive =
-            item.href === "/finance"
-              ? pathname === "/finance"
-              : pathname.startsWith(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
       </div>
 
       {children}

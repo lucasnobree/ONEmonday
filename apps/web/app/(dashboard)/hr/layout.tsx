@@ -1,24 +1,11 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-
-const hrNav = [
-  { label: "Dashboard", href: "/hr" },
-  { label: "Colaboradores", href: "/hr/employees" },
-  { label: "Férias e Ausências", href: "/hr/time-off" },
-  { label: "Recrutamento", href: "/hr/recruitment" },
-  { label: "Desempenho", href: "/hr/performance" },
-  { label: "Pesquisas", href: "/hr/surveys" },
-  { label: "Onboarding", href: "/hr/onboarding" },
-  { label: "Offboarding", href: "/hr/offboarding" },
-  { label: "Organograma", href: "/hr/org-chart" },
-];
-
+/**
+ * RH (HR) module layout.
+ *
+ * The in-screen navigation tab strip was removed in the nav-shell refactor —
+ * HR sub-pages now live in the collapsible sidebar tree. This layout is a
+ * clean pass-through that keeps only the module title.
+ */
 export default function HRLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
   return (
     <div className="space-y-6">
       <div>
@@ -26,30 +13,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
         <p className="text-muted-foreground text-sm">
           Gestão de pessoas, férias e recrutamento
         </p>
-      </div>
-
-      <div className="inline-flex h-8 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
-        {hrNav.map((item) => {
-          const isActive =
-            item.href === "/hr"
-              ? pathname === "/hr"
-              : pathname.startsWith(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
       </div>
 
       {children}
