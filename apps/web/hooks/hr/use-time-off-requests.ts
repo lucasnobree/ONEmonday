@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface TimeOffRequest {
   id: string;
@@ -25,30 +30,33 @@ export interface TimeOffRequest {
   };
 }
 
-export function useTimeOffRequests(sectorId: string | undefined) {
+export function useTimeOffRequests(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["hr-time-off-requests", sectorId],
+    queryKey: ["hr-time-off-requests", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
-        .from("hr_time_off_requests")
-        .select(
-          `
+      let query = supabase.from("hr_time_off_requests").select(
+        `
           *,
           hr_employees!inner (
             full_name, position, department
           )
         `
-        )
-        .eq("sector_id", sectorId)
-        .order("created_at", { ascending: false });
+      );
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("created_at", {
+        ascending: false,
+      });
 
       if (error) throw error;
       return (data as TimeOffRequest[]) ?? [];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

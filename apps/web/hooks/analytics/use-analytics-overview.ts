@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 /**
  * Cross-module KPI snapshot for a sector over a rolling window, computed
@@ -24,14 +29,20 @@ export interface AnalyticsOverview {
   headcount_active: number;
 }
 
+/**
+ * The `get_analytics_overview` RPC is single-sector by contract
+ * (`p_sector_id`), so under the all-sectors scope this hook resolves to
+ * `null`.
+ */
 export function useAnalyticsOverview(
-  sectorId: string | undefined,
+  scope: SectorScope | undefined,
   rangeDays: number
 ) {
   const supabase = createClient();
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
 
   return useQuery({
-    queryKey: ["analytics-overview", sectorId, rangeDays],
+    queryKey: ["analytics-overview", scope, rangeDays],
     queryFn: async (): Promise<AnalyticsOverview | null> => {
       if (!sectorId) return null;
 
@@ -43,7 +54,7 @@ export function useAnalyticsOverview(
       if (error) throw error;
       return data as AnalyticsOverview;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
     staleTime: 60 * 1000,
   });
 }

@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createDeal,
   closeDealWon,
   closeDealLost,
@@ -54,15 +59,15 @@ export interface Deal {
   } | null;
 }
 
-export function useDeals(sectorId: string | undefined) {
+export function useDeals(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["crm-deals", sectorId],
+    queryKey: ["crm-deals", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("crm_deals")
         .select(
           `
@@ -80,9 +85,14 @@ export function useDeals(sectorId: string | undefined) {
           owner:users!crm_deals_owner_id_fkey (id, full_name)
         `
         )
-        .eq("sector_id", sectorId)
-        .eq("cards.is_active", true)
-        .order("created_at", { ascending: false });
+        .eq("cards.is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("created_at", {
+        ascending: false,
+      });
 
       if (error) throw error;
 
@@ -94,7 +104,7 @@ export function useDeals(sectorId: string | undefined) {
         owner: d.owner,
       })) as unknown as Deal[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

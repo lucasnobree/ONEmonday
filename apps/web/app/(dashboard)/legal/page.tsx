@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useLegalStats } from "@/hooks/legal/use-legal-stats";
 import { useContracts } from "@/hooks/legal/use-contracts";
 import { useMatters } from "@/hooks/legal/use-matters";
@@ -42,26 +43,13 @@ const STATUS_BAR_COLOR: Record<BadgeVariant, string> = {
 };
 
 export default function LegalDashboardPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: stats, isLoading: statsLoading } = useLegalStats(
-    currentSector?.id
-  );
-  const { data: contracts, isLoading: contractsLoading } = useContracts(
-    currentSector?.id
-  );
-  const { data: matters, isLoading: mattersLoading } = useMatters(
-    currentSector?.id
-  );
+  const { scope, isLoading: scopeLoading } = useSectorScope();
+  const { data: stats, isLoading: statsLoading } = useLegalStats(scope);
+  const { data: contracts, isLoading: contractsLoading } =
+    useContracts(scope);
+  const { data: matters, isLoading: mattersLoading } = useMatters(scope);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar o Jurídico.
-      </p>
-    );
-  }
-
-  if (statsLoading) {
+  if (scopeLoading || statsLoading) {
     return (
       <div className="animate-pulse space-y-4">
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
@@ -118,6 +106,10 @@ export default function LegalDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Card key={card.title}>

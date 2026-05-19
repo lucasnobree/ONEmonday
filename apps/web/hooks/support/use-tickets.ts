@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface TicketAssignee {
   user_id: string;
@@ -34,22 +39,24 @@ export interface TicketListItem {
   card: TicketCard | null;
 }
 
-export function useTickets(sectorId: string | undefined) {
+export function useTickets(scope: SectorScope | undefined) {
   return useQuery<TicketListItem[]>({
-    queryKey: ["support-tickets", sectorId],
+    queryKey: ["support-tickets", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
       const supabase = createClient();
-      const { data } = await supabase
+
+      let query = supabase
         .from("support_tickets")
-        .select(
-          "*, card:cards(*, card_assignees(user_id, users(full_name)))"
-        )
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
+        .select("*, card:cards(*, card_assignees(user_id, users(full_name)))")
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data } = await query.order("created_at", { ascending: false });
       return (data || []) as unknown as TicketListItem[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

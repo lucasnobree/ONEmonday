@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createFeatureFlag,
   updateFeatureFlag,
   toggleFeatureFlag,
@@ -25,25 +30,28 @@ export interface DevFeatureFlag {
   updated_at: string;
 }
 
-export function useFeatureFlags(sectorId: string | undefined) {
+export function useFeatureFlags(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["dev-feature-flags", sectorId],
+    queryKey: ["dev-feature-flags", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("dev_feature_flags")
         .select("*")
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("key", { ascending: true });
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("key", { ascending: true });
 
       if (error) throw error;
       return (data as DevFeatureFlag[]) ?? [];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

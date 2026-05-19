@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useInvoices,
   useDeleteInvoice,
@@ -37,9 +40,13 @@ const STATUS_TABS: (InvoiceStatus | "all")[] = [
 ];
 
 export default function InvoicesPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: invoices, isLoading } = useInvoices(currentSector?.id);
+  const { data: invoices, isLoading: invoicesLoading } = useInvoices(scope);
+  const isLoading = scopeLoading || invoicesLoading;
   const deleteInvoice = useDeleteInvoice();
+  // Creating an invoice needs a concrete target sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Invoice | undefined>();
@@ -61,14 +68,6 @@ export default function InvoicesPage() {
     if (statusFilter === "all") return rows;
     return rows.filter((r) => r.effectiveStatus === statusFilter);
   }, [rows, statusFilter]);
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as faturas.
-      </p>
-    );
-  }
 
   const openCreate = () => {
     setEditing(undefined);
@@ -99,7 +98,10 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Faturas</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Faturas</h2>
+          <SectorScopeFilter />
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -130,7 +132,7 @@ export default function InvoicesPage() {
             <Download className="size-4 mr-1" />
             Exportar
           </Button>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" onClick={openCreate} disabled={!createSectorId}>
             <Plus className="size-4 mr-1" />
             Nova Fatura
           </Button>
@@ -172,7 +174,7 @@ export default function InvoicesPage() {
           title="Nenhuma fatura"
           description="Registre contas a receber para acompanhar seu faturamento."
           action={
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} disabled={!createSectorId}>
               <Plus className="size-4 mr-1" />
               Nova Fatura
             </Button>
@@ -221,7 +223,7 @@ export default function InvoicesPage() {
                         <div className="flex items-center justify-end gap-1">
                           <InvoicePrintButton
                             invoice={inv}
-                            sectorName={currentSector.name}
+                            sectorName={currentSector?.name ?? ""}
                           />
                           <Button
                             variant="ghost"
@@ -263,12 +265,14 @@ export default function InvoicesPage() {
         </Card>
       )}
 
-      <InvoiceFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        invoice={editing}
-      />
+      {createSectorId && (
+        <InvoiceFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={createSectorId}
+          invoice={editing}
+        />
+      )}
 
       <InvoiceFiscalDialog
         open={fiscalDialogOpen}

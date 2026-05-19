@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createReport,
   updateReport,
   deleteReport,
@@ -25,30 +30,34 @@ export interface AnalyticsReport {
   created_at: string;
 }
 
-export function useReports(sectorId: string | undefined) {
+export function useReports(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["analytics-reports", sectorId],
+    queryKey: ["analytics-reports", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("analytics_reports")
         .select(
           `id, sector_id, name, description, metric, chart_type,
            group_by, date_range_days, is_default, created_at`
         )
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        // Default (seeded) reports first, then newest user reports.
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      // Default (seeded) reports first, then newest user reports.
+      const { data, error } = await query
         .order("is_default", { ascending: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return (data ?? []) as AnalyticsReport[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

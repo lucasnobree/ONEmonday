@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Megaphone, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useCampaigns,
   useDeleteCampaign,
@@ -25,25 +28,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 export default function MarketingCampaignsPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const {
     data: campaigns,
     isLoading,
     isError,
     refetch,
-  } = useCampaigns(currentSector?.id);
+  } = useCampaigns(scope);
   const deleteCampaign = useDeleteCampaign();
+  // Creating a campaign needs a concrete target sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Campaign>();
-
-  if (!currentSector) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Selecione um setor no menu lateral para ver as campanhas.
-      </p>
-    );
-  }
 
   const handleDelete = async (id: string) => {
     const result = await deleteCampaign.mutateAsync(id);
@@ -59,9 +57,13 @@ export default function MarketingCampaignsPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Campanhas</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Campanhas</h2>
+          <SectorScopeFilter />
+        </div>
         <Button
           size="sm"
+          disabled={!createSectorId}
           onClick={() => {
             setEditing(undefined);
             setDialogOpen(true);
@@ -138,12 +140,14 @@ export default function MarketingCampaignsPage() {
         </div>
       )}
 
-      <CampaignFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        campaign={editing}
-      />
+      {createSectorId && (
+        <CampaignFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={createSectorId}
+          campaign={editing}
+        />
+      )}
     </div>
   );
 }

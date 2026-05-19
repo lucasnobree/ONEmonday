@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createInvoice,
   updateInvoice,
   deleteInvoice,
@@ -26,28 +31,33 @@ export interface Invoice {
   created_at: string;
 }
 
-export function useInvoices(sectorId: string | undefined) {
+export function useInvoices(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["finance-invoices", sectorId],
+    queryKey: ["finance-invoices", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("finance_invoices")
         .select(
           `id, sector_id, number, customer_name, description, amount_cents,
            currency, status, issue_date, due_date, paid_at, created_at`
         )
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
-        .order("issue_date", { ascending: false });
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query.order("issue_date", {
+        ascending: false,
+      });
 
       if (error) throw error;
       return (data ?? []) as Invoice[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

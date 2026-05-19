@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createLead,
   updateLead,
   discardLead,
@@ -54,15 +59,15 @@ export interface LeadAgingStats {
   overdue: number;
 }
 
-export function useLeads(sectorId: string | undefined) {
+export function useLeads(scope: SectorScope | undefined) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["crm-leads", sectorId],
+    queryKey: ["crm-leads", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("crm_leads")
         .select(
           `
@@ -73,8 +78,12 @@ export function useLeads(sectorId: string | undefined) {
           owner:users!crm_leads_owner_id_fkey (id, full_name)
         `
         )
-        .eq("sector_id", sectorId)
-        .eq("is_active", true)
+        .eq("is_active", true);
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data, error } = await query
         .order("score", { ascending: false })
         .order("created_at", { ascending: false });
 
@@ -87,15 +96,23 @@ export function useLeads(sectorId: string | undefined) {
         crm_lead_forms: undefined,
       })) as unknown as Lead[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
-export function useLeadStats(sectorId: string | undefined) {
+/**
+ * Inbox KPI counts (the `get_crm_lead_stats` RPC).
+ *
+ * The RPC is single-sector by contract (`p_sector_id`), so under the
+ * all-sectors scope this hook resolves to `null` — the inbox simply hides
+ * the per-sector KPI strip rather than aggregating across sectors.
+ */
+export function useLeadStats(scope: SectorScope | undefined) {
   const supabase = createClient();
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
 
   return useQuery({
-    queryKey: ["crm-lead-stats", sectorId],
+    queryKey: ["crm-lead-stats", scope],
     queryFn: async () => {
       if (!sectorId) return null;
       const { data, error } = await supabase.rpc("get_crm_lead_stats", {
@@ -104,16 +121,20 @@ export function useLeadStats(sectorId: string | undefined) {
       if (error) throw error;
       return data as LeadStats;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 
-/** Inbox SLA-aging counts (the `get_crm_lead_aging` RPC). */
-export function useLeadAging(sectorId: string | undefined) {
+/**
+ * Inbox SLA-aging counts (the `get_crm_lead_aging` RPC). Single-sector by
+ * contract — resolves to `null` under the all-sectors scope.
+ */
+export function useLeadAging(scope: SectorScope | undefined) {
   const supabase = createClient();
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
 
   return useQuery({
-    queryKey: ["crm-lead-aging", sectorId],
+    queryKey: ["crm-lead-aging", scope],
     queryFn: async () => {
       if (!sectorId) return null;
       const { data, error } = await supabase.rpc("get_crm_lead_aging", {
@@ -122,7 +143,7 @@ export function useLeadAging(sectorId: string | undefined) {
       if (error) throw error;
       return data as LeadAgingStats;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

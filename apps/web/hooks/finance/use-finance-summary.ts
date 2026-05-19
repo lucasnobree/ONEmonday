@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface CashFlowPoint {
   month: string;
@@ -21,12 +26,16 @@ export interface FinanceSummary {
 /**
  * Cash-flow KPIs and the 6-month inflow/outflow series, computed server-side
  * by the `get_finance_summary` RPC (which enforces sector access).
+ *
+ * The RPC is single-sector by contract (`p_sector_id`), so under the
+ * all-sectors scope this hook resolves to `null`.
  */
-export function useFinanceSummary(sectorId: string | undefined) {
+export function useFinanceSummary(scope: SectorScope | undefined) {
   const supabase = createClient();
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
 
   return useQuery({
-    queryKey: ["finance-summary", sectorId],
+    queryKey: ["finance-summary", scope],
     queryFn: async (): Promise<FinanceSummary | null> => {
       if (!sectorId) return null;
 
@@ -37,6 +46,6 @@ export function useFinanceSummary(sectorId: string | undefined) {
       if (error) throw error;
       return data as FinanceSummary;
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }

@@ -2,6 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
 
 export interface DevToolsStats {
   openIncidents: number;
@@ -27,9 +32,16 @@ interface RawDevToolsStats {
   active_flags: number;
 }
 
-export function useDevToolsStats(sectorId: string | undefined) {
+/**
+ * Dev-Tools dashboard KPIs from the `get_dev_tools_dashboard_stats` RPC. The
+ * RPC is single-sector by contract (`p_sector_id`), so under the all-sectors
+ * scope this hook resolves to the empty stat set.
+ */
+export function useDevToolsStats(scope: SectorScope | undefined) {
+  const sectorId = scope ? sectorFilterValue(scope) : undefined;
+
   return useQuery<DevToolsStats>({
-    queryKey: ["dev-tools-stats", sectorId],
+    queryKey: ["dev-tools-stats", scope],
     queryFn: async () => {
       if (!sectorId) return EMPTY_STATS;
 
@@ -52,7 +64,7 @@ export function useDevToolsStats(sectorId: string | undefined) {
         activeFlags: raw.active_flags ?? 0,
       };
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
     staleTime: 60 * 1000,
   });
 }

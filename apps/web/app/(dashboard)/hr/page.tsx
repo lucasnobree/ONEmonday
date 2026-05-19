@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useHRStats } from "@/hooks/hr/use-hr-stats";
 import { useTimeOffRequests } from "@/hooks/hr/use-time-off-requests";
 import { useOnboardingInstances } from "@/hooks/hr/use-onboarding";
@@ -41,31 +42,19 @@ const DOCUMENT_CATEGORY_MAP: Record<string, string> = {
 };
 
 export default function HRDashboardPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: stats, isLoading: statsLoading } = useHRStats(
-    currentSector?.id
-  );
+  const { scope, isLoading: scopeLoading } = useSectorScope();
+  const { data: stats, isLoading: statsLoading } = useHRStats(scope);
   const { data: timeOffRequests, isLoading: timeOffLoading } =
-    useTimeOffRequests(currentSector?.id);
+    useTimeOffRequests(scope);
   const { data: onboardings, isLoading: onboardingsLoading } =
-    useOnboardingInstances(currentSector?.id);
-  const { data: employees, isLoading: employeesLoading } = useEmployees(
-    currentSector?.id
-  );
+    useOnboardingInstances(scope);
+  const { data: employees, isLoading: employeesLoading } = useEmployees(scope);
   const { data: expiringDocs, isLoading: expiringDocsLoading } =
-    useExpiringDocuments(currentSector?.id);
+    useExpiringDocuments(scope);
   const { data: headcount, isLoading: headcountLoading } =
-    useHeadcountAnalytics(currentSector?.id, 12);
+    useHeadcountAnalytics(scope, 12);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar o RH.
-      </p>
-    );
-  }
-
-  if (statsLoading) {
+  if (scopeLoading || statsLoading) {
     return (
       <div className="animate-pulse space-y-4">
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
@@ -164,6 +153,10 @@ export default function HRDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((card) => {

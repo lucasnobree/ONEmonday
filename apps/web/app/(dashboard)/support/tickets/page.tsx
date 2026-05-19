@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useTickets } from "@/hooks/support/use-tickets";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -138,11 +141,16 @@ function SortHeader({
 }
 
 export default function TicketsPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: tickets, isLoading } = useTickets(currentSector?.id);
+  const { data: tickets, isLoading: ticketsLoading } = useTickets(scope);
+  const isLoading = scopeLoading || ticketsLoading;
   const { data: slaEntries } = useSlaStatus();
-  const { data: sectorTags } = useSectorTags(currentSector?.id);
-  const { data: ticketTagsMap } = useSectorTicketTags(currentSector?.id);
+  // Tag filtering and the create dialog still operate against a concrete
+  // sector — the sidebar's current sector under the all-sectors scope.
+  const tagSectorId = sectorFilterValue(scope) ?? currentSector?.id;
+  const { data: sectorTags } = useSectorTags(tagSectorId);
+  const { data: ticketTagsMap } = useSectorTicketTags(tagSectorId);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -239,9 +247,7 @@ export default function TicketsPage() {
       return;
     }
     toast.success("Ticket resolvido");
-    queryClient.invalidateQueries({
-      queryKey: ["support-tickets", currentSector?.id],
-    });
+    queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
     queryClient.invalidateQueries({ queryKey: ["sla-status"] });
   }
 
@@ -268,18 +274,8 @@ export default function TicketsPage() {
       }`
     );
     setSelectedIds(new Set());
-    queryClient.invalidateQueries({
-      queryKey: ["support-tickets", currentSector?.id],
-    });
+    queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
     queryClient.invalidateQueries({ queryKey: ["sla-status"] });
-  }
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver os tickets.
-      </p>
-    );
   }
 
   const allVisibleChecked =
@@ -287,7 +283,7 @@ export default function TicketsPage() {
 
   return (
     <PermissionGate
-      sectorId={currentSector.id}
+      sectorId={tagSectorId ?? ""}
       resource="ticket"
       action="read"
       fallback={
@@ -299,6 +295,7 @@ export default function TicketsPage() {
       <div className="space-y-4">
         {/* Header with filters and create button */}
         <div className="flex flex-wrap items-center gap-3">
+          <SectorScopeFilter />
           <div className="relative w-full max-w-xs">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -444,16 +441,18 @@ export default function TicketsPage() {
               <Download className="size-4 mr-1" />
               Exportar
             </Button>
-            <TicketCreateDialog
-              sectorId={currentSector.id}
-              boardId=""
-              columnId=""
-              onCreated={() =>
-                queryClient.invalidateQueries({
-                  queryKey: ["support-tickets", currentSector.id],
-                })
-              }
-            />
+            {tagSectorId && (
+              <TicketCreateDialog
+                sectorId={tagSectorId}
+                boardId=""
+                columnId=""
+                onCreated={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ["support-tickets"],
+                  })
+                }
+              />
+            )}
           </div>
         </div>
 
@@ -509,16 +508,18 @@ export default function TicketsPage() {
                 title="Nenhum ticket ainda"
                 description="Crie seu primeiro ticket de suporte para começar a gerenciar atendimentos."
                 action={
-                  <TicketCreateDialog
-                    sectorId={currentSector.id}
-                    boardId=""
-                    columnId=""
-                    onCreated={() =>
-                      queryClient.invalidateQueries({
-                        queryKey: ["support-tickets", currentSector.id],
-                      })
-                    }
-                  />
+                  tagSectorId ? (
+                    <TicketCreateDialog
+                      sectorId={tagSectorId}
+                      boardId=""
+                      columnId=""
+                      onCreated={() =>
+                        queryClient.invalidateQueries({
+                          queryKey: ["support-tickets"],
+                        })
+                      }
+                    />
+                  ) : undefined
                 }
               />
             ) : !filtered.length ? (

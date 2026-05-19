@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useMarketingSummary } from "@/hooks/marketing/use-marketing-summary";
 import { useCampaigns } from "@/hooks/marketing/use-campaigns";
 import {
@@ -41,18 +42,18 @@ import {
 } from "lucide-react";
 
 export default function MarketingDashboardPage() {
-  const { currentSector } = useCurrentSector();
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const {
     data: summary,
     isLoading: summaryLoading,
     isError: summaryError,
     refetch: refetchSummary,
-  } = useMarketingSummary(currentSector?.id);
+  } = useMarketingSummary(scope);
   const {
     data: campaigns,
     isLoading: campaignsLoading,
     isError: campaignsError,
-  } = useCampaigns(currentSector?.id);
+  } = useCampaigns(scope);
 
   const convRate = useMemo(() => {
     if (!summary) return 0;
@@ -85,15 +86,7 @@ export default function MarketingDashboardPage() {
     return isOverBudget(summary.total_spend_cents, summary.total_budget_cents);
   }, [summary]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar o Marketing.
-      </p>
-    );
-  }
-
-  const isLoading = summaryLoading || campaignsLoading;
+  const isLoading = scopeLoading || summaryLoading || campaignsLoading;
 
   if (isLoading) {
     return (
@@ -171,6 +164,10 @@ export default function MarketingDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       {overBudget && (
         <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />

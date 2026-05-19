@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useDeals } from "@/hooks/crm/use-deals";
 import { useCRMStats } from "@/hooks/crm/use-crm-stats";
 import { buildFunnelStages } from "@/lib/crm/pipeline-stages";
@@ -40,9 +41,9 @@ const initials = (name: string) =>
     .toUpperCase();
 
 export default function CRMDashboardPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: deals, isLoading: dealsLoading } = useDeals(currentSector?.id);
-  const { data: stats, isLoading: statsLoading } = useCRMStats(currentSector?.id);
+  const { scope, isLoading: scopeLoading } = useSectorScope();
+  const { data: deals, isLoading: dealsLoading } = useDeals(scope);
+  const { data: stats, isLoading: statsLoading } = useCRMStats(scope);
 
   const pipelineStages = useMemo(
     () => buildFunnelStages(deals ?? []),
@@ -111,15 +112,7 @@ export default function CRMDashboardPage() {
       .slice(0, 10);
   }, [deals]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar o CRM.
-      </p>
-    );
-  }
-
-  const isLoading = dealsLoading || statsLoading;
+  const isLoading = scopeLoading || dealsLoading || statsLoading;
 
   if (isLoading) {
     return (
@@ -162,6 +155,10 @@ export default function CRMDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>

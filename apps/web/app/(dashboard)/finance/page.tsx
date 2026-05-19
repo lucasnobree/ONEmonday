@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useFinanceSummary } from "@/hooks/finance/use-finance-summary";
 import { useInvoices } from "@/hooks/finance/use-invoices";
 import { CashFlowChart } from "@/components/finance/cash-flow-chart";
@@ -26,13 +27,10 @@ import {
 } from "lucide-react";
 
 export default function FinanceDashboardPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: summary, isLoading: summaryLoading } = useFinanceSummary(
-    currentSector?.id
-  );
-  const { data: invoices, isLoading: invoicesLoading } = useInvoices(
-    currentSector?.id
-  );
+  const { scope, isLoading: scopeLoading } = useSectorScope();
+  const { data: summary, isLoading: summaryLoading } =
+    useFinanceSummary(scope);
+  const { data: invoices, isLoading: invoicesLoading } = useInvoices(scope);
 
   // Net cash position = total paid income minus total paid expense.
   const netCashCents = useMemo(() => {
@@ -40,15 +38,7 @@ export default function FinanceDashboardPage() {
     return summary.total_income_cents - summary.total_expense_cents;
   }, [summary]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar o Financeiro.
-      </p>
-    );
-  }
-
-  const isLoading = summaryLoading || invoicesLoading;
+  const isLoading = scopeLoading || summaryLoading || invoicesLoading;
 
   if (isLoading) {
     return (
@@ -104,6 +94,10 @@ export default function FinanceDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>

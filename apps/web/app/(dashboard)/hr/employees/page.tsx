@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
 import { useEmployees, type Employee } from "@/hooks/hr/use-employees";
 import { EmployeeFormDialog } from "@/components/hr/employee-form-dialog";
 import { EmployeeProfileSheet } from "@/components/hr/employee-profile-sheet";
@@ -49,8 +50,9 @@ const STATUS_FILTER_LABELS: Record<string, string> = {
 };
 
 export default function EmployeesPage() {
-  const { currentSector } = useCurrentSector();
-  const { data: employees, isLoading } = useEmployees(currentSector?.id);
+  const { scope, isLoading: scopeLoading } = useSectorScope();
+  const { data: employees, isLoading: employeesLoading } = useEmployees(scope);
+  const isLoading = scopeLoading || employeesLoading;
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status");
   const [statusFilter, setStatusFilter] = useState(
@@ -86,18 +88,11 @@ export default function EmployeesPage() {
     });
   }, [employees, statusFilter, departmentFilter, search]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para ver os colaboradores.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <SectorScopeFilter />
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input

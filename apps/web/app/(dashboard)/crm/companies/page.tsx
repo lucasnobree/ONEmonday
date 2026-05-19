@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useCompanies, type Company } from "@/hooks/crm/use-companies";
 import { CompanyFormDialog } from "@/components/crm/company-form-dialog";
 import { CompanyDetailSheet } from "@/components/crm/company-detail-sheet";
@@ -51,8 +54,13 @@ function companyValue(company: Company, key: CompanySortKey): unknown {
 }
 
 export default function CompaniesPage() {
+  const { scope, isLoading: scopeLoading } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: companies, isLoading } = useCompanies(currentSector?.id);
+  const { data: companies, isLoading: companiesLoading } = useCompanies(scope);
+  const isLoading = scopeLoading || companiesLoading;
+  // New records need a concrete target sector. Under the all-sectors scope we
+  // fall back to the sidebar's current sector; with neither, creation is off.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
   const [search, setSearch] = useState("");
   const [sizeFilter, setSizeFilter] = useState("all");
   const [industryFilter, setIndustryFilter] = useState("all");
@@ -97,14 +105,6 @@ export default function CompaniesPage() {
 
   const hasActiveFilter =
     search.trim() !== "" || sizeFilter !== "all" || industryFilter !== "all";
-
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar as empresas.
-      </p>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -162,7 +162,10 @@ export default function CompaniesPage() {
             <Download className="size-4 mr-1" />
             Exportar
           </Button>
-          <Button onClick={() => setShowCreate(true)}>
+          <Button
+            onClick={() => setShowCreate(true)}
+            disabled={!createSectorId}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Nova Empresa
           </Button>
@@ -171,6 +174,7 @@ export default function CompaniesPage() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
+        <SectorScopeFilter />
         <FilterSelect
           value={sizeFilter}
           onValueChange={setSizeFilter}
@@ -242,7 +246,10 @@ export default function CompaniesPage() {
           title="Nenhuma empresa cadastrada"
           description="Adicione sua primeira empresa para começar a organizar seus clientes."
           action={
-            <Button onClick={() => setShowCreate(true)}>
+            <Button
+              onClick={() => setShowCreate(true)}
+              disabled={!createSectorId}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Nova Empresa
             </Button>
@@ -372,11 +379,13 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      <CompanyFormDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        sectorId={currentSector.id}
-      />
+      {createSectorId && (
+        <CompanyFormDialog
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          sectorId={createSectorId}
+        />
+      )}
 
       <CompanyDetailSheet
         companyId={selectedCompanyId}

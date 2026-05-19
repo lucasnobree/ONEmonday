@@ -12,7 +12,10 @@ import {
   Target,
   Users,
 } from "lucide-react";
+import { useSectorScope } from "@/hooks/use-sector-scope";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useAnalyticsOverview } from "@/hooks/analytics/use-analytics-overview";
 import { useReports, type AnalyticsReport } from "@/hooks/analytics/use-reports";
 import {
@@ -32,28 +35,19 @@ const count = (value: number) => formatMetricValue(value, "count");
 const currency = (value: number) => formatMetricValue(value, "currency_cents");
 
 export default function AnalyticsPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const [range, setRange] = useState<RangePreset>(DEFAULT_RANGE);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AnalyticsReport | undefined>();
 
-  const sectorId = currentSector?.id;
   const { data: overview, isLoading: overviewLoading } = useAnalyticsOverview(
-    sectorId,
+    scope,
     rangeToDays(range)
   );
-  const { data: reports, isLoading: reportsLoading } = useReports(sectorId);
-
-  if (!currentSector) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="mt-1 text-muted-foreground">
-          Selecione um setor no menu lateral para visualizar as métricas.
-        </p>
-      </div>
-    );
-  }
+  const { data: reports, isLoading: reportsLoading } = useReports(scope);
+  // Creating a report needs a concrete target sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const openReportDialog = (report?: AnalyticsReport) => {
     setEditing(report);
@@ -63,11 +57,11 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">{currentSector.name}</p>
+        <h1 className="text-2xl font-bold">Analytics</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <SectorScopeFilter />
+          <DateRangeFilter value={range} onChange={setRange} />
         </div>
-        <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
       {overviewLoading ? (
@@ -147,7 +141,11 @@ export default function AnalyticsPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Relatórios Salvos</h2>
-          <Button size="sm" onClick={() => openReportDialog()}>
+          <Button
+            size="sm"
+            onClick={() => openReportDialog()}
+            disabled={!createSectorId}
+          >
             <Plus className="mr-1 h-4 w-4" />
             Novo Relatório
           </Button>
@@ -164,7 +162,7 @@ export default function AnalyticsPage() {
               <ReportCard
                 key={report.id}
                 report={report}
-                sectorId={currentSector.id}
+                sectorId={report.sector_id}
                 onEdit={openReportDialog}
               />
             ))}
@@ -180,12 +178,14 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      <ReportFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        report={editing}
-      />
+      {createSectorId && (
+        <ReportFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={createSectorId}
+          report={editing}
+        />
+      )}
     </div>
   );
 }
