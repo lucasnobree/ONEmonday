@@ -22,7 +22,7 @@ import {
 } from "@/hooks/use-board-data";
 import { useRealtimeBoard } from "@/hooks/use-realtime-board";
 import { usePermissions } from "@/hooks/use-permissions";
-import { reorderCards } from "@/lib/actions/cards";
+import { reorderCards, createCard } from "@/lib/actions/cards";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BoardColumn } from "./board-column";
 import { BoardCard } from "./board-card";
@@ -63,6 +63,7 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   const [activeCard, setActiveCard] = useState<BoardCardType | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [addColumnOpen, setAddColumnOpen] = useState(false);
+  const [isCreatingItem, setIsCreatingItem] = useState(false);
   const [filters, setFilters] = useState<BoardFilterState>(
     EMPTY_BOARD_FILTERS
   );
@@ -104,6 +105,33 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // `+ New Item` (board-level): creates a card in the first column and opens
+  // its detail panel so the user can name/fill it inline — mirrors Monday's
+  // far-left primary creation action.
+  const handleNewItem = useCallback(async () => {
+    if (!board || board.columns.length === 0 || isCreatingItem) return;
+    setIsCreatingItem(true);
+    const firstColumn = board.columns[0];
+    const result = await createCard({
+      title: "Novo item",
+      boardId,
+      columnId: firstColumn.id,
+      sectorId,
+      priority: "medium",
+    });
+    setIsCreatingItem(false);
+
+    if (result.error || !result.data) {
+      toast.error("Erro ao criar item", {
+        description:
+          typeof result.error === "string" ? result.error : undefined,
+      });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["board", boardId] });
+    setSelectedCardId(result.data.id);
+  }, [board, boardId, sectorId, queryClient, isCreatingItem]);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -277,33 +305,55 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
   // grouped, the same column id appears in several lanes.
   const showColumnMenus = canManageColumns && groupBy === "column";
 
+  // The column the dragged card belongs to — drives the drag-overlay pill.
+  const activeCardColumn = activeCard
+    ? board.columns.find((c) => c.id === activeCard.column_id)
+    : undefined;
+
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold">{board.name}</h1>
-        {board.description && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {board.description}
-          </p>
-        )}
-      </div>
-
       <Tabs defaultValue={0}>
-        <TabsList className="mb-4">
-          <TabsTrigger value={0}>Kanban</TabsTrigger>
-          <TabsTrigger value={1}>Lista</TabsTrigger>
-          <TabsTrigger value={2}>Timeline</TabsTrigger>
-        </TabsList>
+        {/* Sticky two-row board header — Monday "new board design" model. */}
+        <div className="sticky top-0 z-20 -mx-1 mb-4 border-b border-border bg-background px-1">
+          {/* Row 1 — identity + view tabs */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-bold">{board.name}</h1>
+              {board.description && (
+                <p className="truncate text-xs text-muted-foreground">
+                  {board.description}
+                </p>
+              )}
+            </div>
+            <TabsList variant="line" className="h-8">
+              <TabsTrigger value={0}>Kanban</TabsTrigger>
+              <TabsTrigger value={1}>Lista</TabsTrigger>
+              <TabsTrigger value={2}>Timeline</TabsTrigger>
+            </TabsList>
+          </div>
 
-        <BoardFilters
-          filters={filters}
-          onChange={setFilters}
-          groupBy={groupBy}
-          onGroupByChange={setGroupBy}
-          assigneeOptions={assigneeOptions}
-          tagOptions={tagOptions}
-          resultCount={countBoardCards(viewBoard)}
-        />
+          {/* Row 2 — actions: New Item far-left, filter cluster right */}
+          <div className="flex flex-wrap items-center gap-2 pb-3">
+            <Button
+              onClick={handleNewItem}
+              disabled={isCreatingItem || board.columns.length === 0}
+            >
+              <Plus className="h-4 w-4" />
+              {isCreatingItem ? "Criando..." : "Novo item"}
+            </Button>
+            <div className="ml-auto flex flex-1 flex-wrap items-center justify-end gap-2">
+              <BoardFilters
+                filters={filters}
+                onChange={setFilters}
+                groupBy={groupBy}
+                onGroupByChange={setGroupBy}
+                assigneeOptions={assigneeOptions}
+                tagOptions={tagOptions}
+                resultCount={countBoardCards(viewBoard)}
+              />
+            </div>
+          </div>
+        </div>
 
         <TabsContent value={0}>
           {dragDisabled && (
@@ -351,16 +401,14 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
                         />
                       ))}
                       {showColumnMenus && (
-                        <div className="w-56 shrink-0 pt-2">
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-muted-foreground"
-                            onClick={() => setAddColumnOpen(true)}
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Adicionar coluna
-                          </Button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAddColumnOpen(true)}
+                          className="flex w-12 shrink-0 items-center justify-center self-start rounded-lg border border-dashed border-border bg-muted/30 py-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          aria-label="Adicionar coluna"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
                       )}
                     </BoardLaneScroll>
                   </div>
@@ -371,7 +419,11 @@ export function BoardView({ boardId, sectorId }: BoardViewProps) {
             <DragOverlay dropAnimation={null}>
               {activeCard ? (
                 <div className="rotate-2 scale-105 shadow-xl opacity-90">
-                  <BoardCard card={activeCard} />
+                  <BoardCard
+                    card={activeCard}
+                    statusLabel={activeCardColumn?.name}
+                    statusColor={activeCardColumn?.color}
+                  />
                 </div>
               ) : null}
             </DragOverlay>

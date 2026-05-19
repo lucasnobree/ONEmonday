@@ -45,7 +45,7 @@ export function StatusPill({
       className={cn(
         "select-none font-medium",
         mode === "compact"
-          ? "inline-flex items-center rounded-[4px] px-2 py-0.5 text-xs leading-tight"
+          ? "inline-flex items-center rounded px-2 py-0.5 text-xs leading-tight"
           : "flex h-full w-full items-center justify-center px-2 py-1.5 text-center text-xs",
         className
       )}

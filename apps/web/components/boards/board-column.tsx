@@ -90,14 +90,14 @@ export function BoardColumn({
 
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-lg bg-muted/50 max-h-[calc(100vh-12rem)]">
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2">
-          <div
-            className="h-2 w-2 rounded-full"
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
             style={{ backgroundColor: column.color || "#94a3b8" }}
           />
-          <span className="text-sm font-medium">{column.name}</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="truncate text-sm font-semibold">{column.name}</span>
+          <span className="text-xs font-normal text-muted-foreground">
             {column.cards.length}
           </span>
         </div>
@@ -132,12 +132,20 @@ export function BoardColumn({
             isOver && "bg-accent/50 rounded-md"
           )}
         >
+          {column.cards.length === 0 && (
+            <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+              Sem cards
+            </p>
+          )}
           {column.cards.map((card) => (
             <BoardCard
               key={card.id}
               card={card}
               dragDisabled={dragDisabled}
+              statusLabel={column.name}
+              statusColor={column.color}
               onClick={() => onCardClick?.(card.id)}
+              onOpen={() => onCardClick?.(card.id)}
             />
           ))}
         </div>
@@ -182,10 +190,11 @@ export function BoardColumn({
         ) : (
           <Button
             variant="ghost"
-            className="w-full justify-start text-muted-foreground"
+            size="sm"
+            className="h-8 w-full justify-start text-muted-foreground hover:text-foreground"
             onClick={() => setIsAdding(true)}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Adicionar card
           </Button>
         )}

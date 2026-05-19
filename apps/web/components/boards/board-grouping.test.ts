@@ -27,6 +27,7 @@ function makeCard(
     assignees: assignees.map((a) => ({ ...a, avatar_url: null })),
     tags: tags.map((t) => ({ ...t, color: "#000" })),
     cross_ref_count: 0,
+    comment_count: 0,
   };
 }
 
