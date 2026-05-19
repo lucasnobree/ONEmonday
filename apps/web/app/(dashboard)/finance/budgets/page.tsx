@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import { useBudgets, useDeleteBudget } from "@/hooks/finance/use-budgets";
 import { useExpenses } from "@/hooks/finance/use-expenses";
 import type { Budget } from "@/hooks/finance/use-budgets";
@@ -42,14 +45,15 @@ import {
 } from "recharts";
 
 export default function BudgetsPage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
-  const { data: budgets, isLoading: budgetsLoading } = useBudgets(
-    currentSector?.id
-  );
-  const { data: expenses, isLoading: expensesLoading } = useExpenses(
-    currentSector?.id
-  );
+  const { data: budgets, isLoading: budgetsLoading } = useBudgets(scope);
+  const { data: expenses, isLoading: expensesLoading } = useExpenses(scope);
   const deleteBudget = useDeleteBudget();
+  // Creating a budget needs a concrete target sector; under the all-sectors
+  // scope fall back to the sidebar's current sector. An edited budget keeps
+  // its own sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Budget | undefined>();
@@ -88,16 +92,9 @@ export default function BudgetsPage() {
     return { planned, actual };
   }, [rows]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar os orçamentos.
-      </p>
-    );
-  }
-
   const isLoading = budgetsLoading || expensesLoading;
   const isCurrentMonth = monthKey === currentMonthKey();
+  const dialogSectorId = editing?.sector_id ?? createSectorId;
 
   const openCreate = () => {
     setEditing(undefined);
@@ -135,10 +132,13 @@ export default function BudgetsPage() {
             Orçado vs. realizado por mês
           </p>
         </div>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="size-4 mr-1" />
-          Novo Orçamento
-        </Button>
+        <div className="flex items-center gap-2">
+          <SectorScopeFilter />
+          <Button size="sm" onClick={openCreate} disabled={!createSectorId}>
+            <Plus className="size-4 mr-1" />
+            Novo Orçamento
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export default function BudgetsPage() {
           title="Nenhum orçamento neste mês"
           description="Defina limites de gasto por categoria para acompanhar o realizado."
           action={
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} disabled={!createSectorId}>
               <Plus className="size-4 mr-1" />
               Novo Orçamento
             </Button>
@@ -341,13 +341,15 @@ export default function BudgetsPage() {
         </>
       )}
 
-      <BudgetFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sectorId={currentSector.id}
-        budget={editing}
-        defaultMonth={monthKey}
-      />
+      {dialogSectorId && (
+        <BudgetFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          sectorId={dialogSectorId}
+          budget={editing}
+          defaultMonth={monthKey}
+        />
+      )}
     </div>
   );
 }

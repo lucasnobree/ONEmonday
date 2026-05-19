@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { isAllSectors } from "@/lib/navigation/sector-scope";
 import { useFinanceDre } from "@/hooks/finance/use-finance-dre";
 import { useFinanceAging } from "@/hooks/finance/use-finance-aging";
 import { useInvoices } from "@/hooks/finance/use-invoices";
@@ -36,20 +38,21 @@ function monthStart(): string {
 }
 
 export default function FinanceReportsPage() {
-  const { currentSector } = useCurrentSector();
+  const { scope } = useSectorScope();
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(todayDateOnly);
 
   const { data: drePayload, isLoading: dreLoading } = useFinanceDre(
-    currentSector?.id,
+    scope,
     from,
     to
   );
-  const { data: aging, isLoading: agingLoading } = useFinanceAging(
-    currentSector?.id
-  );
-  const { data: invoices } = useInvoices(currentSector?.id);
-  const { data: expenses } = useExpenses(currentSector?.id);
+  const { data: aging, isLoading: agingLoading } = useFinanceAging(scope);
+  const { data: invoices } = useInvoices(scope);
+  const { data: expenses } = useExpenses(scope);
+  // The DRE and aging RPCs are single-sector by contract; under the
+  // all-sectors scope they resolve to null and the report shows a hint.
+  const allSectors = isAllSectors(scope);
 
   const dre = useMemo(
     () => (drePayload ? buildDre(drePayload) : null),
@@ -81,14 +84,6 @@ export default function FinanceReportsPage() {
     [invoices, expenses, from, to]
   );
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar os relatórios.
-      </p>
-    );
-  }
-
   const handleAccountantExport = () => {
     if (exportRows.length === 0) {
       toast.error("Nenhum lançamento pago no período");
@@ -112,6 +107,10 @@ export default function FinanceReportsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <SectorScopeFilter />
+      </div>
+
       {/* Period selector */}
       <Card>
         <CardContent className="p-4 flex flex-wrap items-end gap-4">
@@ -161,7 +160,11 @@ export default function FinanceReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {dreLoading || !dre ? (
+          {allSectors ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              Selecione um setor específico para ver a DRE gerencial.
+            </p>
+          ) : dreLoading || !dre ? (
             <div className="h-40 rounded-lg bg-muted animate-pulse" />
           ) : (
             <div className="space-y-4">
@@ -237,14 +240,22 @@ export default function FinanceReportsPage() {
       <AgingTable
         title="Aging de Recebíveis (Contas a Receber)"
         items={receivableItems}
-        emptyLabel="Nenhuma fatura em aberto."
+        emptyLabel={
+          allSectors
+            ? "Selecione um setor específico para ver o aging."
+            : "Nenhuma fatura em aberto."
+        }
         isLoading={agingLoading}
         caption="Posição atual — não considera o período selecionado acima."
       />
       <AgingTable
         title="Aging de Pagáveis (Contas a Pagar)"
         items={payableItems}
-        emptyLabel="Nenhuma despesa em aberto."
+        emptyLabel={
+          allSectors
+            ? "Selecione um setor específico para ver o aging."
+            : "Nenhuma despesa em aberto."
+        }
         isLoading={agingLoading}
         caption="Posição atual — não considera o período selecionado acima."
       />
