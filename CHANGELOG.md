@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Monday.com-style navigation refactor (Phases 1–2)
+### Monday.com-style navigation refactor (Phases 1–2b)
 - A restructure of the whole navigation toward Monday.com conventions
   (research in `docs/research/monday-ux-patterns.md` and
   `docs/research/monday-board-card-spec.md`):
@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Trabalho"** cross-board task view (every card assigned to you, grouped
     Atrasado / Hoje / Esta semana / Depois). The sidebar gained Início,
     Meu Trabalho, Visão Geral and a Settings sub-page group.
+  - **Phase 2b — on-screen sector filter**: module screens carry a
+    `Setor: [Todos ▾]` selector for admins (default "Todos" = all sectors);
+    sector managers and contributors have no selector and are locked to
+    their own sector. Wired into each module's main and primary list
+    screens.
 
 ### Module depth (Wave 5 — high-impact backlog)
 - The larger, High-impact items each Wave 4 audit deferred, built per
