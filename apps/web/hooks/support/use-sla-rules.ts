@@ -3,6 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
+  isScopeReady,
+  sectorFilterValue,
+} from "@/lib/navigation/scoped-query";
+import type { SectorScope } from "@/lib/navigation/sector-scope";
+import {
   createSlaRule,
   updateSlaRule,
   deleteSlaRule,
@@ -29,20 +34,24 @@ export interface SlaRule {
   warn_threshold_pct: number;
 }
 
-export function useSLARules(sectorId: string | undefined) {
+export function useSLARules(scope: SectorScope | undefined) {
   return useQuery({
-    queryKey: ["sla-rules", sectorId],
+    queryKey: ["sla-rules", scope],
     queryFn: async () => {
-      if (!sectorId) return [];
+      if (!isScopeReady(scope)) return [];
       const supabase = createClient();
-      const { data } = await supabase
+      let query = supabase
         .from("sla_rules")
         .select("*")
-        .eq("sector_id", sectorId)
         .order("priority", { ascending: true });
+
+      const filterSectorId = sectorFilterValue(scope);
+      if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+
+      const { data } = await query;
       return (data || []) as SlaRule[];
     },
-    enabled: !!sectorId,
+    enabled: isScopeReady(scope),
   });
 }
 

@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useCurrentSector } from "@/hooks/use-current-sector";
+import { useSectorScope } from "@/hooks/use-sector-scope";
+import { SectorScopeFilter } from "@/components/shared/sector-scope-filter";
+import { sectorFilterValue } from "@/lib/navigation/scoped-query";
 import {
   useKBArticles,
   useDeleteKBArticle,
@@ -39,13 +42,20 @@ const filterTabs: { label: string; value: PublishedFilter }[] = [
 ];
 
 export default function KnowledgeBasePage() {
+  const { scope } = useSectorScope();
   const { currentSector } = useCurrentSector();
   const [publishedFilter, setPublishedFilter] =
     useState<PublishedFilter>("all");
   const { data: articles, isLoading } = useKBArticles(
-    currentSector?.id,
+    scope,
     publishedFilter
   );
+  // The permission gate is keyed by a concrete sector; admins bypass the
+  // check regardless, non-admins are locked to their own sector.
+  const gateSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? "";
+  // Creating an article needs a concrete target sector; under the
+  // all-sectors scope fall back to the sidebar's current sector.
+  const createSectorId = sectorFilterValue(scope) ?? currentSector?.id ?? null;
   const deleteMutation = useDeleteKBArticle();
   const togglePublishMutation = useToggleKBArticlePublished();
   const [search, setSearch] = useState("");
@@ -56,6 +66,9 @@ export default function KnowledgeBasePage() {
   const [editingArticle, setEditingArticle] = useState<
     KBArticleFormValues | undefined
   >(undefined);
+  // The sector the form writes to: an edited article keeps its own sector,
+  // a new article uses the create-target sector.
+  const [editingSectorId, setEditingSectorId] = useState<string | null>(null);
 
   const categories = useMemo(() => {
     if (!articles) return [];
@@ -77,16 +90,9 @@ export default function KnowledgeBasePage() {
     );
   }, [articles, search]);
 
-  if (!currentSector) {
-    return (
-      <p className="text-muted-foreground">
-        Selecione um setor para acessar a Base de Conhecimento.
-      </p>
-    );
-  }
-
   function handleCreate() {
     setEditingArticle(undefined);
+    setEditingSectorId(createSectorId);
     setFormOpen(true);
   }
 
@@ -99,6 +105,7 @@ export default function KnowledgeBasePage() {
       tags: article.tags ?? [],
       is_published: article.is_published,
     });
+    setEditingSectorId(article.sector_id);
     setFormOpen(true);
   }
 
@@ -131,7 +138,7 @@ export default function KnowledgeBasePage() {
 
   return (
     <PermissionGate
-      sectorId={currentSector.id}
+      sectorId={gateSectorId}
       resource="kb_article"
       action="read"
       fallback={
@@ -170,8 +177,13 @@ export default function KnowledgeBasePage() {
             />
           </div>
 
-          <div className="ml-auto">
-            <Button size="sm" onClick={handleCreate}>
+          <div className="ml-auto flex items-center gap-2">
+            <SectorScopeFilter />
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={!createSectorId}
+            >
               <Plus className="size-4 mr-1" />
               Novo Artigo
             </Button>
@@ -295,16 +307,21 @@ export default function KnowledgeBasePage() {
         onOpenChange={(o) => !o && setSelectedArticleId(null)}
       />
 
-      <KBArticleFormSheet
-        open={formOpen}
-        onOpenChange={(o) => {
-          setFormOpen(o);
-          if (!o) setEditingArticle(undefined);
-        }}
-        sectorId={currentSector.id}
-        article={editingArticle}
-        categories={categories}
-      />
+      {editingSectorId && (
+        <KBArticleFormSheet
+          open={formOpen}
+          onOpenChange={(o) => {
+            setFormOpen(o);
+            if (!o) {
+              setEditingArticle(undefined);
+              setEditingSectorId(null);
+            }
+          }}
+          sectorId={editingSectorId}
+          article={editingArticle}
+          categories={categories}
+        />
+      )}
     </PermissionGate>
   );
 }
